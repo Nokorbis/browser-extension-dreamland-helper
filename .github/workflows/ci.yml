@@ -1,0 +1,54 @@
+# GitHub Actions CI.
+#
+# Every push and pull request: install, type-check (`pnpm check`), and build BOTH browser
+# targets — so breakage is caught on any branch. Only on the default branch (`main`) does it
+# additionally package store-ready zips and upload them as artifacts; feature branches and
+# PRs validate but never deploy artifacts.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable pnpm (version from package.json "packageManager")
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm check
+
+      - name: Build both targets
+        run: |
+          pnpm build
+          pnpm build:firefox
+
+      # --- Artifacts: default branch (main) only ---
+      - name: Package store zips
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          pnpm zip
+          pnpm zip:firefox
+
+      - name: Upload zips
+        if: ${{ github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: dreamland-helper-zips
+          path: .output/*.zip
+          if-no-files-found: error

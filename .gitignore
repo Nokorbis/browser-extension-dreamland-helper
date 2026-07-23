@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# WXT
+.wxt/
+.output/
+stats.html
+# machine-local dev browser path; see web-ext.config.example.ts
+web-ext.config.ts
+
+# Editor / OS
+.DS_Store
+*.log

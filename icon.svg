@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6d5bd0"/>
+      <stop offset="1" stop-color="#3b2d7a"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <!-- Crescent moon: a light disc with an overlapping bg-colored disc punched out -->
+  <path d="M84 26a40 40 0 1 0 0 76 32 32 0 1 1 0-76z" fill="#f4f1ff"/>
+  <circle cx="92" cy="40" r="4" fill="#f4f1ff"/>
+  <circle cx="104" cy="60" r="3" fill="#f4f1ff"/>
+  <circle cx="96" cy="80" r="2.5" fill="#f4f1ff"/>
+</svg>
