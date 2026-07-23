@@ -31,7 +31,7 @@ export default defineConfig({
     // which hosts and auto-updates it. See docs/adr/0010 and docs/PUBLISHING.md.
     browser_specific_settings: {
       gecko: {
-        id: 'dreamland-helper@dreamland-reborn.net',
+        id: 'qol@dreamland-reborn.net',
         data_collection_permissions: { required: ['none'] },
       },
     },

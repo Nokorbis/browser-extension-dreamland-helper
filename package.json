@@ -1,9 +1,9 @@
 {
-  "name": "dreamland-helper",
+  "name": "dreamland-reborn-qol",
   "displayName": "Dreamland Reborn QoL",
   "description": "Writing aids for PHPBB 3.20 roleplay forums: exit guard, GM-text highlighting, BBCode presets, and color grabbing.",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.1.0",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.28.0",
