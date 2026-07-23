@@ -15,8 +15,17 @@ popup:
 # compiled message-key names allow only [A-Za-z0-9_], no hyphens.
 features:
   exitGuard:
-    name: Protection changement de page
-    description: Avertit avant de quitter un éditeur de message contenant du texte non enregistré.
+    name: Protection perte de message
+    description: >-
+      Avertit avant de quitter un éditeur contenant du texte non enregistré, et
+      vérifie que le serveur répond avant d'envoyer un message.
+    serverDown:
+      title: Serveur indisponible
+      message: >-
+        Le serveur ne répond pas. Réessayez plus tard — votre message n'a pas
+        été envoyé et votre texte est toujours là.
+      stay: Rester sur la page
+      sendAnyway: Envoyer quand même
   highlight:
     name: Surligner le texte
     description: Garde des passages surlignés pour rester concentré pendant la rédaction de la réponse.

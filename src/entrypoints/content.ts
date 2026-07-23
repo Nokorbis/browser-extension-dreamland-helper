@@ -1,6 +1,7 @@
 import { defineContentScript } from '#imports';
 import { FORUM_MATCHES } from '@/lib/phpbb';
 import { bootFeatures } from '@/features/registry';
+import { log } from '@/lib/log';
 
 /**
  * The one content script. It does no feature work itself — it just boots the
@@ -11,6 +12,7 @@ export default defineContentScript({
   matches: FORUM_MATCHES,
   runAt: 'document_idle',
   main(ctx) {
+    log('content script booted at', location.href);
     void bootFeatures(ctx);
   },
 });

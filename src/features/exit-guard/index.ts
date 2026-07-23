@@ -1,17 +1,27 @@
 import { i18n } from '#i18n';
 import type { Feature } from '../types';
-import { findMessageTextarea } from '@/lib/phpbb';
+import { findMessageTextarea, findPostForm, findSubmitButton } from '@/lib/phpbb';
+import { isForumReachable } from '@/lib/reachability';
+import { log } from '@/lib/log';
+import { showServerDownModal } from './server-down-modal';
 
 /**
  * Feature #1 — Exit guard.
  *
- * Prevents accidental loss of a draft. While the post editor holds text that
- * differs from what it loaded with, leaving the page (back button, closing the
- * tab, following a link) triggers the browser's native "Leave site?" prompt.
+ * Two layers of draft protection on the post editor:
  *
- * `beforeunload` is the only cross-browser hook that can veto navigation,
- * including the back button. Browsers deliberately ignore custom messages here,
- * so the wording is the browser's own — we only decide whether to prompt.
+ * 1. Leaving the page while the textarea holds unsaved text (back button,
+ *    closing the tab, following a link) triggers the browser's native
+ *    "Leave site?" prompt via `beforeunload`. Browsers ignore custom wording
+ *    here, so we only decide *whether* to prompt. See
+ *    docs/adr/0008-beforeunload-exit-guard.md.
+ *
+ * 2. Submitting a post first pings the forum (a same-origin HEAD) to confirm it
+ *    responds. If the server or an intermediate gateway is down, the POST would
+ *    otherwise navigate to an error page and lose the draft — so instead we hold
+ *    the submission and show a modal. Its default action keeps the user on the
+ *    page (text intact); a "send anyway" escape hatch covers a false-positive
+ *    check. See docs/adr/0011-presend-server-reachability-check.md.
  */
 export const exitGuard: Feature = {
   id: 'exit-guard',
@@ -20,7 +30,17 @@ export const exitGuard: Feature = {
   implemented: true,
 
   setup() {
-    const handler = (event: BeforeUnloadEvent) => {
+    // Set while we drive a genuine, checked submission, so the beforeunload
+    // guard below doesn't also prompt on the resulting navigation.
+    let isSubmitting = false;
+    // One-shot: the next submit event is our own re-submit — let it pass.
+    let bypass = false;
+    // A reachability check / modal is already in flight; ignore repeat submits.
+    let checking = false;
+    let closeModal: (() => void) | null = null;
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isSubmitting) return;
       const textarea = findMessageTextarea();
       const dirty =
         textarea !== null &&
@@ -33,7 +53,85 @@ export const exitGuard: Feature = {
       }
     };
 
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
+    const onSubmit = async (event: SubmitEvent) => {
+      // Diagnostic: proves the listener fires for *any* submit. If a post
+      // submit never logs this, either the content script isn't injected on
+      // this tab (reload the page) or the form is submitted a way that skips
+      // the submit event (e.g. HTMLFormElement.submit()).
+      const target = event.target;
+      const targetId = target instanceof Element ? target.id || target.tagName : target;
+      log('submit event seen; target =', targetId);
+
+      const form = findPostForm();
+      if (form === null) {
+        log('…ignored: no post form found on this page');
+        return;
+      }
+      if (target !== form) {
+        log('…ignored: not the post form');
+        return;
+      }
+
+      // Our own programmatic re-submit — allow it through untouched.
+      if (bypass) {
+        bypass = false;
+        log('…allowed through (our own re-submit)');
+        return;
+      }
+
+      // Only guard the real "post" submission; let Preview / Save-draft / Cancel
+      // (which carry other button names) submit normally.
+      const submitter = event.submitter;
+      const submitterName = submitter?.getAttribute('name');
+      if (submitterName && submitterName !== 'post') {
+        log(`…allowed through (button "${submitterName}", not a post)`);
+        return;
+      }
+
+      event.preventDefault();
+      log(`post submit intercepted (submitter=${submitterName ?? 'none'}) — pinging server`);
+      if (checking) return;
+      checking = true;
+
+      const doSubmit = () => {
+        bypass = true;
+        isSubmitting = true;
+        form.requestSubmit(submitter ?? findSubmitButton(form));
+      };
+
+      try {
+        // Probe the URL the POST actually targets (posting.php), not the
+        // homepage — a cached homepage 200 wouldn't prove the POST would land.
+        const probeUrl = form.action || `${location.origin}/`;
+        const reachable = await isForumReachable(probeUrl);
+        log('server reachable =', reachable);
+        if (reachable) {
+          doSubmit();
+          return;
+        }
+        log('server unreachable — showing modal');
+        closeModal = showServerDownModal({
+          onStay: () => {
+            closeModal = null;
+          },
+          onSendAnyway: () => {
+            closeModal = null;
+            doSubmit();
+          },
+        });
+      } finally {
+        checking = false;
+      }
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('submit', onSubmit, true);
+    log('exit-guard: listeners attached (beforeunload + submit)');
+
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('submit', onSubmit, true);
+      closeModal?.();
+    };
   },
 };

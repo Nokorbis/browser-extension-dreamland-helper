@@ -23,3 +23,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0008](0008-beforeunload-exit-guard.md) | Use `beforeunload` to guard unsaved drafts | Accepted |
 | [0009](0009-i18n-wxt-i18n.md) | Localize UI text with `@wxt-dev/i18n`        | Accepted |
 | [0010](0010-distribution-and-release-automation.md) | Distribution & release automation | Accepted |
+| [0011](0011-presend-server-reachability-check.md) | Pre-send server reachability check for the exit guard | Accepted |
