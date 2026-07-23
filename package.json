@@ -1,6 +1,6 @@
 {
   "name": "dreamland-helper",
-  "displayName": "Dreamland Helper",
+  "displayName": "Dreamland Reborn QoL",
   "description": "Writing aids for PHPBB 3.20 roleplay forums: exit guard, GM-text highlighting, BBCode presets, and color grabbing.",
   "private": true,
   "version": "0.1.0",
@@ -14,6 +14,7 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "release": "bash scripts/release.sh",
     "postinstall": "wxt prepare"
   },
   "devDependencies": {

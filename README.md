@@ -61,6 +61,15 @@ CI runs on [GitHub Actions](https://docs.github.com/actions) ([`.github/workflow
 every push and pull request is type-checked and built for both browser targets, and pushes
 to `main` additionally package the store-ready zips as downloadable artifacts.
 
+## Releasing
+
+Pushing a version tag (`v*`) whose commit is on `main` triggers
+[`.github/workflows/release.yml`](./.github/workflows/release.yml), which builds both targets
+and submits the new Firefox version (plus its sources) to AMO's listed channel, where Mozilla
+hosts and auto-updates it; it also publishes a GitHub Release with the zips attached. See
+[`docs/PUBLISHING.md`](./docs/PUBLISHING.md) for the full flow (one-time AMO setup, how members
+install) and [ADR 0010](./docs/adr/0010-distribution-and-release-automation.md) for the rationale.
+
 ## Development
 
 Requires Node + pnpm.

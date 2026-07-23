@@ -52,3 +52,6 @@ jobs:
           name: dreamland-helper-zips
           path: .output/*.zip
           if-no-files-found: error
+          # .output is a dot-prefixed dir; upload-artifact@v4 filters hidden paths by
+          # default (since v4.4.0), which silently dropped the zips. Opt them back in.
+          include-hidden-files: true

@@ -2,10 +2,10 @@
 # Compiled by @wxt-dev/i18n into _locales/fr/messages.json at build time.
 # See docs/adr/0009-i18n-wxt-i18n.md. Add a new language by adding <lang>.yml.
 
-# Store/add-ons listing. Referenced from the manifest as __MSG_extDescription__.
-extDescription: >-
-  Aides à la rédaction pour les forums de jeu de rôle phpBB 3.20 : Protection changement de page,
-  surlignage de texte, préréglages BBCode et pipette à couleur.
+# Store/add-ons listing. Referenced from the manifest as __MSG_extName__ / __MSG_extDescription__.
+# This name & summary are what show on the AMO listing (and in the browser after install).
+extName: Dreamland Reborn QoL
+extDescription: Améliorations de Qualité de Vie sur DR
 
 popup:
   soon: bientôt

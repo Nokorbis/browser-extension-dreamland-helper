@@ -14,9 +14,11 @@ export default defineConfig({
   imports: false,
 
   manifest: {
-    name: 'Dreamland Helper',
-    // French-only audience — see docs/adr/0009. UI text lives in src/locales/fr.yml;
-    // __MSG_extDescription__ resolves at runtime from the compiled _locales/fr.
+    // French-only audience — see docs/adr/0009. The user-facing name & description live in
+    // src/locales/fr.yml; __MSG_extName__/__MSG_extDescription__ resolve at runtime from the
+    // compiled _locales/fr. This name shows in the browser and on the AMO listing; the add-on
+    // is identified by the gecko id below, not the name, so it's safe to change.
+    name: '__MSG_extName__',
     default_locale: 'fr',
     description: '__MSG_extDescription__',
     // The RP forum this extension targets. Content scripts run here, and this is
@@ -24,7 +26,9 @@ export default defineConfig({
     host_permissions: ['*://*.dreamland-reborn.net/*'],
     permissions: ['storage'],
     // Firefox reads this; Chrome ignores it harmlessly. The id is required for
-    // signing on AMO; data_collection declares we collect nothing.
+    // signing on AMO; data_collection declares we collect nothing. No
+    // `update_url` here on purpose: the add-on is distributed listed on AMO,
+    // which hosts and auto-updates it. See docs/adr/0010 and docs/PUBLISHING.md.
     browser_specific_settings: {
       gecko: {
         id: 'dreamland-helper@dreamland-reborn.net',
