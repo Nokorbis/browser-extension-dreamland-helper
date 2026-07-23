@@ -7,7 +7,7 @@ import { defineConfig } from 'wxt';
 //   pnpm build[:firefox]→ production build in .output/<target>
 export default defineConfig({
   srcDir: 'src',
-  modules: ['@wxt-dev/module-svelte'],
+  modules: ['@wxt-dev/module-svelte', '@wxt-dev/i18n/module'],
 
   // Explicit ES imports everywhere — no auto-import "magic".
   // WXT APIs (defineContentScript, browser, storage, ...) come from '#imports'.
@@ -15,6 +15,10 @@ export default defineConfig({
 
   manifest: {
     name: 'Dreamland Helper',
+    // French-only audience — see docs/adr/0009. UI text lives in src/locales/fr.yml;
+    // __MSG_extDescription__ resolves at runtime from the compiled _locales/fr.
+    default_locale: 'fr',
+    description: '__MSG_extDescription__',
     // The RP forum this extension targets. Content scripts run here, and this is
     // the store-review-visible permission — keep it narrow.
     host_permissions: ['*://*.dreamland-reborn.net/*'],

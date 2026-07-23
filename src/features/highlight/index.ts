@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import type { Feature } from '../types';
 
 /**
@@ -10,8 +11,8 @@ import type { Feature } from '../types';
  */
 export const highlight: Feature = {
   id: 'highlight',
-  name: 'Highlight GM text',
-  description: 'Keep passages highlighted so you can focus while replying.',
+  name: i18n.t('features.highlight.name'),
+  description: i18n.t('features.highlight.description'),
   implemented: false,
 
   setup() {

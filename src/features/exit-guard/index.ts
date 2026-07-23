@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import type { Feature } from '../types';
 import { findMessageTextarea } from '@/lib/phpbb';
 
@@ -14,8 +15,8 @@ import { findMessageTextarea } from '@/lib/phpbb';
  */
 export const exitGuard: Feature = {
   id: 'exit-guard',
-  name: 'Exit guard',
-  description: 'Warn before leaving a post editor that has unsaved text.',
+  name: i18n.t('features.exitGuard.name'),
+  description: i18n.t('features.exitGuard.description'),
   implemented: true,
 
   setup() {

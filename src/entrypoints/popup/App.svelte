@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { i18n } from '#i18n';
   import { ALL_FEATURES } from '@/features/registry';
   import { loadSettings, setFeatureEnabled } from '@/lib/storage';
 
@@ -30,7 +31,7 @@
           <span class="text">
             <span class="name">
               {feature.name}
-              {#if !feature.implemented}<em class="soon">soon</em>{/if}
+              {#if !feature.implemented}<em class="soon">{i18n.t('popup.soon')}</em>{/if}
             </span>
             <span class="desc">{feature.description}</span>
           </span>

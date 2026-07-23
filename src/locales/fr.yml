@@ -1,0 +1,28 @@
+# UI text catalog — single source of truth for all user-facing strings.
+# Compiled by @wxt-dev/i18n into _locales/fr/messages.json at build time.
+# See docs/adr/0009-i18n-wxt-i18n.md. Add a new language by adding <lang>.yml.
+
+# Store/add-ons listing. Referenced from the manifest as __MSG_extDescription__.
+extDescription: >-
+  Aides à la rédaction pour les forums de jeu de rôle phpBB 3.20 : Protection changement de page,
+  surlignage de texte, préréglages BBCode et pipette à couleur.
+
+popup:
+  soon: bientôt
+
+# Key segments mirror each feature's exported const name, in camelCase
+# (exitGuard, bbcodePresets, colorGrab) — NOT the kebab-case Feature.id, because
+# compiled message-key names allow only [A-Za-z0-9_], no hyphens.
+features:
+  exitGuard:
+    name: Protection changement de page
+    description: Avertit avant de quitter un éditeur de message contenant du texte non enregistré.
+  highlight:
+    name: Surligner le texte
+    description: Garde des passages surlignés pour rester concentré pendant la rédaction de la réponse.
+  bbcodePresets:
+    name: Préréglages BBCode
+    description: Insère des structures BBCode complexes en un clic.
+  colorGrab:
+    name: Pipette à couleur
+    description: Récupère la couleur d'un autre membre et la réutilise.

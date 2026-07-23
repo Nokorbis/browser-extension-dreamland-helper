@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import type { Feature } from '../types';
 
 /**
@@ -10,8 +11,8 @@ import type { Feature } from '../types';
  */
 export const colorGrab: Feature = {
   id: 'color-grab',
-  name: 'Color grabber',
-  description: "Grab another poster's color and reuse it.",
+  name: i18n.t('features.colorGrab.name'),
+  description: i18n.t('features.colorGrab.description'),
   implemented: false,
 
   setup() {

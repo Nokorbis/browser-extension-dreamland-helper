@@ -17,9 +17,9 @@ export interface FeatureContext {
 export interface Feature {
   /** Stable id — used as the settings key. Never rename once shipped. */
   id: string;
-  /** Human label shown in the popup. */
+  /** Human label shown in the popup — resolved from `src/locales/` via `i18n.t`. */
   name: string;
-  /** One-line description shown in the popup. */
+  /** One-line description shown in the popup — resolved from `src/locales/` via `i18n.t`. */
   description: string;
   /** False while the feature is still a stub (hidden/disabled by default). */
   implemented: boolean;

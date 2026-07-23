@@ -21,3 +21,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0006](0006-typed-settings-storage.md) | Typed settings layer over browser.storage.local | Accepted |
 | [0007](0007-pin-typescript-5.md) | Pin TypeScript to the 5.x line          | Accepted |
 | [0008](0008-beforeunload-exit-guard.md) | Use `beforeunload` to guard unsaved drafts | Accepted |
+| [0009](0009-i18n-wxt-i18n.md) | Localize UI text with `@wxt-dev/i18n`        | Accepted |

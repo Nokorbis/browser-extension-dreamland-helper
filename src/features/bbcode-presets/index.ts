@@ -1,3 +1,4 @@
+import { i18n } from '#i18n';
 import type { Feature } from '../types';
 
 /**
@@ -10,8 +11,8 @@ import type { Feature } from '../types';
  */
 export const bbcodePresets: Feature = {
   id: 'bbcode-presets',
-  name: 'BBCode presets',
-  description: 'Insert complex BBCode snippets in one click.',
+  name: i18n.t('features.bbcodePresets.name'),
+  description: i18n.t('features.bbcodePresets.description'),
   implemented: false,
 
   setup() {

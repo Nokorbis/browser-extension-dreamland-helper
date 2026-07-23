@@ -58,13 +58,24 @@ The flow that ties multiple files together:
   (`#message` textarea, `.username-coloured`, etc.) and the forum origin (`FORUM_MATCHES`,
   reused by the content-script manifest) live here. Features must go through it rather than
   querying the DOM directly — when the forum skin changes, this is the one file to update.
+- `src/locales/<lang>.yml` is the **single source of truth for user-facing text** (the forum
+  is French, so we ship `fr.yml` only; `manifest.default_locale` is `fr`). Strings are
+  referenced by key via the typed `#imports`-style helper `import { i18n } from '#i18n'` and
+  `i18n.t('features.exitGuard.name')`; `@wxt-dev/i18n` compiles the catalog to `_locales/` and
+  generates the key types. Key segments must be **camelCase** (`exitGuard`, not the
+  kebab `Feature.id` `exit-guard`) — compiled message-key names allow only `[A-Za-z0-9_]`.
+  Never hardcode UI text in a component — add a key. See `docs/adr/0009-i18n-wxt-i18n.md`.
 
 ### Adding a feature
 
 1. Create `src/features/<id>/index.ts` exporting a `Feature` (`implemented: true` once real).
-2. Add it to `ALL_FEATURES` in `src/features/registry.ts`.
-3. Add its default enabled state to `DEFAULT_SETTINGS.features` in `src/lib/storage.ts`.
-4. Put any new DOM knowledge in `src/lib/phpbb.ts`, not the feature.
+2. Add its `name`/`description` keys under `features.<camelCaseName>` in `src/locales/fr.yml`
+   (camelCase, **not** the kebab id — message keys forbid `-`), and set `name`/`description`
+   on the feature to `i18n.t('features.<camelCaseName>.name')` / `.description`.
+3. Add it to `ALL_FEATURES` in `src/features/registry.ts`.
+4. Add its default enabled state to `DEFAULT_SETTINGS.features` in `src/lib/storage.ts`.
+5. Put any new DOM knowledge in `src/lib/phpbb.ts`, and any new UI text in `src/locales/fr.yml`
+   — not in the feature or component.
 
 The `Feature.id` is the persisted settings key — **never rename an id once shipped**.
 A routine feature that stays within this pattern needs no ADR; a feature that introduces a
