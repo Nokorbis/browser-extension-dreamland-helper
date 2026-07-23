@@ -47,7 +47,7 @@ won't accept an already-used version number, so every release must bump.
 |------|-----|
 | Build, zip, upload new version **+ sources** to AMO, submit for review | **CI** (`wxt submit`) |
 | GitHub Release with archived zips | **CI** |
-| One-time public listing setup (French summary/description, category, screenshots) | You, once, in the AMO Developer Hub |
+| One-time public listing setup (French summary/description, category, screenshots, **license**) | You, once, in the AMO Developer Hub |
 | Review & final publish | **Mozilla** (out of our hands; approval is automatic-to-live) |
 | Chrome Web Store upload | You, by hand (for now) |
 
@@ -57,11 +57,22 @@ sources zip). The only recurring manual action is Mozilla's review, which you ca
 
 ## One-time setup
 
-**1. Make sure the add-on has a listed listing.** In the AMO Developer Hub, the add-on
-(`dreamland-helper@dreamland-reborn.net`) needs a **listed** version with its public page
-filled in — summary/description (French), category, icon, and at least the required fields.
-If your first manual upload went to the *unlisted* channel, add a listed version and complete
-the listing once; after that, CI drives every subsequent version.
+**1. Make sure the add-on has a listed listing *with a license set*.** In the AMO Developer
+Hub, the add-on (`dreamland-helper@dreamland-reborn.net`) needs a **listed** version with its
+public page filled in — summary/description (French), category, icon, **a license**, and at
+least the required fields. If your first manual upload went to the *unlisted* channel, add a
+listed version and complete the listing once; after that, CI drives every subsequent version.
+
+> **The license is not optional and CI cannot supply it.** AMO's version-create API *requires*
+> a `license` for every listed submission, but `wxt submit` / `publish-browser-extension`
+> (checked through 5.1.0) sends no license field — there is no flag for it. So AMO can only get
+> the license by **inheriting it from the add-on**, which means it must be set once, by hand,
+> here. Do the **first listed upload manually** (build locally: `pnpm zip:firefox` →
+> `.output/dreamland-helper-<version>-firefox.zip` + the sources zip), pick the license during
+> that upload, and complete the listing. We license under **MIT** (AMO license slug: `MIT`;
+> see the repo `LICENSE`). Every later version submitted by CI reuses that license
+> automatically. Symptom if this step is skipped: the release job fails with
+> `"license": ["This field, or custom_license, is required for listed versions."]`.
 
 **2. Add the AMO API credentials as GitHub secrets** (this is what lets CI submit):
 
