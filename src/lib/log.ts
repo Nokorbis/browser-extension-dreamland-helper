@@ -4,7 +4,7 @@
  * forum tab), not the extension console — on Firefox especially, that's where
  * to look when checking whether the script and its listeners are live.
  */
-const PREFIX = '[DreamlandHelper]';
+const PREFIX = '[Dreamland Reborn QoL]';
 
 export const log = (...args: unknown[]): void => console.info(PREFIX, ...args);
 export const warn = (...args: unknown[]): void => console.warn(PREFIX, ...args);

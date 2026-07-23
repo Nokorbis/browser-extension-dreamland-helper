@@ -1,4 +1,4 @@
-# Publishing & releasing Dreamland Helper
+# Publishing & releasing Dreamland Reborn QoL
 
 How to get the extension into forum members' browsers and keep it updated.
 
@@ -58,7 +58,7 @@ sources zip). The only recurring manual action is Mozilla's review, which you ca
 ## One-time setup
 
 **1. Make sure the add-on has a listed listing *with a license set*.** In the AMO Developer
-Hub, the add-on (`dreamland-helper@dreamland-reborn.net`) needs a **listed** version with its
+Hub, the add-on (`qol@dreamland-reborn.net`) needs a **listed** version with its
 public page filled in — summary/description (French), category, icon, **a license**, and at
 least the required fields. If your first manual upload went to the *unlisted* channel, add a
 listed version and complete the listing once; after that, CI drives every subsequent version.
@@ -68,7 +68,7 @@ listed version and complete the listing once; after that, CI drives every subseq
 > (checked through 5.1.0) sends no license field — there is no flag for it. So AMO can only get
 > the license by **inheriting it from the add-on**, which means it must be set once, by hand,
 > here. Do the **first listed upload manually** (build locally: `pnpm zip:firefox` →
-> `.output/dreamland-helper-<version>-firefox.zip` + the sources zip), pick the license during
+> `.output/dreamland-reborn-qol-<version>-firefox.zip` + the sources zip), pick the license during
 > that upload, and complete the listing. We license under **MIT** (AMO license slug: `MIT`;
 > see the repo `LICENSE`). Every later version submitted by CI reuses that license
 > automatically. Symptom if this step is skipped: the release job fails with
@@ -87,9 +87,9 @@ Verify the credentials without shipping anything:
 
 ```bash
 pnpm exec wxt submit --dry-run \
-  --firefox-extension-id dreamland-helper@dreamland-reborn.net \
-  --firefox-zip .output/dreamland-helper-0.1.0-firefox.zip \
-  --firefox-sources-zip .output/dreamland-helper-0.1.0-sources.zip
+  --firefox-extension-id qol@dreamland-reborn.net \
+  --firefox-zip .output/dreamland-reborn-qol-0.1.0-firefox.zip \
+  --firefox-sources-zip .output/dreamland-reborn-qol-0.1.0-sources.zip
 # export FIREFOX_JWT_ISSUER=... FIREFOX_JWT_SECRET=... first, or pass --firefox-jwt-*
 ```
 
@@ -104,7 +104,7 @@ click **Add to Firefox**, confirm the permission prompt once, and they're done �
 ## Chrome / Brave
 
 Brave uses the Chrome Web Store, so one Chrome listing covers all Chromium members. Not
-automated yet — the release workflow attaches `dreamland-helper-<version>-chrome.zip` to the
+automated yet — the release workflow attaches `dreamland-reborn-qol-<version>-chrome.zip` to the
 GitHub Release for you to upload:
 
 1. [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)

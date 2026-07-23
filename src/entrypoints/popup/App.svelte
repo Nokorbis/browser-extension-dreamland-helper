@@ -17,7 +17,7 @@
 </script>
 
 <main>
-  <h1>Dreamland Helper</h1>
+  <h1>Dreamland Reborn QoL</h1>
   <ul>
     {#each ALL_FEATURES as feature (feature.id)}
       <li class:disabled={!feature.implemented}>

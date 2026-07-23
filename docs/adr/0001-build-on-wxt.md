@@ -6,7 +6,7 @@ Date: 2026-07-23
 
 ## Context
 
-Dreamland Helper must ship to two stores from one codebase (Chrome/Brave and Firefox),
+Dreamland Reborn QoL must ship to two stores from one codebase (Chrome/Brave and Firefox),
 bundle TypeScript and Svelte, and offer a fast edit-reload loop during development.
 Hand-rolling this means owning a Vite/Rollup config, a manifest generator, per-browser
 build targets, HMR wiring for content scripts, and the `chrome.*`/`browser.*` polyfill —

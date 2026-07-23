@@ -1,6 +1,7 @@
 import type { ContentScriptContext } from '#imports';
 import type { Feature } from './types';
 import { loadSettings } from '@/lib/storage';
+import { error } from '@/lib/log';
 
 import { exitGuard } from './exit-guard';
 import { highlight } from './highlight';
@@ -35,11 +36,8 @@ export async function bootFeatures(
     try {
       const cleanup = feature.setup({ scriptCtx });
       if (cleanup) scriptCtx.onInvalidated(cleanup);
-    } catch (error) {
-      console.error(
-        `[DreamlandHelper] feature "${feature.id}" failed to start`,
-        error,
-      );
+    } catch (err) {
+      error(`feature "${feature.id}" failed to start`, err);
     }
   }
 }

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This log captures the *why* behind Dreamland Helper's significant technical choices — the
+This log captures the *why* behind Dreamland Reborn QoL's significant technical choices — the
 kind of decision that is expensive to reverse or that a newcomer would otherwise have to
 reverse-engineer from the code. Each record is a short, immutable note: once a decision is
 made it is not rewritten; if it is reversed, a new ADR supersedes it and the old one's

@@ -1,4 +1,4 @@
-# Dreamland Helper
+# Dreamland Reborn QoL
 
 A browser extension of writing aids for the [dreamland-reborn.net](https://dreamland-reborn.net)
 PHPBB 3.20 roleplay forum. Works on Brave/Chromium and Firefox from a single codebase, built
@@ -8,7 +8,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 
 | # | Feature | Status | What it does |
 |---|---------|--------|--------------|
-| 1 | Exit guard | ✅ Done | Warns before you leave a post editor that still has unsaved text (back button, closing the tab, etc.). |
+| 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, and checks the forum is reachable before sending. |
 | 2 | Highlight GM text | 🚧 Planned | Keep passages of the GM's post highlighted so you can focus while replying. |
 | 3 | BBCode presets | 🚧 Planned | Insert complex BBCode structures in one click. |
 | 4 | Color grabber | 🚧 Planned | Grab another poster's color and reuse it. |
@@ -16,15 +16,24 @@ with [WXT](https://wxt.dev) + Svelte 5.
 Each feature is independent and can be toggled on or off from the extension's toolbar popup.
 Planned features appear there marked "soon" and stay off until they're implemented.
 
-### 1. Exit guard — ✅ done
+### 1. Message loss protection — ✅ done
 
-Roleplay posts are long, and it's easy to lose one to a stray back button or an accidental
-tab close. While the post editor holds text you've changed but not submitted, exit guard
-arms the browser's native **"Leave site?"** confirmation, so navigating away (back button,
-closing the tab, following a link) asks you to confirm first. It only triggers when the
-editor is actually dirty — an empty or untouched editor never nags. The wording of the
-prompt is the browser's own and can't be customized; the extension only decides *whether*
-to raise it.
+Roleplay posts are long, and there are two easy ways to lose one: navigating away before
+you've submitted, or hitting "send" at the moment the forum is unreachable. This feature
+guards against both.
+
+**Leaving with unsaved text.** While the editor holds text you've changed but not submitted,
+it arms the browser's native **"Leave site?"** confirmation, so navigating away (back button,
+closing the tab, following a link) asks you to confirm first. It only triggers when the editor
+is actually dirty — an empty or untouched editor never nags. The prompt's wording is the
+browser's own and can't be customized; the extension only decides *whether* to raise it.
+
+**Sending to a server that's down.** Submitting a post to an unreachable forum can swallow it
+whole — the page navigates away, the request fails, and your text is gone. So before a post is
+actually sent, the extension checks that the forum is responding. If it isn't, the submit is
+held back and you get a dialog explaining your message wasn't sent and your text is still
+there, with the choice to keep waiting or send anyway. Only real submissions are guarded —
+preview and save-draft go through untouched.
 
 ### 2. Highlight GM text — 🚧 planned
 

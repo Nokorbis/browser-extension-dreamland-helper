@@ -4,13 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Dreamland Helper** is a cross-browser (Brave/Chromium + Firefox) extension of writing
+**Dreamland Reborn QoL** is a cross-browser (Brave/Chromium + Firefox) extension of writing
 aids for the PHPBB 3.20 roleplay forum at **dreamland-reborn.net**. It is built with
 [WXT](https://wxt.dev) (Vite-based) and Svelte 5.
 
 Planned features (only #1 is implemented; #2–#4 are stubs awaiting design with the user):
 
-1. **Exit guard** — warn before leaving a post editor holding unsaved text. _(done)_
+1. **Message loss protection** (`exit-guard`) — keep a written post from being lost: warn
+   before leaving the editor with unsaved text, and verify the forum is reachable before a
+   send (if it's down, hold the post back and offer to keep the text or send anyway). _(done)_
 2. **Highlight GM text** — persistently highlight passages of another post while replying.
 3. **BBCode presets** — insert complex BBCode structures in one click.
 4. **Color grabber** — grab another poster's color and reuse it.

@@ -79,7 +79,7 @@ jobs:
       # Fails loudly if the API credentials aren't configured (see docs/PUBLISHING.md).
       - name: Submit new version to AMO (listed)
         env:
-          FIREFOX_EXTENSION_ID: dreamland-helper@dreamland-reborn.net
+          FIREFOX_EXTENSION_ID: qol@dreamland-reborn.net
           FIREFOX_CHANNEL: listed
           FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
           FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}
@@ -90,8 +90,8 @@ jobs:
           fi
           V="${{ steps.v.outputs.version }}"
           pnpm exec wxt submit \
-            --firefox-zip ".output/dreamland-helper-$V-firefox.zip" \
-            --firefox-sources-zip ".output/dreamland-helper-$V-sources.zip"
+            --firefox-zip ".output/dreamland-reborn-qol-$V-firefox.zip" \
+            --firefox-sources-zip ".output/dreamland-reborn-qol-$V-sources.zip"
 
       # gh is preinstalled on the runner; no third-party action needed. Archives the build and
       # gives the Chrome zip a home for the (still manual) Chrome Web Store upload.
@@ -103,6 +103,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
-            ".output/dreamland-helper-$V-chrome.zip" \
-            ".output/dreamland-helper-$V-firefox.zip" \
-            ".output/dreamland-helper-$V-sources.zip"
+            ".output/dreamland-reborn-qol-$V-chrome.zip" \
+            ".output/dreamland-reborn-qol-$V-firefox.zip" \
+            ".output/dreamland-reborn-qol-$V-sources.zip"
