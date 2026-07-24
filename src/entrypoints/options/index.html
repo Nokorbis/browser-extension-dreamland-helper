@@ -1,0 +1,25 @@
+<!doctype html>
+<!--
+  The theme class sits on <html>, not on a component root: the --dlh-* custom
+  properties must be visible to <body> too, and custom properties only inherit
+  downwards. See src/features/bbcode-presets/palette.css.
+-->
+<html lang="fr" class="dlh-theme-auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      Open in a real tab rather than the browser's embedded options dialog.
+      WXT turns `manifest.*` meta tags into manifest keys, so this needs no
+      wxt.config.ts change. Chrome's inline dialog is cramped for a two-pane
+      editor, and Firefox otherwise nests it inside about:addons.
+      See docs/adr/0014-popup-accordion-options-page.md.
+    -->
+    <meta name="manifest.open_in_tab" content="true" />
+    <title>Dreamland Reborn QoL — Options</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -10,7 +10,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 |---|---------|--------|--------------|
 | 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, and checks the forum is reachable before sending. |
 | 2 | Highlight GM text | 🚧 Planned | Keep passages of the GM's post highlighted so you can focus while replying. |
-| 3 | BBCode presets | 🚧 Planned | Insert complex BBCode structures in one click. |
+| 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders. |
 | 4 | Color grabber | 🚧 Planned | Grab another poster's color and reuse it. |
 
 Each feature is independent and can be toggled on or off from the extension's toolbar popup.
@@ -43,12 +43,43 @@ highlight **persist** while you write, instead of copying the text into your rep
 scratch note. Design is still to be settled (where highlights are stored, how they're keyed
 to a post, how they survive reloads).
 
-### 3. BBCode presets — 🚧 planned
+### 3. BBCode presets — ✅ done
 
-Elaborate formatting on the forum means typing the same nested BBCode by hand over and over.
-This feature will let you **insert complex BBCode structures in one click**, surfaced near
-phpBB's own BBCode toolbar. Design is still to be settled (how presets are stored and edited,
-placeholder handling, and exactly where they appear).
+Elaborate formatting on the forum means typing the same nested BBCode by hand over and over —
+a character's "yell" style, a whisper, a thought. This feature lets you save those as
+**presets** and insert them in one click.
+
+**Organising them.** Presets live in **folders that nest as deep as you like** — one folder
+per character, subdivided however suits you. You create and edit them in the extension's
+options page (toolbar popup → *Préréglages BBCode* → *Gérer les préréglages…*), which has the
+folder tree on the left and a name, BBCode body and live preview on the right. Changes save
+themselves.
+
+**Using them.** Two ways, both inserting at your cursor in the composer:
+
+- a **button in phpBB's BBCode toolbar**, next to B / i / u, opening a menu that mirrors your
+  folders; and
+- a **panel beside the editor**, collapsed to a slim handle until you open it — it remembers
+  which way you left it.
+
+**Placeholders.** A preset body is ordinary BBCode plus two optional markers:
+
+| Marker | Meaning |
+|---|---|
+| `{SELECTION}` | replaced by whatever text you had selected (empty if none) |
+| `{CURSOR}` | where the cursor lands after inserting |
+
+`{SELECTION}` accepts transformations, chained with `\|`: `upper`, `lower`, `title`, `trim`.
+So a yell preset might read:
+
+```
+[b][color=#123456]{SELECTION|upper}[/color][/b]{CURSOR}
+```
+
+Select a phrase, click the preset, and it comes back bold, coloured and shouted. A preset that
+doesn't mention `{SELECTION}` simply replaces the selection instead — and either way a single
+**Ctrl+Z** undoes the whole insertion, because inserting goes through the browser's native
+edit history rather than around it.
 
 ### 4. Color grabber — 🚧 planned
 
@@ -67,8 +98,8 @@ Architecture Decision Records in [`docs/adr/`](./docs/adr/).
 ## Continuous integration
 
 CI runs on [GitHub Actions](https://docs.github.com/actions) ([`.github/workflows/ci.yml`](./.github/workflows/ci.yml)):
-every push and pull request is type-checked and built for both browser targets, and pushes
-to `main` additionally package the store-ready zips as downloadable artifacts.
+every push and pull request is type-checked, unit-tested and built for both browser targets,
+and pushes to `main` additionally package the store-ready zips as downloadable artifacts.
 
 ## Releasing
 
@@ -87,6 +118,8 @@ Requires Node + pnpm.
 pnpm install
 pnpm dev            # Brave/Chromium with live reload
 pnpm dev:firefox    # Firefox with live reload
+pnpm check          # type check
+pnpm test           # unit tests
 ```
 
 **First-time browser setup:** `pnpm dev` auto-detects a standard Chrome/Chromium

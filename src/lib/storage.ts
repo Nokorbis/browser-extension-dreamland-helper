@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
   features: {
     'exit-guard': true,
     highlight: false,
-    'bbcode-presets': false,
+    'bbcode-presets': true,
     'color-grab': false,
   },
 };

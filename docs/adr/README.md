@@ -24,3 +24,8 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0009](0009-i18n-wxt-i18n.md) | Localize UI text with `@wxt-dev/i18n`        | Accepted |
 | [0010](0010-distribution-and-release-automation.md) | Distribution & release automation | Accepted |
 | [0011](0011-presend-server-reachability-check.md) | Pre-send server reachability check for the exit guard | Accepted |
+| [0012](0012-feature-owned-data-stores.md) | Feature-owned data stores beyond the settings map | Accepted |
+| [0013](0013-undo-safe-text-insertion.md) | Preserve the native undo stack with `execCommand('insertText')` | Accepted |
+| [0014](0014-popup-accordion-options-page.md) | Popup accordion plus an options page for feature settings | Accepted |
+| [0015](0015-preset-placeholder-syntax.md) | Preset placeholder syntax as a frozen contract | Accepted |
+| [0016](0016-svelte-in-content-script.md) | Svelte in the content script, mounted in a Shadow root | Accepted |
