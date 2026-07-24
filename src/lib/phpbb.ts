@@ -69,6 +69,34 @@ export function findFormatButtons(): HTMLElement | null {
 }
 
 /**
+ * A single button in that toolbar, addressed by the BBCode it inserts.
+ *
+ * phpBB derives each button's class from the BBCode tag name — `bbcode-b`,
+ * `bbcode-quote`, `bbcode-img` for the stock set, and the *same* rule for
+ * admin-added custom BBCodes, which is why `bbcode-spoiler` and `bbcode-mp3`
+ * exist on this forum and are addressable without knowing anything else about
+ * them. Non-alphanumerics become `-`, so the ordered-list button (`list=`) is
+ * `bbcode-list-`.
+ *
+ * Matched with `[class~=…]` rather than `.bbcode-…` for two reasons: class
+ * selectors match whole tokens, so `.bbcode-list` would not find `bbcode-list-`
+ * anyway, and a CSS identifier ending in a hyphen is a needless edge case.
+ *
+ * Returns `null` when the toolbar is absent *or* when this forum has no such
+ * BBCode — both are ordinary, and callers should degrade rather than throw.
+ */
+export function findFormatButton(bbcode: string): HTMLElement | null {
+  // The names are literals from callers' own tables, but an invalid one would
+  // make querySelector throw a SyntaxError and take the whole feature down.
+  if (!/^[a-z0-9-]+$/.test(bbcode)) return null;
+  return (
+    findFormatButtons()?.querySelector<HTMLElement>(
+      `button[class~="bbcode-${bbcode}"]`,
+    ) ?? null
+  );
+}
+
+/**
  * phpBB's own toolbar-button classes. An injected button carries these so it
  * inherits the forum skin instead of looking like a foreign object — which is
  * also why the trigger button is *not* rendered inside a shadow root, where the

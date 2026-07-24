@@ -29,3 +29,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0014](0014-popup-accordion-options-page.md) | Popup accordion plus an options page for feature settings | Accepted |
 | [0015](0015-preset-placeholder-syntax.md) | Preset placeholder syntax as a frozen contract | Accepted |
 | [0016](0016-svelte-in-content-script.md) | Svelte in the content script, mounted in a Shadow root | Accepted |
+| [0017](0017-keyboard-shortcuts-delegate-to-toolbar.md) | Keyboard shortcuts drive phpBB's own toolbar buttons | Accepted |

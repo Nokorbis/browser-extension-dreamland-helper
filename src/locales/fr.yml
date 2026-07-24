@@ -103,3 +103,13 @@ features:
   colorGrab:
     name: Pipette à couleur
     description: Récupère la couleur d'un autre membre et la réutilise.
+  editorShortcuts:
+    name: Raccourcis clavier
+    description: >-
+      Ajoute des raccourcis aux boutons BBCode de l'éditeur — Ctrl+B, Ctrl+I,
+      Alt+Q… — identiques sur Firefox et Chrome, actifs uniquement dans la zone
+      de rédaction.
+    # Rewrites each toolbar button's own tooltip. {base} is phpBB's original
+    # title, {combo} the shortcut(s) — both are intended @wxt-dev/i18n named
+    # substitutions, unlike the {SELECTION} trap documented above.
+    tooltip: "{base} ({combo})"

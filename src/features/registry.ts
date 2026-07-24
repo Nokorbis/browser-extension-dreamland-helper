@@ -7,6 +7,7 @@ import { exitGuard } from './exit-guard';
 import { highlight } from './highlight';
 import { bbcodePresets } from './bbcode-presets';
 import { colorGrab } from './color-grab';
+import { editorShortcuts } from './editor-shortcuts';
 
 /**
  * The single list of all features. Registering a new feature = add its folder
@@ -16,9 +17,10 @@ import { colorGrab } from './color-grab';
  */
 export const ALL_FEATURES: Feature[] = [
   exitGuard,
-  highlight,
+  editorShortcuts,
   bbcodePresets,
   colorGrab,
+  highlight,
 ];
 
 /**

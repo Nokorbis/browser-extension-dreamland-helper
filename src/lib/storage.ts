@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS: Settings = {
     highlight: false,
     'bbcode-presets': true,
     'color-grab': false,
+    'editor-shortcuts': true,
   },
 };
 

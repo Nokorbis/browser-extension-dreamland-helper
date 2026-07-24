@@ -18,6 +18,10 @@ Planned features (#1 and #3 are implemented; #2 and #4 are stubs awaiting design
    phpBB's BBCode toolbar or a panel beside the editor. Presets live in nested folders and
    are authored in the options page. _(done)_
 4. **Color grabber** — grab another poster's color and reuse it.
+5. **Keyboard shortcuts** (`editor-shortcuts`) — Ctrl+B / Ctrl+I / Alt+Q… over phpBB's BBCode
+   toolbar, consistent across browsers. It *clicks* the forum's own buttons rather than
+   inserting text, so it inherits their behaviour and covers admin-added BBCodes for free.
+   See `docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md`. _(done)_
 
 ## Commands
 
