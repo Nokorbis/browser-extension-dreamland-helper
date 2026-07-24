@@ -51,6 +51,12 @@
    * values has no such window, and self-heals if an echo never arrives at all.
    */
   let lastWritten: string | null = null;
+  /**
+   * Bumped by every `commit`. A queued confirmation only shows if it is still
+   * the current one — see `commit` for why clearing the timer isn't enough.
+   * A plain `let`, not `$state`: nothing renders from it.
+   */
+  let commitSeq = 0;
 
   void loadPresetStore().then((loaded) => {
     store = loaded;
@@ -64,7 +70,18 @@
     store = next;
   });
 
+  /** How long an edit may sit unpersisted. Kept short — this is the data path. */
+  const SAVE_DEBOUNCE_MS = 300;
+  /** How quiet the editor must go before we confirm. Purely cosmetic. */
+  const CONFIRM_IDLE_MS = 900;
+  /** How long the confirmation stays up once shown. */
+  const CONFIRM_VISIBLE_MS = 1600;
+
+  /** Coalesces edits into one write. */
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Holds a successful write's confirmation back until typing settles. */
+  let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Takes the confirmation back down. */
   let savedTimer: ReturnType<typeof setTimeout> | undefined;
 
   /**
@@ -73,10 +90,22 @@
    * There is no Save button on purpose: this is a local editor with no server
    * round-trip, so an explicit save would be pure friction. `justSaved` drives a
    * quiet confirmation instead.
+   *
+   * The write and the confirmation are debounced **separately**, on purpose.
+   * Typing is full of 300 ms lulls, so confirming on every write made
+   * "Enregistré" flash in on almost every keystroke. Slowing the write down to
+   * match would have widened the window in which an edit is unsaved — the wrong
+   * thing to trade for calm. So the write keeps its short debounce and the
+   * confirmation waits for the editor to actually go quiet: one per burst.
    */
   function commit(next: PresetStore) {
     store = next;
+    const seq = ++commitSeq;
     clearTimeout(saveTimer);
+    // A fresh edit withdraws a confirmation that hasn't appeared yet. An
+    // already-*visible* one is left alone: hiding and re-showing it would be
+    // exactly the flicker this is here to remove.
+    clearTimeout(confirmTimer);
     saveTimer = setTimeout(() => {
       // Recorded *before* the write, so the echo is recognised however early it
       // lands — including synchronously from within `set()`.
@@ -87,23 +116,34 @@
       // been persisted. Never claim a save that has not resolved.
       void savePresetStore(store).then(
         () => {
+          // A fixed error stops showing at once; only the good news waits.
           saveError = false;
-          justSaved = true;
-          clearTimeout(savedTimer);
-          savedTimer = setTimeout(() => {
-            justSaved = false;
-          }, 1600);
+          confirmTimer = setTimeout(() => {
+            // Clearing the timer above does not cover this on its own: a write
+            // can resolve *after* a newer commit already cleared it, and would
+            // then queue a confirmation from stale state. That newer commit's
+            // own write is the one that gets to confirm.
+            if (seq !== commitSeq) return;
+            justSaved = true;
+            clearTimeout(savedTimer);
+            savedTimer = setTimeout(() => {
+              justSaved = false;
+            }, CONFIRM_VISIBLE_MS);
+          }, CONFIRM_IDLE_MS);
         },
         (err: unknown) => {
           // Nothing landed in storage, so no echo is coming — drop the snapshot
           // rather than leaving it to swallow a later external change.
           lastWritten = null;
           justSaved = false;
+          // An earlier write's queued confirmation must not land on top of the
+          // failure a moment from now.
+          clearTimeout(confirmTimer);
           saveError = true;
           error('failed to save presets', err);
         },
       );
-    }, 300);
+    }, SAVE_DEBOUNCE_MS);
   }
 
   const tree = $derived(buildPresetTree(store));
@@ -556,6 +596,10 @@
 
   .saved {
     margin: 1rem 0 0;
+    /* Empty when idle, so it would otherwise collapse to nothing and shift the
+       page every time a message arrives. Reserve the line instead. */
+    min-height: 1.2em;
+    min-height: 1lh;
     color: #2c7a45;
     font-size: 0.8rem;
     opacity: 0;
