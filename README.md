@@ -12,6 +12,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 | 2 | Highlight GM text | 🚧 Planned | Keep passages of the GM's post highlighted so you can focus while replying. |
 | 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders. |
 | 4 | Color grabber | 🚧 Planned | Grab another poster's color and reuse it. |
+| 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, identical on Chrome and Firefox. |
 
 Each feature is independent and can be toggled on or off from the extension's toolbar popup.
 Planned features appear there marked "soon" and stay off until they're implemented.
@@ -88,6 +89,18 @@ that color and reuse it** without digging through someone's BBCode by hand. Desi
 to be settled (which DOM sources to read — coloured usernames vs. inline `[color]` spans —
 and how the grabbed color is presented and applied).
 
+### 5. Keyboard shortcuts — ✅ done
+
+The same shortcuts on every browser, active only inside the composer: **Ctrl+B** bold,
+**Ctrl+I** italic, **Ctrl+U** underline, **Ctrl+K** link, **Ctrl+E** code, then **Alt+Q** quote,
+**Alt+L** list, **Alt+G** colour, **Alt+N** centre, **Alt+K** spoiler and the rest — reusing
+phpBB's own accesskey letters where it has them, so existing muscle memory keeps working.
+
+They *click the forum's own toolbar buttons* rather than inserting text, so they inherit each
+button's behaviour and cover admin-added BBCodes for free; each button's tooltip is rewritten to
+show its combo. Nothing the browser or the composer already owns is claimed — Ctrl+Z above all.
+See [ADR 0017](./docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md).
+
 ## Architecture & decisions
 
 The codebase is one thin content script that boots a registry of self-contained features;
@@ -104,11 +117,16 @@ and pushes to `main` additionally package the store-ready zips as downloadable a
 ## Releasing
 
 Pushing a version tag (`v*`) whose commit is on `main` triggers
-[`.github/workflows/release.yml`](./.github/workflows/release.yml), which builds both targets
-and submits the new Firefox version (plus its sources) to AMO's listed channel, where Mozilla
-hosts and auto-updates it; it also publishes a GitHub Release with the zips attached. See
-[`docs/PUBLISHING.md`](./docs/PUBLISHING.md) for the full flow (one-time AMO setup, how members
-install) and [ADR 0010](./docs/adr/0010-distribution-and-release-automation.md) for the rationale.
+[`.github/workflows/release.yml`](./.github/workflows/release.yml), which builds both targets,
+submits the new Firefox version (plus its sources) to AMO's listed channel and the Chrome
+version to the Chrome Web Store's unlisted listing, and publishes a GitHub Release with the zips
+attached. Members install from the AMO listing (Firefox) or the store link (Chrome/Brave); both
+stores auto-update. See [`docs/PUBLISHING.md`](./docs/PUBLISHING.md) for the full flow — the
+one-time setup each store needs, and the listing copy in
+[`store/listing-fr.md`](./store/listing-fr.md) — plus
+[ADR 0010](./docs/adr/0010-distribution-and-release-automation.md) and
+[ADR 0018](./docs/adr/0018-chrome-web-store-distribution.md) for the rationale. The extension's
+privacy policy, which both listings link to, is [`docs/PRIVACY.md`](./docs/PRIVACY.md).
 
 ## Development
 

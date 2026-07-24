@@ -2,9 +2,10 @@
 #
 # Triggered by pushing a version tag (`v*`) whose commit is on `main`. It builds and zips
 # both targets, then submits the new Firefox version — extension zip AND sources zip — to
-# AMO's **listed** channel via `wxt submit`, so Mozilla hosts and auto-updates it. A GitHub
-# Release is also published with the zips attached (the Chrome zip is uploaded to the Chrome
-# Web Store by hand for now). See docs/PUBLISHING.md and docs/adr/0010.
+# AMO's **listed** channel via `wxt submit`, so Mozilla hosts and auto-updates it, and the
+# Chrome version to the Chrome Web Store's unlisted listing (skipped until that listing
+# exists — see the step's comment). A GitHub Release is also published with the zips
+# attached. See docs/PUBLISHING.md, docs/adr/0010 and docs/adr/0018.
 #
 # Ordinary pushes/PRs are handled by ci.yml (type-check + build); this workflow is the only
 # one that ships anything, and only from a version tag on main.
@@ -93,8 +94,34 @@ jobs:
             --firefox-zip ".output/dreamland-reborn-qol-$V-firefox.zip" \
             --firefox-sources-zip ".output/dreamland-reborn-qol-$V-sources.zip"
 
-      # gh is preinstalled on the runner; no third-party action needed. Archives the build and
-      # gives the Chrome zip a home for the (still manual) Chrome Web Store upload.
+      # Upload the new version to the Chrome Web Store (unlisted listing) and submit for review.
+      # Unlike the AMO step this one *skips* rather than fails when unconfigured: the CWS API can
+      # only update an item that already exists, so the very first upload is manual and there is
+      # no extension id to submit to until it has happened. Once the listing exists, set the
+      # CHROME_EXTENSION_ID repo variable and the three OAuth secrets and this starts running.
+      # See docs/PUBLISHING.md and docs/adr/0018.
+      - name: Submit new version to the Chrome Web Store
+        if: vars.CHROME_EXTENSION_ID != ''
+        env:
+          CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          if [ -z "$CHROME_CLIENT_ID" ] || [ -z "$CHROME_CLIENT_SECRET" ] || [ -z "$CHROME_REFRESH_TOKEN" ]; then
+            echo "::error::CHROME_EXTENSION_ID is set but the CHROME_CLIENT_ID / CHROME_CLIENT_SECRET / CHROME_REFRESH_TOKEN secrets are not. See docs/PUBLISHING.md."
+            exit 1
+          fi
+          V="${{ steps.v.outputs.version }}"
+          pnpm exec wxt submit --chrome-zip ".output/dreamland-reborn-qol-$V-chrome.zip"
+
+      - name: Note that the Chrome step was skipped
+        if: vars.CHROME_EXTENSION_ID == ''
+        run: |
+          echo "::notice::Chrome Web Store submission skipped — CHROME_EXTENSION_ID repo variable is unset. Upload .output/*-chrome.zip by hand (attached to the GitHub Release); see docs/PUBLISHING.md."
+
+      # gh is preinstalled on the runner; no third-party action needed. Archives the build, and
+      # keeps the Chrome zip reachable for a manual upload while the step above is unconfigured.
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

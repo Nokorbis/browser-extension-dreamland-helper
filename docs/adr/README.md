@@ -22,7 +22,7 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0007](0007-pin-typescript-5.md) | Pin TypeScript to the 5.x line          | Accepted |
 | [0008](0008-beforeunload-exit-guard.md) | Use `beforeunload` to guard unsaved drafts | Accepted |
 | [0009](0009-i18n-wxt-i18n.md) | Localize UI text with `@wxt-dev/i18n`        | Accepted |
-| [0010](0010-distribution-and-release-automation.md) | Distribution & release automation | Accepted |
+| [0010](0010-distribution-and-release-automation.md) | Distribution & release automation | Accepted — Chrome half amended by [0018](0018-chrome-web-store-distribution.md) |
 | [0011](0011-presend-server-reachability-check.md) | Pre-send server reachability check for the exit guard | Accepted |
 | [0012](0012-feature-owned-data-stores.md) | Feature-owned data stores beyond the settings map | Accepted |
 | [0013](0013-undo-safe-text-insertion.md) | Preserve the native undo stack with `execCommand('insertText')` | Accepted |
@@ -30,3 +30,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0015](0015-preset-placeholder-syntax.md) | Preset placeholder syntax as a frozen contract | Accepted |
 | [0016](0016-svelte-in-content-script.md) | Svelte in the content script, mounted in a Shadow root | Accepted |
 | [0017](0017-keyboard-shortcuts-delegate-to-toolbar.md) | Keyboard shortcuts drive phpBB's own toolbar buttons | Accepted |
+| [0018](0018-chrome-web-store-distribution.md) | Chrome Web Store distribution | Accepted |

@@ -1,6 +1,6 @@
 # 0010. Distribution & release automation
 
-Status: Accepted
+Status: Accepted — Chrome distribution amended by [[0018-chrome-web-store-distribution]]
 
 Date: 2026-07-23
 

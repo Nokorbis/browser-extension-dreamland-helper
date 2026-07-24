@@ -216,3 +216,13 @@ task, create or update the ADR **in the same change** — do not defer it.
   `rsvg-convert -w 512 -h 512 icon-store.svg -o store/icon-512.png`.
   The mark keeps a white rim *and* a dark outline on purpose — that is what makes it legible
   on both light and dark toolbars. Don't drop either when editing.
+- **Listing assets live in `store/`**, rendered from committed sources, never hand-edited as
+  PNGs. `store/promo-tile.svg` is the third source (440×280 Chrome promo tile: the same mark,
+  re-inlined from `icon-store.svg`, plus a wordmark baked in DejaVu Sans). Regenerate with:
+  `rsvg-convert -w 440 -h 280 store/promo-tile.svg -o store/promo-440x280.png` and
+  `rsvg-convert -w 96 -h 96 icon-store.svg | magick png:- -background none -gravity center -extent 128x128 store/icon-128-cws.png`.
+  The two 128px icons are **not** interchangeable: `icon-128.png` is full-bleed (AMO), while
+  Chrome wants 96×96 of artwork inside 16px of transparent padding (`icon-128-cws.png`).
+  `store/listing-fr.md` holds every store field, and it is only true if kept true — when a
+  feature ships or is dropped, update the description *and* the single-purpose answer there,
+  since an inaccurate listing is itself a policy violation. See `docs/adr/0018`.
