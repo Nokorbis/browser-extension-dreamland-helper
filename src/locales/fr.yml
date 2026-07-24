@@ -75,7 +75,6 @@ features:
         Les modifications sont enregistrées automatiquement.
       addFolder: Nouveau dossier
       addPreset: Nouveau préréglage
-      addSubfolder: Sous-dossier
       delete: Supprimer
       deleteFolderConfirm: Supprimer ce dossier et tout ce qu'il contient ?
       deletePresetConfirm: Supprimer ce préréglage ?

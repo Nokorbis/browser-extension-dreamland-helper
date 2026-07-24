@@ -180,6 +180,17 @@ export const bbcodePresets: Feature = {
         button.setAttribute('aria-expanded', 'false');
       };
 
+      // Dismissing with the keyboard has to hand focus *back* to the composer:
+      // the menu grabs focus on open (see Menu.svelte), so closing it without
+      // this leaves focus on a removed node and the caret nowhere.
+      // Deliberately not the same function as closeMenu — the outside-click
+      // handler uses that one, and pulling focus back there would fight the
+      // click the user just made.
+      const dismissMenu = () => {
+        closeMenu();
+        findMessageTextarea()?.focus();
+      };
+
       const openMenu = () => {
         snapshotSelection();
         menuState.open = true;
@@ -213,12 +224,14 @@ export const bbcodePresets: Feature = {
         { capture: true, signal },
       );
 
+      // Only fires while focus is *outside* the shadow root — `isolateEvents`
+      // below stops key events escaping it, so the in-menu case is handled by
+      // Menu.svelte calling `onclose`. Both paths must dismiss identically.
       document.addEventListener(
         'keydown',
         (event) => {
           if (event.key !== 'Escape' || !menuState.open) return;
-          closeMenu();
-          findMessageTextarea()?.focus();
+          dismissMenu();
         },
         { signal },
       );
@@ -248,7 +261,13 @@ export const bbcodePresets: Feature = {
             onMount: (container) =>
               mount(Menu, {
                 target: container,
-                props: { menu: menuState, onselect: insert, onclose: closeMenu },
+                props: {
+                  menu: menuState,
+                  onselect: insert,
+                  // Escape/Tab from inside the menu — must restore focus, since
+                  // this is the path that actually runs for a keyboard user.
+                  onclose: dismissMenu,
+                },
               }),
             onRemove: (mounted) => {
               if (mounted) void unmount(mounted);

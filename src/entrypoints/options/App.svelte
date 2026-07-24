@@ -17,6 +17,7 @@
     movePreset,
     isDescendantFolder,
     countPresets,
+    toPlainStore,
     type PresetStore,
   } from '@/lib/presets';
   import {
@@ -38,17 +39,29 @@
   let selectedId = $state<string | null>(null);
   let justSaved = $state(false);
   let saveError = $state(false);
-  /** True while our own debounced write is in flight, so we ignore its echo. */
-  let writing = false;
+  /**
+   * Serialized snapshot of the last payload we wrote, used to recognise the echo
+   * of our own save.
+   *
+   * Compared by *value* rather than tracked with an "is a write in flight" flag.
+   * A flag has to be cleared somewhere, and clearing it when the write promise
+   * resolves assumes `storage.onChanged` has already fired — an ordering neither
+   * browser specifies. Whenever the echo arrived late it was applied, reverting
+   * any keystroke typed during the round-trip and yanking the caret. Comparing
+   * values has no such window, and self-heals if an echo never arrives at all.
+   */
+  let lastWritten: string | null = null;
 
   void loadPresetStore().then((loaded) => {
     store = loaded;
   });
 
   // Another context (a forum tab, the popup) could change the library while this
-  // page is open. Ignore the echo of our own writes.
+  // page is open. Anything that isn't byte-identical to our own last write is a
+  // genuine external change and wins.
   watchPresetStore((next) => {
-    if (!writing) store = next;
+    if (JSON.stringify(toPlainStore(next)) === lastWritten) return;
+    store = next;
   });
 
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -65,14 +78,15 @@
     store = next;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      writing = true;
+      // Recorded *before* the write, so the echo is recognised however early it
+      // lands — including synchronously from within `set()`.
+      lastWritten = JSON.stringify(toPlainStore(store));
       // Report the outcome rather than assuming it. An earlier version chained
       // `.finally()`, which does not catch — a rejected write (Firefox refusing
       // to clone a `$state` proxy) surfaced as "Enregistré" while nothing had
       // been persisted. Never claim a save that has not resolved.
       void savePresetStore(store).then(
         () => {
-          writing = false;
           saveError = false;
           justSaved = true;
           clearTimeout(savedTimer);
@@ -81,7 +95,9 @@
           }, 1600);
         },
         (err: unknown) => {
-          writing = false;
+          // Nothing landed in storage, so no echo is coming — drop the snapshot
+          // rather than leaving it to swallow a later external change.
+          lastWritten = null;
           justSaved = false;
           saveError = true;
           error('failed to save presets', err);
@@ -357,15 +373,24 @@
     </section>
   </div>
 
+  <!--
+    The message is rendered conditionally, not just faded with a class: a live
+    region only announces when its *content* changes, so text that is always
+    present is never read out — and sits in the accessibility tree at opacity 0
+    the rest of the time, out of context. Empty when idle, filled on a result.
+  -->
   <p
     class="saved"
     class:visible={justSaved || saveError}
     class:failed={saveError}
+    role="status"
     aria-live="polite"
   >
-    {saveError
-      ? i18n.t('features.bbcodePresets.editor.saveFailed')
-      : i18n.t('features.bbcodePresets.editor.saved')}
+    {#if saveError}
+      {i18n.t('features.bbcodePresets.editor.saveFailed')}
+    {:else if justSaved}
+      {i18n.t('features.bbcodePresets.editor.saved')}
+    {/if}
   </p>
 </main>
 

@@ -109,7 +109,11 @@
 
 <ul role="menu" bind:this={list} onkeydown={onKeydown}>
   {#each folders as node (node.folder.id)}
-    <li class="folder" data-folder={node.folder.id}>
+    <!-- role="none" so the role="menu" list owns the buttons directly: an <li>
+         carrying its implicit listitem role between the two breaks the required
+         menu → menuitem relationship. The element stays an <li> for the
+         `:scope > li > button` queries above and for markup validity. -->
+    <li role="none" class="folder" data-folder={node.folder.id}>
       <button
         type="button"
         role="menuitem"
@@ -149,7 +153,7 @@
   {/each}
 
   {#each presets as preset (preset.id)}
-    <li>
+    <li role="none">
       <button
         type="button"
         role="menuitem"

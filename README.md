@@ -69,7 +69,7 @@ themselves.
 | `{SELECTION}` | replaced by whatever text you had selected (empty if none) |
 | `{CURSOR}` | where the cursor lands after inserting |
 
-`{SELECTION}` accepts transformations, chained with `\|`: `upper`, `lower`, `title`, `trim`.
+`{SELECTION}` accepts transformations, chained with `|`: `upper`, `lower`, `title`, `trim`.
 So a yell preset might read:
 
 ```

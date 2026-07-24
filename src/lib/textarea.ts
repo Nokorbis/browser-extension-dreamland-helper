@@ -49,6 +49,52 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
+ * Where an insertion would land, or why it must not happen.
+ *
+ * `ok: false` carries the length the field *would* have reached, so the caller
+ * can say how far over the limit it went.
+ */
+export type InsertionPlan =
+  | { ok: true; start: number; end: number }
+  | { ok: false; projected: number };
+
+/**
+ * Decide the clamped replacement range and whether the result still fits.
+ *
+ * Split out of `insertAtRange` because it is the only part of this module that
+ * is arithmetic rather than DOM work — and the part worth unit-testing. All
+ * lengths are UTF-16 code units, matching both `String.length` and the way HTML
+ * counts `maxlength`.
+ *
+ * Some skins put `maxlength` on `#message`. `execCommand` truncates silently
+ * once the limit is hit, which would leave half a BBCode structure in the post —
+ * far worse than refusing outright.
+ *
+ * `maxLength > 0`, not `>= 0`: an absent maxlength reads as -1 per spec (and
+ * does on the target forum), but older implementations reported 0. Treating 0 as
+ * a real limit would refuse every insertion; a textarea that genuinely allows
+ * zero characters isn't a case worth honouring.
+ */
+export function planInsertion(
+  valueLength: number,
+  range: TextRange,
+  textLength: number,
+  maxLength: number,
+): InsertionPlan {
+  const start = clamp(range.start, 0, valueLength);
+  const end = clamp(range.end, start, valueLength);
+
+  if (maxLength > 0) {
+    // The replaced span comes back out of the total before the new text goes in,
+    // so shrinking a selection inside an already-full field is still allowed.
+    const projected = valueLength - (end - start) + textLength;
+    if (projected > maxLength) return { ok: false, projected };
+  }
+
+  return { ok: true, start, end };
+}
+
+/**
  * Replace `range` with `text`, then place the caret `caretOffset` characters
  * into what was inserted.
  *
@@ -68,26 +114,14 @@ export function insertAtRange(
   // differs between browsers, so settle on \n before measuring anything.
   const value = text.replace(/\r\n?/g, '\n');
 
-  const start = clamp(range.start, 0, el.value.length);
-  const end = clamp(range.end, start, el.value.length);
-
-  // Some skins put maxlength on #message. execCommand truncates silently once
-  // the limit is hit, which would leave half a BBCode structure in the post —
-  // far worse than refusing.
-  //
-  // `> 0`, not `>= 0`: an absent maxlength reads as -1 per spec (and does on the
-  // target forum), but older implementations reported 0. Treating 0 as a real
-  // limit would refuse every insertion; a textarea that genuinely allows zero
-  // characters isn't a case worth honouring.
-  if (el.maxLength > 0) {
-    const projected = el.value.length - (end - start) + value.length;
-    if (projected > el.maxLength) {
-      warn(
-        `insertion refused: ${projected} characters would exceed maxlength=${el.maxLength}`,
-      );
-      return;
-    }
+  const plan = planInsertion(el.value.length, range, value.length, el.maxLength);
+  if (!plan.ok) {
+    warn(
+      `insertion refused: ${plan.projected} characters would exceed maxlength=${el.maxLength}`,
+    );
+    return;
   }
+  const { start, end } = plan;
 
   // execCommand acts on the *focused* editable element and on its current
   // selection. Skipping either of these is the usual reason it silently no-ops.

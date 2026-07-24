@@ -36,10 +36,17 @@ pnpm test            # vitest — pure logic only (see below)
 without one). Run it after any change to `.ts`/`.svelte`.
 
 `pnpm test` covers **pure logic only**: the preset template engine
-(`src/features/bbcode-presets/template.ts`) and the preset store's tree invariants
-(`src/lib/presets.ts`). That scoping is deliberate — everything else is DOM/browser glue that
+(`src/features/bbcode-presets/template.ts`), the preset store's tree invariants
+(`src/lib/presets.ts`), and the insertion arithmetic (`planInsertion` in
+`src/lib/textarea.ts`). That scoping is deliberate — everything else is DOM/browser glue that
 is cheaper to verify by hand against a real forum page. Don't backfill tests for it; do keep
-new pure logic covered. Both are CI gates.
+new pure logic covered. `pnpm check` and `pnpm test` are both CI gates.
+
+The suite runs on plain node with **no DOM environment**, and adding one isn't the way to
+cover DOM-adjacent code. When a module mixes real arithmetic with DOM work, extract the
+arithmetic into a pure exported function and test that instead — `planInsertion` is the
+reference: it owns the range clamping and the `maxlength` projection, while `insertAtRange`
+keeps only the `execCommand` and focus handling.
 
 **Loading unpacked for manual testing:** build, then in the browser load `.output/chrome-mv3`
 (Brave: `brave://extensions` → Developer mode → Load unpacked) or `.output/firefox-mv2`
