@@ -9,6 +9,14 @@ extDescription: Améliorations de Qualité de Vie sur DR
 
 popup:
   soon: bientôt
+  # `bootFeatures` reads the enabled flags once, when the content script starts,
+  # so a toggle only takes effect on the next page load. Say so rather than
+  # letting the user watch an in-page panel outlive the switch they just flipped.
+  reloadHint: Rechargez la page du forum pour appliquer les changements.
+
+# The extension's full-tab options page (manifest `options_ui`).
+options:
+  title: Dreamland Reborn QoL — Options
 
 # Key segments mirror each feature's exported const name, in camelCase
 # (exitGuard, bbcodePresets, colorGrab) — NOT the kebab-case Feature.id, because
@@ -32,6 +40,67 @@ features:
   bbcodePresets:
     name: Préréglages BBCode
     description: Insère des structures BBCode complexes en un clic.
+    # In-page UI, injected into the phpBB composer by the content script.
+    # NOTE: never write a bare {SELECTION} / {CURSOR} in this file — @wxt-dev/i18n
+    # reads /\{[A-Za-z0-9_]+\}/ as a named substitution and then *requires* it.
+    # Pass the tokens in as lowercase substitutions instead, from the constants in
+    # src/features/bbcode-presets/template.ts.
+    trigger:
+      title: Préréglages BBCode
+    menu:
+      empty: Aucun préréglage
+      emptyHint: Créez-en depuis les options de l'extension.
+    panel:
+      title: Préréglages
+      expand: Afficher les préréglages
+      collapse: Masquer les préréglages
+    # Popup accordion panel. The count keys use @wxt-dev/i18n plurals: all THREE
+    # forms are required — with only "1"/"n" the runtime picks n for zero and
+    # renders "0 préréglages", which is wrong in French.
+    popup:
+      presetCount:
+        "0": aucun préréglage
+        "1": 1 préréglage
+        "n": $1 préréglages
+      folderCount:
+        "0": aucun dossier
+        "1": 1 dossier
+        "n": $1 dossiers
+      manage: Gérer les préréglages…
+    # Options page — the full preset editor.
+    editor:
+      heading: Préréglages BBCode
+      intro: >-
+        Organisez vos préréglages en dossiers — un par personnage, par exemple.
+        Les modifications sont enregistrées automatiquement.
+      addFolder: Nouveau dossier
+      addPreset: Nouveau préréglage
+      addSubfolder: Sous-dossier
+      delete: Supprimer
+      deleteFolderConfirm: Supprimer ce dossier et tout ce qu'il contient ?
+      deletePresetConfirm: Supprimer ce préréglage ?
+      untitledFolder: Nouveau dossier
+      untitledPreset: Nouveau préréglage
+      nameLabel: Nom
+      moveLabel: Déplacer vers
+      root: Racine
+      bodyLabel: Contenu BBCode
+      previewLabel: Aperçu
+      previewSample: texte sélectionné
+      empty: Aucun préréglage pour l'instant.
+      noSelection: Sélectionnez un préréglage à gauche, ou créez-en un.
+      saved: Enregistré
+      saveFailed: Échec de l'enregistrement — vos modifications n'ont pas été sauvegardées.
+      warningsLabel: Avertissements
+      # {sel} / {cur} / {filters} / {example} / {filter} are @wxt-dev/i18n named
+      # substitutions, filled from the constants in template.ts. Writing the real
+      # tokens here would be read as substitutions named SELECTION and CURSOR.
+      syntaxHelp: >-
+        Utilisez {sel} pour insérer le texte sélectionné, et {cur} pour choisir
+        où placer le curseur après l'insertion.
+      filtersHelp: "Filtres disponibles : {filters}. Par exemple : {example}"
+      warningUnknownFilter: "Filtre inconnu, ignoré : {filter}"
+      warningDuplicateCursor: "{cur} n'est pris en compte qu'une seule fois."
   colorGrab:
     name: Pipette à couleur
     description: Récupère la couleur d'un autre membre et la réutilise.

@@ -47,6 +47,105 @@ export function findSubmitButton(form: HTMLFormElement): HTMLElement | null {
 }
 
 /**
+ * phpBB's BBCode button bar — the row holding B / i / u / Quote / Code above the
+ * composer. prosilver's `posting_buttons.html` renders it as
+ * `<div id="format-buttons" class="format-buttons">` with
+ * `<button class="button button-icon-only bbcode-*">` children, identically in
+ * 3.2.x and 3.3.x.
+ *
+ * The whole block sits behind `{IF S_BBCODE_ALLOWED}`, so it is legitimately
+ * absent when BBCode is disabled for a forum — and a custom skin may drop it
+ * altogether. **Callers must handle `null`** and degrade rather than throw.
+ *
+ * Verified against the live forum: `<div id="format-buttons" class="format-buttons">`,
+ * whose children are the stock `bbcode-b/i/u/quote/code/list/img/url/color`
+ * buttons, a `select.bbcode-size`, and several admin-added custom BBCodes
+ * carrying `button-secondary` instead. We append after all of them.
+ */
+export function findFormatButtons(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(
+    '#format-buttons, .format-buttons',
+  );
+}
+
+/**
+ * phpBB's own toolbar-button classes. An injected button carries these so it
+ * inherits the forum skin instead of looking like a foreign object — which is
+ * also why the trigger button is *not* rendered inside a shadow root, where the
+ * skin's styles cannot reach it. See docs/adr/0016-svelte-in-content-script.md.
+ *
+ * Mirrors the live forum's Bold button exactly:
+ *   <button type="button" class="button button-icon-only bbcode-b" …>
+ *     <i class="icon fa-bold fa-fw" aria-hidden="true"></i>
+ *   </button>
+ * so our own `<i class="icon fa-… fa-fw">` child inherits the same FontAwesome
+ * sizing. We deliberately omit their `name` and `accesskey` — see the ⚠ note in
+ * `src/features/bbcode-presets/index.ts`.
+ */
+export const FORMAT_BUTTON_CLASS = 'button button-icon-only';
+
+/**
+ * The `<div id="message-box">` wrapping the composer textarea — the anchor for
+ * any UI that wants to sit beside the editor. Falls back to the textarea's own
+ * parent so a skin that renamed the wrapper still gives us something usable.
+ *
+ * ⚠ Mount editor-adjacent UI **inside** this element, not as a sibling before
+ * it. Its siblings in the fieldset are `#format-buttons` and a right-floated
+ * `#smiley-box`; a block-level sibling therefore spans the whole fieldset and
+ * runs underneath the emoticon list. Anything inside `#message-box` instead
+ * inherits the same column the textarea occupies, whatever width the skin
+ * chose.
+ */
+export function findMessageBox(): HTMLElement | null {
+  return (
+    document.querySelector<HTMLElement>('#message-box, .message-box') ??
+    findMessageTextarea()?.parentElement ??
+    null
+  );
+}
+
+/**
+ * Whether the forum is currently showing its dark theme.
+ *
+ * The skin marks it with a `dark` class on `<html>`, toggled without a reload.
+ * This is forum knowledge, so it lives here rather than in the feature.
+ *
+ * In-page UI must key off **this**, not `@media (prefers-color-scheme: dark)`:
+ * that media query reports the *operating system's* preference, which says
+ * nothing about which theme the forum is showing. (Extension pages — popup,
+ * options — are the opposite case and should keep using the media query.)
+ */
+export function isDarkTheme(): boolean {
+  return document.documentElement.classList.contains('dark');
+}
+
+/**
+ * Observe theme changes and report the new state. Returns an unsubscriber.
+ *
+ * A `MutationObserver` rather than a one-shot read because the forum's theme
+ * switch mutates the class in place — a UI that only sampled at boot would be
+ * left inverted until the next page load.
+ *
+ * CSS alone cannot do this from inside a shadow root: `:host-context()` would
+ * express it, but Firefox does not support it. Hence the JS detour.
+ */
+export function watchTheme(onChange: (dark: boolean) => void): () => void {
+  let last = isDarkTheme();
+  const observer = new MutationObserver(() => {
+    const next = isDarkTheme();
+    if (next !== last) {
+      last = next;
+      onChange(next);
+    }
+  });
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class'],
+  });
+  return () => observer.disconnect();
+}
+
+/**
  * Author-coloured usernames. phpBB emits `<span class="username-coloured"
  * style="color: #rrggbb">` for members whose group has a colour. Useful for the
  * colour-grab feature (#4).

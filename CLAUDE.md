@@ -8,13 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 aids for the PHPBB 3.20 roleplay forum at **dreamland-reborn.net**. It is built with
 [WXT](https://wxt.dev) (Vite-based) and Svelte 5.
 
-Planned features (only #1 is implemented; #2–#4 are stubs awaiting design with the user):
+Planned features (#1 and #3 are implemented; #2 and #4 are stubs awaiting design with the user):
 
 1. **Message loss protection** (`exit-guard`) — keep a written post from being lost: warn
    before leaving the editor with unsaved text, and verify the forum is reachable before a
    send (if it's down, hold the post back and offer to keep the text or send anyway). _(done)_
 2. **Highlight GM text** — persistently highlight passages of another post while replying.
-3. **BBCode presets** — insert complex BBCode structures in one click.
+3. **BBCode presets** — insert complex BBCode structures in one click, from a button in
+   phpBB's BBCode toolbar or a panel beside the editor. Presets live in nested folders and
+   are authored in the options page. _(done)_
 4. **Color grabber** — grab another poster's color and reuse it.
 
 ## Commands
@@ -27,10 +29,17 @@ pnpm build:firefox   # Production build → .output/firefox-mv2/
 pnpm zip             # Distributable zip for Chrome Web Store
 pnpm zip:firefox     # Distributable zip for AMO
 pnpm check           # svelte-check type check (run this instead of `tsc`)
+pnpm test            # vitest — pure logic only (see below)
 ```
 
 `pnpm check` is the type gate — there is no standalone `tsc` build step (WXT/Vite bundles
 without one). Run it after any change to `.ts`/`.svelte`.
+
+`pnpm test` covers **pure logic only**: the preset template engine
+(`src/features/bbcode-presets/template.ts`) and the preset store's tree invariants
+(`src/lib/presets.ts`). That scoping is deliberate — everything else is DOM/browser glue that
+is cheaper to verify by hand against a real forum page. Don't backfill tests for it; do keep
+new pure logic covered. Both are CI gates.
 
 **Loading unpacked for manual testing:** build, then in the browser load `.output/chrome-mv3`
 (Brave: `brave://extensions` → Developer mode → Load unpacked) or `.output/firefox-mv2`
@@ -55,11 +64,23 @@ The flow that ties multiple files together:
 - `src/lib/storage.ts` is the typed settings layer over `browser.storage.local`
   (`{ features: Record<id, boolean> }`). `DEFAULT_SETTINGS` is the source of truth for what's
   on by default: shipped features default `true`, stubs default `false`. The popup writes it;
-  the content script reads it on boot.
+  the content script reads it on boot. It holds **only** on/off flags — a feature that owns
+  *data* gets its own key and module (see below).
+- **Feature-owned data** goes in its own `browser.storage.local` key with its own typed
+  module — `src/lib/presets.ts` is the reference. The version lives *inside* the payload, the
+  shape is flat records linked by id, every read runs a repair pass, and mutations are pure
+  (`store → store`). Follow that shape rather than inventing a second idiom.
+  See `docs/adr/0012-feature-owned-data-stores.md`.
 - `src/lib/phpbb.ts` is the **only** place that knows phpBB's DOM. All selectors
-  (`#message` textarea, `.username-coloured`, etc.) and the forum origin (`FORUM_MATCHES`,
-  reused by the content-script manifest) live here. Features must go through it rather than
-  querying the DOM directly — when the forum skin changes, this is the one file to update.
+  (`#message` textarea, `#format-buttons`, `.username-coloured`, etc.) and the forum origin
+  (`FORUM_MATCHES`, reused by the content-script manifest) live here. Features must go through
+  it rather than querying the DOM directly — when the forum skin changes, this is the one file
+  to update.
+- `src/lib/textarea.ts` is how anything writes **into** the editor. Never assign `.value` or
+  call `setRangeText` directly: both destroy the browser's undo stack. `insertAtRange` uses
+  `execCommand('insertText')`, which is deprecated but the only API that keeps Ctrl+Z working.
+  It is separate from `phpbb.ts` because reading a textarea selection is not forum knowledge.
+  See `docs/adr/0013-undo-safe-text-insertion.md`.
 - `src/locales/<lang>.yml` is the **single source of truth for user-facing text** (the forum
   is French, so we ship `fr.yml` only; `manifest.default_locale` is `fr`). Strings are
   referenced by key via the typed `#imports`-style helper `import { i18n } from '#i18n'` and
@@ -67,6 +88,14 @@ The flow that ties multiple files together:
   generates the key types. Key segments must be **camelCase** (`exitGuard`, not the
   kebab `Feature.id` `exit-guard`) — compiled message-key names allow only `[A-Za-z0-9_]`.
   Never hardcode UI text in a component — add a key. See `docs/adr/0009-i18n-wxt-i18n.md`.
+- **UI surfaces.** The popup (`src/entrypoints/popup/`) is an accordion: one row per feature,
+  with an optional settings panel. Panels are registered in
+  `src/entrypoints/popup/panels.ts` (`featureId → Component`) — **never** as a field on
+  `Feature`, because `src/features/*` is in the content script's module graph and content
+  scripts build as a single IIFE, so any Svelte reference there lands in `content.js` even if
+  lazily imported. Substantial editing belongs in the options page
+  (`src/entrypoints/options/`), opened with `browser.runtime.openOptionsPage()`.
+  See `docs/adr/0014-popup-accordion-options-page.md`.
 
 ### Adding a feature
 
@@ -122,9 +151,48 @@ task, create or update the ADR **in the same change** — do not defer it.
   compatible with the TypeScript 7 native port, which crashes with
   `Cannot read properties of undefined (reading 'useCaseSensitiveFileNames')`. Do not bump
   `typescript` to `^7`.
+- **Run `pnpm exec wxt prepare` after editing `src/locales/fr.yml`.** A bare `pnpm check`
+  does *not* regenerate `.wxt/i18n/structure.d.ts`, so new keys fail type-check until you do.
+  (`pnpm dev` and `pnpm install` run it for you.) This bites every single time.
+- **Never write a bare `{SELECTION}` / `{CURSOR}` in `fr.yml`.** `@wxt-dev/i18n` parses
+  `/\{[A-Za-z0-9_]+\}/` as a *named substitution* and then makes the argument mandatory, so
+  the string stops type-checking. It's intermittent, too: `{SELECTION|upper}` does **not**
+  match (the `|` is outside the character class) but `{SELECTION}` does. Lean into it — write
+  a lowercase named substitution and fill it from the constants:
+  `i18n.t('…syntaxHelp', { sel: SELECTION_TOKEN, cur: CURSOR_TOKEN })`.
+- **A button injected into phpBB's composer must be `type="button"` with no `name`.**
+  `<form id="postform">` is where our toolbar trigger lives; a submit-type button there fires
+  a submit event that exit-guard reads as a genuine post (its `submitterName !== 'post'`
+  short-circuit doesn't catch a `null` name) and **sends the half-written message**.
 - `beforeunload` (used by exit-guard) is the only cross-browser way to veto navigation
   including the back button; browsers ignore any custom message, so the prompt wording is
   the browser's own.
+- Toggling a feature in the popup only takes effect on the **next page load** — `bootFeatures`
+  reads settings once at boot. The popup says so; making toggles live would mean watching
+  settings in `registry.ts`.
+- In shadow-DOM UI, test containment with `event.composedPath()`, never
+  `element.contains(event.target)` — targets are retargeted to the shadow host.
+- Likewise use `root.activeElement` (the `ShadowRoot`), not `document.activeElement`,
+  which reports the shadow *host* for anything focused inside.
+- **Never pass Svelte `$state` straight to `browser.storage`.** `$state` deep-proxies its
+  object, and a `Proxy` is not structured-cloneable: Firefox clones on the way into
+  `storage.local` and throws `DataCloneError`, while Chrome serializes by reading properties
+  and persists it happily. The result is a feature that saves nothing **on Firefox only**.
+  Rebuild a plain object first — `toPlainStore` in `src/lib/presets.ts` is the pattern (or
+  `$state.snapshot()` at the call site). Test both browsers whenever a UI writes to storage.
+- **Report save failures.** `.finally()` does not catch, so chaining it onto a write shows a
+  success message even when the write rejected — exactly how the bug above stayed invisible.
+- Custom properties inherit **downwards only**: a `--dlh-*` palette set on a component root is
+  invisible to `<body>`. The theme class therefore sits on `<html>` in the popup/options HTML.
+- **In-page UI must follow the forum's theme, not the OS's.** The skin marks dark mode with
+  a `dark` class on `<html>` (`isDarkTheme` / `watchTheme` in `phpbb.ts`);
+  `@media (prefers-color-scheme: dark)` would invert the UI for a light forum on a dark
+  desktop. CSS can't read the host page's classes from inside a shadow root portably
+  (`:host-context()` is unsupported in Firefox), so the flag is detected in JS and pushed in
+  as a `.dark` class. Colours come from the shared `--dlh-*` palette
+  (`src/features/bbcode-presets/palette.css`): `.dlh-theme` for in-page surfaces (class-driven),
+  `.dlh-theme-auto` for the popup and options page (media-query-driven). Components should
+  read `var(--dlh-…)` and never hardcode a colour.
 - Icons live in `public/icon/{16,32,48,96,128}.png` (WXT's default `public/` dir, at repo
   root — **not** `src/public/`). Regenerate from the source with:
   `for s in 16 32 48 96 128; do rsvg-convert -w $s -h $s icon.svg -o public/icon/$s.png; done`

@@ -1,0 +1,65 @@
+/**
+ * One palette for every preset surface: the in-page menu and panel, the options
+ * page, and the popup panel.
+ *
+ * Components only ever read `var(--dlh-…)`, never a literal colour. Whoever
+ * mounts them picks *which signal* decides the theme, which is what lets the
+ * same `FolderTree` sit inside a forum page and inside the options page:
+ *
+ * - `.dlh-theme` — **in-page** (menu, panel). Dark is opted into explicitly with
+ *   a `.dark` class, mirroring the *forum's* `html.dark`. It must NOT react to
+ *   `prefers-color-scheme`: the OS preference says nothing about which theme the
+ *   forum is showing, and reading it would invert the UI for anyone running a
+ *   light forum on a dark desktop (or the reverse).
+ * - `.dlh-theme-auto` — **extension pages** (options, popup), where there is no
+ *   host page and the OS preference is exactly the right signal.
+ *
+ * Values are tuned against the forum's own surfaces — #D4E4F4 in light, #1c1f26
+ * in dark — so an injected panel reads as part of the page rather than pasted
+ * onto it.
+ */
+
+.dlh-theme,
+.dlh-theme-auto {
+  --dlh-surface: #ffffff;
+  --dlh-surface-alt: #eaf1fa;
+  --dlh-fg: #1c1f26;
+  --dlh-muted: #5a6170;
+  --dlh-border: #b9cfe4;
+  --dlh-border-soft: #d9e5f2;
+  --dlh-hover: #dce9f7;
+  --dlh-selected: #c3dbf2;
+  --dlh-accent: #2f6fed;
+  --dlh-shadow: rgba(20, 40, 70, 0.22);
+}
+
+/* In-page: driven by the forum's own theme. */
+.dlh-theme.dark {
+  --dlh-surface: #252a33;
+  --dlh-surface-alt: #2d323d;
+  --dlh-fg: #e6e9ef;
+  --dlh-muted: #a0a7b5;
+  --dlh-border: #3a4150;
+  --dlh-border-soft: #333947;
+  --dlh-hover: #333947;
+  --dlh-selected: #3b4658;
+  --dlh-accent: #5b8def;
+  --dlh-shadow: rgba(0, 0, 0, 0.45);
+}
+
+/* Extension pages: driven by the OS preference. Same values, different trigger
+   — kept as a second block because custom properties have no way to alias a set. */
+@media (prefers-color-scheme: dark) {
+  .dlh-theme-auto {
+    --dlh-surface: #252a33;
+    --dlh-surface-alt: #2d323d;
+    --dlh-fg: #e6e9ef;
+    --dlh-muted: #a0a7b5;
+    --dlh-border: #3a4150;
+    --dlh-border-soft: #333947;
+    --dlh-hover: #333947;
+    --dlh-selected: #3b4658;
+    --dlh-accent: #5b8def;
+    --dlh-shadow: rgba(0, 0, 0, 0.45);
+  }
+}
