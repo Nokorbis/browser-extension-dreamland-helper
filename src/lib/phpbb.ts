@@ -194,6 +194,74 @@ export function findTopicReview(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#topicreview');
 }
 
+/** The numeric id decoded from a single element's `p…`/`pr…` id, or null. */
+function parsePostId(el: HTMLElement | null): string | null {
+  if (el === null) return null;
+  const match = /^pr?(\d+)$/.exec(el.id);
+  return match === null ? null : match[1];
+}
+
+/**
+ * The numeric post id for a `.post` container — the key shared between viewtopic
+ * and the topic review.
+ *
+ * ⚠ The id lives on a **different element** in the two contexts, verified against
+ * the live forum:
+ *   - viewtopic: on the `.post` div itself — `<div id="p{POST_ID}" class="post …">`;
+ *     its `.postbody` carries no id (the content wrapper is `#post_content{POST_ID}`).
+ *   - topic review (posting.php): the `.post` div has **no id**; the `pr{POST_ID}`
+ *     sits on the inner `.postbody` — `<div class="postbody" id="pr{POST_ID}">`.
+ * Both decode to the same number, which is what lets a highlight follow a post
+ * across the two pages. Reading only the `.post` div would silently drop every
+ * review post. Returns null for a block that is neither (e.g. a live `#preview`).
+ */
+export function readPostId(post: HTMLElement): string | null {
+  return parsePostId(post) ?? parsePostId(post.querySelector<HTMLElement>('.postbody'));
+}
+
+/**
+ * Every post's message body on the page, paired with its numeric post id —
+ * across both viewtopic and the topic review (`.post` matches both). The body is
+ * `.content`, the same element `readReviewColorUsages` reads. Posts without a
+ * resolvable id (e.g. a live `#preview` block) or without a `.content` are
+ * skipped. The highlight feature anchors ranges inside these `.content` elements.
+ */
+export function findPostContentElements(): {
+  postId: string;
+  content: HTMLElement;
+}[] {
+  const out: { postId: string; content: HTMLElement }[] = [];
+  for (const post of document.querySelectorAll<HTMLElement>('.post')) {
+    const postId = readPostId(post);
+    if (postId === null) continue;
+    const content = post.querySelector<HTMLElement>('.content');
+    if (content === null) continue;
+    out.push({ postId, content });
+  }
+  return out;
+}
+
+/**
+ * The current topic id, or null when it can't be determined.
+ *
+ * Usually the `t=` query param (`viewtopic.php?t=…`, `posting.php?mode=reply&t=…`).
+ * Post-permalink pages (`viewtopic.php?p=…#p…`) omit it, so fall back to the
+ * `&t=<id>` phpBB puts on its reply/quote and pagination links. Used to scope a
+ * "clear this discussion" without reading the whole page.
+ */
+export function readTopicId(): string | null {
+  const fromUrl = new URLSearchParams(location.search).get('t');
+  if (fromUrl !== null && /^\d+$/.test(fromUrl)) return fromUrl;
+
+  for (const anchor of document.querySelectorAll<HTMLAnchorElement>(
+    'a[href*="posting.php"], a[href*="viewtopic.php"]',
+  )) {
+    const match = /[?&]t=(\d+)/.exec(anchor.getAttribute('href') ?? '');
+    if (match !== null) return match[1];
+  }
+  return null;
+}
+
 /**
  * phpBB's font-colour palette (`<div id="colour_palette">`), toggled open by the
  * `bbcode-color` toolbar button. It is `display:none` until opened.

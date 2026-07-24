@@ -19,7 +19,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   features: {
     'exit-guard': true,
-    highlight: false,
+    highlight: true,
     'bbcode-presets': true,
     'color-grab': true,
     'editor-shortcuts': true,

@@ -8,12 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 aids for the PHPBB 3.20 roleplay forum at **dreamland-reborn.net**. It is built with
 [WXT](https://wxt.dev) (Vite-based) and Svelte 5.
 
-Planned features (#2 is a stub awaiting design with the user; the rest are implemented):
+Features (all implemented):
 
 1. **Message loss protection** (`exit-guard`) — keep a written post from being lost: warn
    before leaving the editor with unsaved text, and verify the forum is reachable before a
    send (if it's down, hold the post back and offer to keep the text or send anyway). _(done)_
-2. **Highlight GM text** — persistently highlight passages of another post while replying.
+2. **Text highlights** (`highlight`) — select a passage in a post's message body and keep it
+   highlighted in a chosen colour, persisting across reloads and shared between the thread page
+   and the reply composer's topic review (keyed by phpBB's numeric post id). Painted with the
+   CSS Custom Highlight API — no DOM mutation — and cleared per-thread or globally. See
+   `docs/adr/0020-persistent-text-highlights.md`. _(done)_
 3. **BBCode presets** — insert complex BBCode structures in one click, from a button in
    phpBB's BBCode toolbar or a panel beside the editor. Presets live in nested folders and
    are authored in the options page. _(done)_
@@ -185,6 +189,15 @@ task, create or update the ADR **in the same change** — do not defer it.
   palette (color-grab's "Sur la page" filter) must install idempotently and re-run when the grid
   is rebuilt — watch the placeholder with a `MutationObserver`, and keep injected controls
   *outside* it so they survive. See `docs/adr/0019` and `findColourPalette` in `phpbb.ts`.
+- **The highlight paint layer is a page-level `<style>`, not shadow-scoped.** `::highlight()`
+  is a pseudo-element rule the page's own style engine applies to the *post* text, so it cannot
+  live in a shadow root or an element's `.style` — `highlight/render.ts` injects one `<style>`
+  into `<head>` (CSP-safe on this forum per ADR 0016). The feature **feature-detects** the CSS
+  Custom Highlight API (`isHighlightApiSupported`) and no-ops on Firefox < 140 / Chrome < 105,
+  so a highlight is never created where it couldn't be shown. Its ranges are anchored by numeric
+  post id + `.content` char offsets + the quoted text (`highlight/anchor.ts`), which is what
+  lets a highlight survive a reload and appear on the same post in both viewtopic and the topic
+  review. See `docs/adr/0020-persistent-text-highlights.md`.
 - `beforeunload` (used by exit-guard) is the only cross-browser way to veto navigation
   including the back button; browsers ignore any custom message, so the prompt wording is
   the browser's own.

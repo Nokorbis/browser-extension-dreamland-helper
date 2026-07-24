@@ -36,7 +36,38 @@ features:
       sendAnyway: Envoyer quand même
   highlight:
     name: Surligner le texte
-    description: Garde des passages surlignés pour rester concentré pendant la rédaction de la réponse.
+    description: >-
+      Surligne des passages d'un message et les conserve — même après
+      rechargement et entre le sujet et la fenêtre de réponse — jusqu'à ce que
+      vous les effaciez.
+    # Palette offered by the selection toolbar. Segment keys mirror
+    # HIGHLIGHT_COLORS ids in src/features/highlight/palette.ts.
+    colors:
+      yellow: Jaune
+      green: Vert
+      pink: Rose
+      blue: Bleu
+    # The floating selection toolbar injected into the post.
+    toolbar:
+      remove: Retirer le surlignage
+    # The in-page corner control. count uses @wxt-dev/i18n plurals — all THREE
+    # forms are required (CLAUDE.md): two forms make French render "0 surlignages".
+    control:
+      count:
+        "0": Aucun surlignage
+        "1": 1 surlignage
+        "n": $1 surlignages
+      clearTopic: Effacer cette discussion
+      clearAll: Effacer tout
+    # The popup accordion panel.
+    popup:
+      count:
+        "0": Aucun surlignage enregistré
+        "1": 1 surlignage enregistré
+        "n": $1 surlignages enregistrés
+      clearTopic: Effacer cette discussion
+      clearAll: Effacer tout
+      noThread: Ouvrez un sujet du forum pour effacer une discussion précise.
   bbcodePresets:
     name: Préréglages BBCode
     description: Insère des structures BBCode complexes en un clic.

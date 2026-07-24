@@ -11,3 +11,6 @@ web-ext.config.ts
 # Editor / OS
 .DS_Store
 *.log
+
+
+real_snippets/

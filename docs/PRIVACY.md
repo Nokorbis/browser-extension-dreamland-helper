@@ -1,6 +1,6 @@
 # Politique de confidentialité — Dreamland Reborn QoL
 
-*Dernière mise à jour : 24 juillet 2026. [English version below](#privacy-policy--dreamland-reborn-qol).*
+*Dernière mise à jour : 25 juillet 2026. [English version below](#privacy-policy--dreamland-reborn-qol).*
 
 ## En résumé
 
@@ -16,6 +16,7 @@ sur votre machine :
 |---|---|---|
 | Les fonctionnalités activées ou désactivées | `settings` | Retenir vos choix dans la popup |
 | Vos préréglages BBCode et leurs dossiers | `bbcodePresets` | Ce sont vos propres textes, écrits par vous dans la page d'options |
+| Les passages que vous surlignez dans les sujets | `highlights` | Les réafficher après rechargement, sur le sujet comme dans la relecture |
 | L'état du panneau latéral (ouvert / replié) | `bbcodePresetsUi` | Retrouver l'éditeur comme vous l'aviez laissé |
 
 Ces données ne quittent jamais votre navigateur. Nous n'y avons pas accès. La synchronisation
@@ -64,7 +65,7 @@ Par le dépôt du projet :
 
 # Privacy Policy — Dreamland Reborn QoL
 
-*Last updated: 24 July 2026. English translation of the French text above, which is the version
+*Last updated: 25 July 2026. English translation of the French text above, which is the version
 shown to users.*
 
 ## Summary
@@ -80,6 +81,7 @@ Only in your browser's local storage (`browser.storage.local`), on your own mach
 |---|---|---|
 | Which features are enabled | `settings` | Remember the toggles you set in the popup |
 | Your BBCode presets and their folders | `bbcodePresets` | They are your own text, authored by you in the options page |
+| The passages you highlight in threads | `highlights` | Show them again after a reload, on the thread and in the topic review |
 | Side panel state (open / collapsed) | `bbcodePresetsUi` | Restore the editor as you left it |
 
 This data never leaves your browser. We have no access to it. Cross-device sync is not used

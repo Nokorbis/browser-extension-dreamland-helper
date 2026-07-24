@@ -1,5 +1,6 @@
 import type { Component } from 'svelte';
 import BbcodePresetsPanel from '@/features/bbcode-presets/PopupPanel.svelte';
+import HighlightPanel from '@/features/highlight/PopupPanel.svelte';
 
 /**
  * Feature id → the settings panel rendered inside that feature's accordion row.
@@ -20,4 +21,5 @@ import BbcodePresetsPanel from '@/features/bbcode-presets/PopupPanel.svelte';
  */
 export const POPUP_PANELS: Partial<Record<string, Component>> = {
   'bbcode-presets': BbcodePresetsPanel,
+  highlight: HighlightPanel,
 };

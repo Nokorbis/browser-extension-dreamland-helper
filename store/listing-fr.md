@@ -39,7 +39,8 @@ Paste as-is:
 ```
 Dreamland Reborn QoL rassemble des aides à la rédaction pour le forum de jeu de rôle
 dreamland-reborn.net. Écrire un message long ne devrait pas être risqué ni répétitif :
-l'extension protège votre texte, accélère la mise en forme, et ne fait rien d'autre.
+l'extension protège votre texte, accélère la mise en forme, aide à garder le fil, et ne fait
+rien d'autre.
 
 Elle ne fonctionne que sur dreamland-reborn.net, et tout ce qu'elle enregistre reste dans
 votre navigateur.
@@ -87,6 +88,18 @@ couleurs du forum, une case « Sur la page » ne conserve que les couleurs prés
 relecture du sujet, et ajoute à la fin celles qui manquent à la palette. L'infobulle de chaque
 couleur indique qui l'a utilisée, et combien de fois.
 
+━━━ SURLIGNER LE TEXTE ━━━
+
+Gardez sous les yeux les passages auxquels vous devez répondre. Sélectionnez du texte dans un
+message, choisissez une couleur, et le surlignage reste en place — après rechargement, aussi
+bien sur la page du sujet que dans la relecture affichée sous l'éditeur de réponse.
+
+• Le surlignage suit le message : posé en lisant le sujet, il réapparaît dans la relecture au
+  moment d'écrire la réponse, et inversement.
+• Plusieurs couleurs au choix ; une gomme retire un surlignage.
+• Effacez d'un clic les surlignages d'une discussion, ou tous d'un coup.
+• Rien n'est modifié dans les messages du forum, et tout reste enregistré localement.
+
 ━━━ VIE PRIVÉE ━━━
 
 Aucune donnée collectée, aucun traçage, aucune publicité, aucun serveur tiers. Vos réglages
@@ -104,10 +117,6 @@ https://github.com/Nokorbis/browser-extension-dreamland-helper/blob/main/docs/PR
 • Extension libre (licence MIT), code source public :
   https://github.com/Nokorbis/browser-extension-dreamland-helper
 ```
-
-> One feature listed in the repo README (*surligner le texte*) is **deliberately absent**
-> above: it is an unimplemented stub, shipped disabled. Advertising it would be a
-> listing-accuracy violation. Add it here when it ships.
 
 ### Catégorie
 
@@ -154,10 +163,10 @@ post there without losing it and without retyping the same markup: it warns befo
 composer that still holds unsent text and checks the forum is responding before a post is
 submitted, it inserts user-authored BBCode snippets at the cursor, it filters the forum's own
 colour palette down to the colours already used in the thread so one can be reused in the post,
-and it binds keyboard shortcuts to the forum's own BBCode toolbar buttons. All of these act on
-the same object --
-the post being written in the forum's composer -- and the extension does nothing on any other
-page: its host permission is limited to *://*.dreamland-reborn.net/*.
+it binds keyboard shortcuts to the forum's own BBCode toolbar buttons, and it lets the member
+highlight passages of the thread they are replying to so they keep track of what to answer. All
+of these serve one activity -- composing a post on that forum -- and the extension does nothing
+on any other page: its host permission is limited to *://*.dreamland-reborn.net/*.
 ```
 
 > Why this wording: the extension ships several features, and "single purpose" is judged on
@@ -172,10 +181,10 @@ page: its host permission is limited to *://*.dreamland-reborn.net/*.
 
 ```
 Stores the user's own settings and content locally: which of the extension's features are
-enabled, the BBCode presets the user authors in the options page, and whether the preset panel
-was left open or collapsed. This is the only way to keep a user's presets between page loads.
-Nothing is written anywhere else, and nothing is transmitted -- storage.local only, never
-storage.sync.
+enabled, the BBCode presets the user authors in the options page, the text passages the user
+has highlighted in threads, and whether the preset panel was left open or collapsed. This is
+the only way to keep a user's presets and highlights between page loads. Nothing is written
+anywhere else, and nothing is transmitted -- storage.local only, never storage.sync.
 ```
 
 **Host permission `*://*.dreamland-reborn.net/*`**
@@ -183,7 +192,8 @@ storage.sync.
 ```
 The extension is written for this one forum. The content script must run on its pages to read
 the composer textarea, insert text at the cursor, add a button to the forum's BBCode toolbar,
-and detect submit events. The same origin is also the target of a HEAD request used to check
+detect submit events, and highlight passages the user selects in posts. The same origin is also
+the target of a HEAD request used to check
 the forum is reachable before a post is sent, so a post is not lost to an outage. No other
 host is requested and the extension has no access to any other site.
 ```
@@ -198,9 +208,9 @@ personally identifiable information, health information, financial information,
 authentication information, personal communications, location, web history,
 user activity, website content.
 
-> The presets a user writes are their own content, held on their own device and never sent
-> anywhere. "Collection" in Google's sense means transmission off the device, which does not
-> happen. `docs/PRIVACY.md` says exactly this, in case a reviewer asks.
+> The presets and highlights a user creates are their own content, held on their own device and
+> never sent anywhere. "Collection" in Google's sense means transmission off the device, which
+> does not happen. `docs/PRIVACY.md` says exactly this, in case a reviewer asks.
 
 Then tick all three certifications, which are true:
 - I do not sell or transfer user data to third parties, outside of the approved use cases
