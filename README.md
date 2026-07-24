@@ -11,7 +11,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 | 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, and checks the forum is reachable before sending. |
 | 2 | Highlight GM text | 🚧 Planned | Keep passages of the GM's post highlighted so you can focus while replying. |
 | 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders. |
-| 4 | Color grabber | 🚧 Planned | Grab another poster's color and reuse it. |
+| 4 | Color grabber | ✅ Done | Reuse a colour already in the thread — a checkbox in the forum's colour palette filters it to the colours used in the topic review. |
 | 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, identical on Chrome and Firefox. |
 
 Each feature is independent and can be toggled on or off from the extension's toolbar popup.
@@ -82,12 +82,20 @@ doesn't mention `{SELECTION}` simply replaces the selection instead — and eith
 **Ctrl+Z** undoes the whole insertion, because inserting goes through the browser's native
 edit history rather than around it.
 
-### 4. Color grabber — 🚧 planned
+### 4. Color grabber — ✅ done
 
-Posters often give a character a signature speech color. This feature will let you **grab
-that color and reuse it** without digging through someone's BBCode by hand. Design is still
-to be settled (which DOM sources to read — coloured usernames vs. inline `[color]` spans —
-and how the grabbed color is presented and applied).
+Roleplayers give each character a signature speech colour, and reusing one means digging the
+exact hex out of someone's BBCode. This feature turns phpBB's **own font-colour palette** into a
+grabber: a **"Sur la page"** checkbox — below the palette's colour label — filters the grid down
+to the colours actually used in the **topic review** beneath the editor, blanking the rest so
+only the ones in play remain.
+
+Colours the review uses that the fixed grid doesn't have are **appended at the end**, so a
+hand-typed `[color=#123456]` is grabbable too. Each surviving swatch's tooltip names **who used
+it and how many times**, ordered by usage — which surfaces a colour's owner without guessing who
+authored it versus quoted it. Clicking a swatch inserts `[color=…]` as always (and a single
+**Ctrl+Z** undoes the appended ones, since they go through the browser's native edit history).
+See [ADR 0019](./docs/adr/0019-color-grab-augments-native-palette.md).
 
 ### 5. Keyboard shortcuts — ✅ done
 
