@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 aids for the PHPBB 3.20 roleplay forum at **dreamland-reborn.net**. It is built with
 [WXT](https://wxt.dev) (Vite-based) and Svelte 5.
 
-Planned features (#1 and #3 are implemented; #2 and #4 are stubs awaiting design with the user):
+Planned features (#2 is a stub awaiting design with the user; the rest are implemented):
 
 1. **Message loss protection** (`exit-guard`) — keep a written post from being lost: warn
    before leaving the editor with unsaved text, and verify the forum is reachable before a
@@ -17,7 +17,11 @@ Planned features (#1 and #3 are implemented; #2 and #4 are stubs awaiting design
 3. **BBCode presets** — insert complex BBCode structures in one click, from a button in
    phpBB's BBCode toolbar or a panel beside the editor. Presets live in nested folders and
    are authored in the options page. _(done)_
-4. **Color grabber** — grab another poster's color and reuse it.
+4. **Color grabber** (`color-grab`) — reuse a colour already used in the thread: a checkbox
+   ("Sur la page") in phpBB's own font-colour palette filters the swatches down to the colours
+   used in the topic review, appends any the fixed grid lacks, and each surviving swatch's
+   tooltip lists who used it and how often. See
+   `docs/adr/0019-color-grab-augments-native-palette.md`. _(done)_
 5. **Keyboard shortcuts** (`editor-shortcuts`) — Ctrl+B / Ctrl+I / Alt+Q… over phpBB's BBCode
    toolbar, consistent across browsers. It *clicks* the forum's own buttons rather than
    inserting text, so it inherits their behaviour and covers admin-added BBCodes for free.
@@ -175,6 +179,12 @@ task, create or update the ADR **in the same change** — do not defer it.
   `<form id="postform">` is where our toolbar trigger lives; a submit-type button there fires
   a submit event that exit-guard reads as a genuine post (its `submitterName !== 'post'`
   short-circuit doesn't catch a `null` name) and **sends the half-written message**.
+- **phpBB regenerates the colour palette grid.** `registerPalette` (core.js) replaces
+  `#color_palette_placeholder`'s server-rendered table on DOM-ready and binds each swatch's
+  click *per-anchor*, and a content script can run either side of that. Anything decorating the
+  palette (color-grab's "Sur la page" filter) must install idempotently and re-run when the grid
+  is rebuilt — watch the placeholder with a `MutationObserver`, and keep injected controls
+  *outside* it so they survive. See `docs/adr/0019` and `findColourPalette` in `phpbb.ts`.
 - `beforeunload` (used by exit-guard) is the only cross-browser way to veto navigation
   including the back button; browsers ignore any custom message, so the prompt wording is
   the browser's own.

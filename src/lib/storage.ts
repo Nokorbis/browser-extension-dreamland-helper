@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Settings = {
     'exit-guard': true,
     highlight: false,
     'bbcode-presets': true,
-    'color-grab': false,
+    'color-grab': true,
     'editor-shortcuts': true,
   },
 };

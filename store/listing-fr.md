@@ -80,6 +80,13 @@ actionnent les boutons du forum lui-même, donc ils suivent exactement le compor
 l'éditeur et couvrent aussi les BBCodes propres au forum. Chaque bouton affiche son raccourci
 dans son infobulle.
 
+━━━ PIPETTE À COULEUR ━━━
+
+Réutilisez une couleur déjà employée dans le sujet sans fouiller le BBCode. Dans la palette de
+couleurs du forum, une case « Sur la page » ne conserve que les couleurs présentes dans la
+relecture du sujet, et ajoute à la fin celles qui manquent à la palette. L'infobulle de chaque
+couleur indique qui l'a utilisée, et combien de fois.
+
 ━━━ VIE PRIVÉE ━━━
 
 Aucune donnée collectée, aucun traçage, aucune publicité, aucun serveur tiers. Vos réglages
@@ -98,9 +105,9 @@ https://github.com/Nokorbis/browser-extension-dreamland-helper/blob/main/docs/PR
   https://github.com/Nokorbis/browser-extension-dreamland-helper
 ```
 
-> Two features listed in the repo README (*surligner le texte*, *pipette à couleur*) are
-> **deliberately absent** above: they are unimplemented stubs, shipped disabled. Advertising
-> them would be a listing-accuracy violation. Add them here when they ship.
+> One feature listed in the repo README (*surligner le texte*) is **deliberately absent**
+> above: it is an unimplemented stub, shipped disabled. Advertising it would be a
+> listing-accuracy violation. Add it here when it ships.
 
 ### Catégorie
 
@@ -145,8 +152,10 @@ Dreamland Reborn QoL is a writing aid for composing forum posts on the single si
 dreamland-reborn.net (a phpBB roleplay forum). Its one purpose is to help a member write a
 post there without losing it and without retyping the same markup: it warns before leaving a
 composer that still holds unsent text and checks the forum is responding before a post is
-submitted, it inserts user-authored BBCode snippets at the cursor, and it binds keyboard
-shortcuts to the forum's own BBCode toolbar buttons. All of these act on the same object --
+submitted, it inserts user-authored BBCode snippets at the cursor, it filters the forum's own
+colour palette down to the colours already used in the thread so one can be reused in the post,
+and it binds keyboard shortcuts to the forum's own BBCode toolbar buttons. All of these act on
+the same object --
 the post being written in the forum's composer -- and the extension does nothing on any other
 page: its host permission is limited to *://*.dreamland-reborn.net/*.
 ```

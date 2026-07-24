@@ -31,3 +31,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0016](0016-svelte-in-content-script.md) | Svelte in the content script, mounted in a Shadow root | Accepted |
 | [0017](0017-keyboard-shortcuts-delegate-to-toolbar.md) | Keyboard shortcuts drive phpBB's own toolbar buttons | Accepted |
 | [0018](0018-chrome-web-store-distribution.md) | Chrome Web Store distribution | Accepted |
+| [0019](0019-color-grab-augments-native-palette.md) | Colour grabber augments phpBB's own colour palette | Accepted |

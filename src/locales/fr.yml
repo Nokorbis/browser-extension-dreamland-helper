@@ -102,7 +102,16 @@ features:
       warningDuplicateCursor: "{cur} n'est pris en compte qu'une seule fois."
   colorGrab:
     name: Pipette à couleur
-    description: Récupère la couleur d'un autre membre et la réutilise.
+    description: >-
+      Filtre la palette de couleurs du forum pour ne montrer que celles déjà
+      utilisées dans la relecture du sujet, et indique qui les emploie.
+    # Augments phpBB's own colour palette (#colour_palette) with a checkbox.
+    # {color} / {roster} are @wxt-dev/i18n named substitutions, filled from the
+    # feature (the hex and the "Nom ×N, …" list) — safe, unlike the {SELECTION}
+    # trap documented in CLAUDE.md.
+    filter:
+      label: Sur la page
+      usedBy: "{color} — utilisé par {roster}"
   editorShortcuts:
     name: Raccourcis clavier
     description: >-
