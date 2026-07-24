@@ -1,7 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <title>Dreamland Reborn QoL</title>
-  <!-- Traced from the forum favicon (dreamland-reborn.net/favicon.ico, 64x64). -->
-  <g transform="translate(8.000,121.806) scale(0.002258,-0.002258)" fill-rule="evenodd">
+  <!-- Store/AMO listing icon: the same mark on a badge, for light listing pages. -->
+  <defs>
+    <linearGradient id="dlh-badge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f2a3d"/>
+      <stop offset="1" stop-color="#1b1826"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#dlh-badge)"/>
+  <g transform="translate(20.000,109.419) scale(0.001774,-0.001774)" fill-rule="evenodd">
     <path d="M25225 50252 c-358 -260 -286 -611 250 -1220 439 -500 667 -820 1475
 -2079 165 -256 445 -665 623 -908 177 -242 391 -603 473 -802 83 -198 261
 -491 394 -650 275 -327 414 -816 292 -1028 -104 -181 -1256 -958 -1778 -1199
@@ -38,7 +45,7 @@ c0 -1499 16 -1644 236 -2062 129 -248 325 -630 435 -850 258 -517 831 -1116
 -267 181 -643 390 -836 463 -192 73 -608 262 -924 420 -724 365 -1625 474
 -1951 238z m11945 -30448 c296 -180 630 -904 630 -1365 0 -401 -1398 583
 -1562 1099 -134 422 418 579 932 266z"
-          fill="#F12626" stroke="#3A3437" stroke-width="709"
+          fill="#F12626" stroke="#3A3437" stroke-width="676"
           stroke-linejoin="round" paint-order="stroke fill"/>
     <path d="M26346 49194 c-36 -58 53 -272 197 -475 515 -725 1011 -1386 1275
 -1700 148 -175 300 -419 338 -543 39 -125 197 -386 350 -582 154 -195 368

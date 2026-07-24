@@ -203,3 +203,12 @@ task, create or update the ADR **in the same change** — do not defer it.
 - Icons live in `public/icon/{16,32,48,96,128}.png` (WXT's default `public/` dir, at repo
   root — **not** `src/public/`). Regenerate from the source with:
   `for s in 16 32 48 96 128; do rsvg-convert -w $s -h $s icon.svg -o public/icon/$s.png; done`
+- There are **two** icon sources at repo root, both 128×128 and sharing one traced mark (the
+  forum's flame, vectorised from `dreamland-reborn.net/favicon.ico`):
+  `icon.svg` is the shipped extension icon — bare mark, transparent, so it sits on the
+  browser toolbar. `icon-store.svg` is the **listing** icon for the AMO/Chrome Web Store
+  pages, the same mark on a dark badge (a transparent icon disappears on a white listing
+  page). It is not bundled; render it when filling in a listing with
+  `rsvg-convert -w 512 -h 512 icon-store.svg -o store/icon-512.png`.
+  The mark keeps a white rim *and* a dark outline on purpose — that is what makes it legible
+  on both light and dark toolbars. Don't drop either when editing.
