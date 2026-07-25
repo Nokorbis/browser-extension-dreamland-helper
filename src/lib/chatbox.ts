@@ -4,7 +4,7 @@
  * it is reachable from the same content script as `phpbb.ts`, but its markup is
  * a different system with its own id scheme and no `bbcode-*` classes, so it
  * gets its own module rather than being folded into `phpbb.ts` — see
- * docs/adr/0022-keyboard-shortcuts-cover-the-chat-widget.md.
+ * docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md.
  *
  * Two DOM shapes exist for the same widget, both handled here:
  *  - the shoutbox embedded on the forum homepage (`#ajaxChatInputField`,

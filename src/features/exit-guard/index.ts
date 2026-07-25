@@ -29,8 +29,7 @@ const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
  *    error page and lose the draft — so instead we hold it and show a modal.
  *    Its default action keeps the user on the page (text intact); a "continue
  *    anyway" escape hatch covers a false-positive check. See
- *    docs/adr/0011-presend-server-reachability-check.md and
- *    docs/adr/0021-guard-preview-and-draft-submits.md.
+ *    docs/adr/0011-presend-server-reachability-check.md.
  */
 export const exitGuard: Feature = {
   id: 'exit-guard',

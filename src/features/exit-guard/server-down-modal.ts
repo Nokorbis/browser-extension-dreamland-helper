@@ -13,8 +13,7 @@ import { createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
  * Enter, Space, Escape or backdrop click keeps the draft. "Continuer quand
  * même" is the deliberate escape hatch for a false-positive check. This modal
  * is shared by all three guarded submits (post, preview, save-draft), so its
- * copy is deliberately action-neutral. See
- * docs/adr/0021-guard-preview-and-draft-submits.md.
+ * copy is deliberately action-neutral.
  */
 export interface ServerDownModalHandlers {
   /** User chose to stay on the page (default / safe). */

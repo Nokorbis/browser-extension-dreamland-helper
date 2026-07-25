@@ -48,10 +48,10 @@ import {
  *    actually matched.
  *
  * It binds independently against every composer surface the current page has —
- * phpBB's `#message` and/or the chat's textarea, see docs/adr/0022 — so a page
- * with only one of the two still works, and a page with neither is a silent
- * no-op. The map and the matching rules live in `./keymap.ts`, which knows
- * nothing about either surface; this file is DOM work.
+ * phpBB's `#message` and/or the chat's textarea — so a page with only one of
+ * the two still works, and a page with neither is a silent no-op. The map and
+ * the matching rules live in `./keymap.ts`, which knows nothing about either
+ * surface; this file is DOM work.
  */
 
 /** Marks a button we have already annotated, so a re-run can't double the hint. */

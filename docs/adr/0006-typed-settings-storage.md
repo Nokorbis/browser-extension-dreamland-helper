@@ -24,8 +24,9 @@ back rather than being `undefined`.
 
 - The popup and content script share one schema and one set of defaults; neither reaches
   into `browser.storage` directly.
-- Adding a feature requires adding its default here (one of the three touch-points from
-  [[0004-feature-registry]]); forgetting means it has no default state.
+- Adding a feature requires adding its default here (one of the touch-points from
+  [[0004-feature-registry]]'s "Adding a feature" checklist); forgetting means it has no
+  default state.
 - Uses the cross-browser `browser.*` API, so the layer is browser-agnostic
   (see [[0002-chrome-mv3-firefox-mv2]]).
 - The merge-over-defaults strategy means new default-`true` features light up for existing

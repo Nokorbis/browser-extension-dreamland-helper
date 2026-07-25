@@ -24,13 +24,16 @@ logged and never blocks the others.
 
 ## Consequences
 
-- Adding a feature touches three known places: its folder, `ALL_FEATURES`, and its default
-  in the settings (see [[0006-typed-settings-storage]]) — and the popup picks it up for free
-  because it iterates the same array (see [[0003-svelte-5-popup-ui]]).
+- Adding a feature touches a small, known set of places — its folder, `ALL_FEATURES`, and its
+  default in the settings (see [[0006-typed-settings-storage]]) at minimum, plus whatever later
+  cross-cutting layers add their own touchpoint (locale keys per [[0009-i18n-wxt-i18n]], an
+  optional popup panel per [[0014-popup-accordion-options-page]]) — see the "Adding a feature"
+  checklist in CLAUDE.md for the current, authoritative list. The popup picks a new feature up
+  for free because it iterates the same array (see [[0003-svelte-5-popup-ui]]).
 - Feature isolation is real: independent lifecycles, independent failures.
 - The `Feature.id` is a persisted settings key, so it is effectively permanent — renaming a
   shipped id silently resets users' toggles.
 - Shared services (page context today) flow through the `FeatureContext` handed to `setup()`,
   giving one place to grow cross-feature capabilities.
 
-Related: [[0005-centralize-phpbb-dom]], [[0006-typed-settings-storage]], [[0003-svelte-5-popup-ui]]
+Related: [[0005-centralize-phpbb-dom]], [[0006-typed-settings-storage]], [[0003-svelte-5-popup-ui]], [[0009-i18n-wxt-i18n]], [[0014-popup-accordion-options-page]]

@@ -73,8 +73,10 @@ mixing it in would dilute the one job that module has. Only the *selectors* —
   rule ([[0015-preset-placeholder-syntax]]) safe rather than destructive — the two decisions
   depend on each other.
 - The pure/impure split is now explicit: `renderPreset` decides *what* text to insert,
-  `insertAtRange` decides *how*. A keyboard-shortcut feature inserting plain `[b]…[/b]` reuses
-  both without new insertion code, and so does colour grab.
+  `insertAtRange` decides *how*. Colour grab reuses both without new insertion code.
+  `editor-shortcuts` ([[0017-keyboard-shortcuts-delegate-to-toolbar]]) took a different path —
+  click-delegation, never writing to the textarea — so this rule ended up governing presets and
+  colour grab, not shortcuts.
 - The rule "never write to a textarea except through `insertAtRange`" is only as good as its
   observance; it is easy to reach for `setRangeText` in a hurry and reintroduce the bug in a
   way no type check catches. This is recorded in CLAUDE.md for that reason.
@@ -82,4 +84,4 @@ mixing it in would dilute the one job that module has. Only the *selectors* —
   no autosave or character counting. The synthesized event in the fallback is insurance against
   a skin extension that does, not a present requirement.
 
-Related: [[0005-centralize-phpbb-dom]], [[0015-preset-placeholder-syntax]], [[0008-beforeunload-exit-guard]]
+Related: [[0005-centralize-phpbb-dom]], [[0015-preset-placeholder-syntax]], [[0008-beforeunload-exit-guard]], [[0017-keyboard-shortcuts-delegate-to-toolbar]]
