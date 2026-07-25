@@ -147,9 +147,9 @@ features:
   editorShortcuts:
     name: Raccourcis clavier
     description: >-
-      Ajoute des raccourcis aux boutons BBCode de l'éditeur — Ctrl+B, Ctrl+I,
-      Alt+Q… — identiques sur Firefox et Chrome, actifs uniquement dans la zone
-      de rédaction.
+      Ajoute des raccourcis aux boutons BBCode de l'éditeur et de la Tribune —
+      Ctrl+B, Ctrl+I, Alt+Q… — identiques sur Firefox et Chrome, actifs
+      uniquement dans une zone de rédaction.
     # Rewrites each toolbar button's own tooltip. {base} is phpBB's original
     # title, {combo} the shortcut(s) — both are intended @wxt-dev/i18n named
     # substitutions, unlike the {SELECTION} trap documented above.

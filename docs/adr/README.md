@@ -29,8 +29,9 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0014](0014-popup-accordion-options-page.md) | Popup accordion plus an options page for feature settings | Accepted |
 | [0015](0015-preset-placeholder-syntax.md) | Preset placeholder syntax as a frozen contract | Accepted |
 | [0016](0016-svelte-in-content-script.md) | Svelte in the content script, mounted in a Shadow root | Accepted |
-| [0017](0017-keyboard-shortcuts-delegate-to-toolbar.md) | Keyboard shortcuts drive phpBB's own toolbar buttons | Accepted |
+| [0017](0017-keyboard-shortcuts-delegate-to-toolbar.md) | Keyboard shortcuts drive phpBB's own toolbar buttons | Accepted — extended by [0022](0022-keyboard-shortcuts-cover-the-chat-widget.md) |
 | [0018](0018-chrome-web-store-distribution.md) | Chrome Web Store distribution | Accepted |
 | [0019](0019-color-grab-augments-native-palette.md) | Colour grabber augments phpBB's own colour palette | Accepted |
 | [0020](0020-persistent-text-highlights.md) | Persistent text highlights via the CSS Custom Highlight API | Accepted |
 | [0021](0021-guard-preview-and-draft-submits.md) | Extend the pre-send reachability guard to Preview and Save-draft | Accepted |
+| [0022](0022-keyboard-shortcuts-cover-the-chat-widget.md) | Keyboard shortcuts cover the chat widget too | Accepted |
