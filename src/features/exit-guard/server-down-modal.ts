@@ -1,4 +1,5 @@
 import { i18n } from '#i18n';
+import { createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
 
 /**
  * The "server unavailable" confirmation the exit guard shows when the pre-send
@@ -19,23 +20,16 @@ export interface ServerDownModalHandlers {
   onSendAnyway: () => void;
 }
 
-/** Set inline styles via `.style` (CSP-safe, unlike an injected `<style>`). */
-function styled<T extends HTMLElement>(el: T, css: string): T {
-  el.style.cssText = css;
-  return el;
-}
-
 export function showServerDownModal(
   handlers: ServerDownModalHandlers,
 ): () => void {
-  const host = styled(document.createElement('div'), 'all:initial');
-  const shadow = host.attachShadow({ mode: 'open' });
+  const { host, shadow } = createShadowHost();
 
   const backdrop = styled(
     document.createElement('div'),
-    'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;' +
+    `position:fixed;inset:0;z-index:${MAX_Z};display:flex;align-items:center;` +
       'justify-content:center;background:rgba(0,0,0,0.5);' +
-      'font:14px/1.5 system-ui,-apple-system,sans-serif;',
+      `font:14px/1.5 ${SYSTEM_FONT};`,
   );
 
   const dialog = styled(

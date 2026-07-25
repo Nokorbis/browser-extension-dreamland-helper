@@ -19,11 +19,6 @@ export function findMessageTextarea(): HTMLTextAreaElement | null {
   );
 }
 
-/** True when the current page is a post/reply/PM composer. */
-export function isPostingPage(): boolean {
-  return findMessageTextarea() !== null;
-}
-
 /**
  * The composer `<form>` that owns the message textarea. phpBB renders it as
  * `<form id="postform" method="post" action="./posting.php?...">`, but we reach
@@ -171,17 +166,6 @@ export function watchTheme(onChange: (dark: boolean) => void): () => void {
     attributeFilter: ['class'],
   });
   return () => observer.disconnect();
-}
-
-/**
- * Author-coloured usernames. phpBB emits `<span class="username-coloured"
- * style="color: #rrggbb">` for members whose group has a colour. Useful for the
- * colour-grab feature (#4).
- */
-export function findColouredUsernames(): HTMLElement[] {
-  return Array.from(
-    document.querySelectorAll<HTMLElement>('.username-coloured'),
-  );
 }
 
 /**

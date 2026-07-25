@@ -1,15 +1,16 @@
 /**
- * Tests for the one piece of `@/lib/textarea` that is arithmetic rather than DOM
+ * Tests for the pieces of `@/lib/textarea` that are arithmetic rather than DOM
  * work: `planInsertion`, which decides the clamped replacement range and whether
- * the result would blow past a `maxlength`.
+ * the result would blow past a `maxlength`, and `wrapSelection`, which computes
+ * the wrapped text and caret offset for an open/close pair.
  *
  * `insertAtRange` itself stays untested on purpose — it is `execCommand` and
  * focus handling, which is cheaper to verify by hand against a real composer
- * (see the scoping note in vitest.config.ts). Extracting the decision is what
- * lets the part that can silently corrupt a post be covered without a DOM.
+ * (see the scoping note in vitest.config.ts). Extracting the decisions is what
+ * lets the parts that can silently corrupt a post be covered without a DOM.
  */
 import { describe, it, expect } from 'vitest';
-import { planInsertion } from './textarea';
+import { planInsertion, wrapSelection } from './textarea';
 
 /** No length limit — what the target forum actually reports. */
 const NO_LIMIT = -1;
@@ -85,5 +86,19 @@ describe('maxlength', () => {
     // small; clamped to 10 it removes 8 and the insertion is correctly refused.
     const plan = planInsertion(10, { start: 2, end: 99 }, 50, 20);
     expect(plan).toEqual({ ok: false, projected: 52 });
+  });
+});
+
+describe('wrapSelection', () => {
+  it('keeps a non-empty selection inside the pair, caret after the close', () => {
+    const { text, caretOffset } = wrapSelection('[color=#ff0000]', '[/color]', 'hi');
+    expect(text).toBe('[color=#ff0000]hi[/color]');
+    expect(caretOffset).toBe(text.length);
+  });
+
+  it('drops an empty pair with the caret between open and close', () => {
+    const { text, caretOffset } = wrapSelection('[color=#ff0000]', '[/color]', '');
+    expect(text).toBe('[color=#ff0000][/color]');
+    expect(caretOffset).toBe('[color=#ff0000]'.length);
   });
 });

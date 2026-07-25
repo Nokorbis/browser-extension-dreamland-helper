@@ -1,4 +1,11 @@
 import { i18n } from '#i18n';
+import {
+  chromeFor,
+  createShadowHost,
+  MAX_Z,
+  styled,
+  SYSTEM_FONT,
+} from '@/lib/shadow-ui';
 import { HIGHLIGHT_COLORS } from './palette';
 
 /**
@@ -20,41 +27,6 @@ import { HIGHLIGHT_COLORS } from './palette';
  * These are dumb views: the feature owns the pending range and the store, and
  * only wires the callbacks here.
  */
-
-const MAX_Z = '2147483647';
-
-interface Chrome {
-  surface: string;
-  fg: string;
-  muted: string;
-  border: string;
-  hover: string;
-  shadow: string;
-}
-
-// Mirrors the --dlh-* palette (src/features/bbcode-presets/palette.css) so an
-// injected control reads as part of the forum surface in either theme.
-const LIGHT: Chrome = {
-  surface: '#ffffff',
-  fg: '#1c1f26',
-  muted: '#5a6170',
-  border: '#b9cfe4',
-  hover: '#dce9f7',
-  shadow: 'rgba(20,40,70,0.22)',
-};
-const DARK: Chrome = {
-  surface: '#252a33',
-  fg: '#e6e9ef',
-  muted: '#a0a7b5',
-  border: '#3a4150',
-  hover: '#333947',
-  shadow: 'rgba(0,0,0,0.45)',
-};
-
-function styled<T extends HTMLElement>(el: T, css: string): T {
-  el.style.cssText = css;
-  return el;
-}
 
 /**
  * The localised name of a palette colour. A switch (not a templated key) so
@@ -102,11 +74,10 @@ export interface SelectionToolbar {
 export function createSelectionToolbar(
   handlers: SelectionToolbarHandlers,
 ): SelectionToolbar {
-  let chrome = LIGHT;
+  let chrome = chromeFor(false);
   let shown = false;
 
-  const host = styled(document.createElement('div'), 'all:initial');
-  const shadow = host.attachShadow({ mode: 'open' });
+  const { host, shadow } = createShadowHost();
 
   const bar = styled(
     document.createElement('div'),
@@ -114,7 +85,7 @@ export function createSelectionToolbar(
       MAX_Z +
       ';display:none;box-sizing:border-box;gap:5px;align-items:center;' +
       'padding:5px 6px;border-radius:8px;' +
-      'font:13px/1 system-ui,-apple-system,sans-serif;',
+      `font:13px/1 ${SYSTEM_FONT};`,
   );
 
   const swatches = HIGHLIGHT_COLORS.map((color) => {
@@ -139,7 +110,7 @@ export function createSelectionToolbar(
   const eraser = styled(
     document.createElement('button'),
     'width:22px;height:20px;padding:0;border-radius:4px;cursor:pointer;' +
-      'font:15px/1 system-ui;background:transparent;',
+      `font:15px/1 ${SYSTEM_FONT};background:transparent;`,
   );
   eraser.type = 'button';
   eraser.textContent = '⌫';
@@ -191,7 +162,7 @@ export function createSelectionToolbar(
       shown = false;
     },
     setDark(dark) {
-      chrome = dark ? DARK : LIGHT;
+      chrome = chromeFor(dark);
       paint();
     },
     destroy() {
@@ -219,18 +190,17 @@ export interface ClearControl {
 export function createClearControl(
   handlers: ClearControlHandlers,
 ): ClearControl {
-  let chrome = LIGHT;
+  let chrome = chromeFor(false);
   let expanded = false;
 
-  const host = styled(document.createElement('div'), 'all:initial');
-  const shadow = host.attachShadow({ mode: 'open' });
+  const { host, shadow } = createShadowHost();
 
   const root = styled(
     document.createElement('div'),
     'position:fixed;right:12px;bottom:12px;z-index:' +
       MAX_Z +
       ';display:none;flex-direction:column;align-items:flex-end;gap:6px;' +
-      'font:13px/1.2 system-ui,-apple-system,sans-serif;',
+      `font:13px/1.2 ${SYSTEM_FONT};`,
   );
 
   const menu = styled(
@@ -333,7 +303,7 @@ export function createClearControl(
       );
     },
     setDark(dark) {
-      chrome = dark ? DARK : LIGHT;
+      chrome = chromeFor(dark);
       paint();
     },
     destroy() {

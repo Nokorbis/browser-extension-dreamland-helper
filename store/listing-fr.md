@@ -45,7 +45,7 @@ rien d'autre.
 Elle ne fonctionne que sur dreamland-reborn.net, et tout ce qu'elle enregistre reste dans
 votre navigateur.
 
-━━━ PROTECTION PERTE DE MESSAGE ━━━
+━━━ PROTECTION CONTRE LA PERTE DE MESSAGE ━━━
 
 Deux façons classiques de perdre un message écrit : quitter la page sans avoir envoyé, ou
 appuyer sur « Envoyer » au moment où le forum ne répond plus.
@@ -60,14 +60,14 @@ appuyer sur « Envoyer » au moment où le forum ne répond plus.
 
 ━━━ PRÉRÉGLAGES BBCODE ━━━
 
-Enregistrez vos structures BBCode compliquées une fois, insérez-les en un clic.
+Enregistrez vos structures BBCode complexes une fois, insérez-les en un clic.
 
 • Des dossiers imbriqués autant que nécessaire — un par personnage, par exemple.
 • Deux façons d'insérer : un bouton ajouté à la barre d'outils BBCode du forum, et un
   panneau qui se déplie à côté de l'éditeur.
 • Deux marqueurs facultatifs dans un préréglage : le texte sélectionné y est réinjecté
-  (avec au choix majuscules, minuscules, capitales ou espaces retirés), et la position du
-  curseur après insertion est choisie par vous.
+  (avec au choix majuscules, minuscules, initiales en majuscules ou espaces retirés), et
+  vous choisissez la position du curseur après insertion.
 • Un seul Ctrl+Z annule toute l'insertion : elle passe par l'historique natif du navigateur.
 
 Les préréglages se créent dans la page d'options de l'extension, avec un aperçu en direct.
@@ -81,14 +81,14 @@ actionnent les boutons du forum lui-même, donc ils suivent exactement le compor
 l'éditeur et couvrent aussi les BBCodes propres au forum. Chaque bouton affiche son raccourci
 dans son infobulle.
 
-━━━ PIPETTE À COULEUR ━━━
+━━━ PIPETTE DE COULEUR ━━━
 
 Réutilisez une couleur déjà employée dans le sujet sans fouiller le BBCode. Dans la palette de
 couleurs du forum, une case « Sur la page » ne conserve que les couleurs présentes dans la
 relecture du sujet, et ajoute à la fin celles qui manquent à la palette. L'infobulle de chaque
 couleur indique qui l'a utilisée, et combien de fois.
 
-━━━ SURLIGNER LE TEXTE ━━━
+━━━ SURLIGNAGE DU TEXTE ━━━
 
 Gardez sous les yeux les passages auxquels vous devez répondre. Sélectionnez du texte dans un
 message, choisissez une couleur, et le surlignage reste en place — après rechargement, aussi
@@ -97,7 +97,7 @@ bien sur la page du sujet que dans la relecture affichée sous l'éditeur de ré
 • Le surlignage suit le message : posé en lisant le sujet, il réapparaît dans la relecture au
   moment d'écrire la réponse, et inversement.
 • Plusieurs couleurs au choix ; une gomme retire un surlignage.
-• Effacez d'un clic les surlignages d'une discussion, ou tous d'un coup.
+• Effacez d'un clic les surlignages d'un sujet, ou tous d'un coup.
 • Rien n'est modifié dans les messages du forum, et tout reste enregistré localement.
 
 ━━━ VIE PRIVÉE ━━━

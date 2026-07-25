@@ -20,7 +20,7 @@
 </script>
 
 <main>
-  <h1>Dreamland Reborn QoL</h1>
+  <h1>{i18n.t('extName')}</h1>
   <ul>
     {#each ALL_FEATURES as feature (feature.id)}
       {@const Panel = feature.implemented ? POPUP_PANELS[feature.id] : undefined}

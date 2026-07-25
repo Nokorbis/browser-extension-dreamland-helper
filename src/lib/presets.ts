@@ -14,12 +14,23 @@
  * the root" rather than an unparseable blob. `buildPresetTree` derives the tree
  * for rendering.
  *
- * Everything below `newId` is pure: the mutations take a store and return a new
- * one, so the options page can hold a store in `$state`, apply a mutation, and
- * persist the result — and so all of it is unit-testable without a browser.
+ * The mutations below are pure: they take a store and return a new one, so the
+ * options page can hold a store in `$state`, apply a mutation, and persist the
+ * result — and so all of it is unit-testable without a browser. Ids are minted
+ * with `newId` (re-exported from `@/lib/store-kit`) and passed in by the caller.
  */
-import { browser } from '#imports';
 import { warn } from '@/lib/log';
+import {
+  isRecord,
+  loadStore,
+  newId,
+  readString,
+  saveStore,
+  watchStore,
+} from '@/lib/store-kit';
+
+// Re-export so `@/lib/presets` stays the id-minting import site callers already use.
+export { newId };
 
 /** Storage key. Separate from `settings` — see docs/adr/0012. */
 export const PRESETS_KEY = 'bbcodePresets';
@@ -58,21 +69,6 @@ export function emptyPresetStore(): PresetStore {
   return { version: PRESETS_SCHEMA_VERSION, folders: {}, presets: {} };
 }
 
-/**
- * Mint an id for a new folder or preset.
- *
- * `crypto.randomUUID()` is gated on a secure context. Extension pages always
- * qualify, and in practice only the options page ever creates records, so the
- * fallback is insurance rather than a load-bearing path. It is not
- * cryptographically strong — irrelevant for a local record id.
- */
-export function newId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-}
-
 // ---------------------------------------------------------------------------
 // Normalization
 // ---------------------------------------------------------------------------
@@ -82,14 +78,6 @@ export function newId(): string {
  * Empty at v1; the plumbing exists so the first migration is a one-line change.
  */
 const MIGRATIONS: Record<number, (store: PresetStore) => PresetStore> = {};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
 
 function readOptionalId(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
@@ -231,8 +219,7 @@ export function normalizePresetStore(raw: unknown): PresetStore {
 // ---------------------------------------------------------------------------
 
 export async function loadPresetStore(): Promise<PresetStore> {
-  const stored = (await browser.storage.local.get(PRESETS_KEY))[PRESETS_KEY];
-  return normalizePresetStore(stored);
+  return loadStore(PRESETS_KEY, normalizePresetStore);
 }
 
 /**
@@ -274,31 +261,18 @@ export function toPlainStore(store: PresetStore): PresetStore {
 }
 
 export async function savePresetStore(store: PresetStore): Promise<void> {
-  await browser.storage.local.set({ [PRESETS_KEY]: toPlainStore(store) });
+  await saveStore(PRESETS_KEY, toPlainStore(store));
 }
 
 /**
  * Observe the store from any context — content script, popup, options page.
- * Returns an unsubscriber; wire it into the feature's cleanup.
- *
- * Uses the top-level `browser.storage.onChanged` filtered on the area rather
- * than `browser.storage.local.onChanged`, whose support is patchy on Firefox MV2.
+ * Returns an unsubscriber; wire it into the feature's cleanup. The area filter
+ * and the choice of the top-level `onChanged` live in `watchStore`.
  */
 export function watchPresetStore(
   onChange: (store: PresetStore) => void,
 ): () => void {
-  const listener = (
-    changes: Record<string, { newValue?: unknown }>,
-    areaName: string,
-  ) => {
-    if (areaName !== 'local') return;
-    const change = changes[PRESETS_KEY];
-    if (change === undefined) return;
-    onChange(normalizePresetStore(change.newValue));
-  };
-
-  browser.storage.onChanged.addListener(listener);
-  return () => browser.storage.onChanged.removeListener(listener);
+  return watchStore(PRESETS_KEY, normalizePresetStore, onChange);
 }
 
 // ---------------------------------------------------------------------------

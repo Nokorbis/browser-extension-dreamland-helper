@@ -17,9 +17,16 @@
  * `src/features/highlight/anchor.ts`). `topicId` lets the popup clear a whole
  * discussion without reading the page.
  */
-import { browser } from '#imports';
 import { warn } from '@/lib/log';
-import { newId } from '@/lib/presets';
+import {
+  isRecord,
+  loadStore,
+  newId,
+  readInt,
+  readString,
+  saveStore,
+  watchStore,
+} from '@/lib/store-kit';
 
 /** Storage key. Separate from `settings` and `bbcodePresets` — see docs/adr/0012. */
 export const HIGHLIGHTS_KEY = 'highlights';
@@ -55,7 +62,7 @@ export function emptyHighlightStore(): HighlightStore {
   return { version: HIGHLIGHTS_SCHEMA_VERSION, highlights: {} };
 }
 
-// Re-export so callers mint ids without also importing from presets.
+// Re-export so highlight callers mint ids straight from this module.
 export { newId };
 
 // ---------------------------------------------------------------------------
@@ -67,18 +74,6 @@ export { newId };
  * Empty at v1; the plumbing exists so the first migration is a one-line change.
  */
 const MIGRATIONS: Record<number, (store: HighlightStore) => HighlightStore> = {};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function readString(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-function readInt(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.trunc(value) : null;
-}
 
 function readCreatedAt(value: unknown): number {
   const n = readInt(value);
@@ -156,8 +151,7 @@ export function normalizeHighlightStore(raw: unknown): HighlightStore {
 // ---------------------------------------------------------------------------
 
 export async function loadHighlightStore(): Promise<HighlightStore> {
-  const stored = (await browser.storage.local.get(HIGHLIGHTS_KEY))[HIGHLIGHTS_KEY];
-  return normalizeHighlightStore(stored);
+  return loadStore(HIGHLIGHTS_KEY, normalizeHighlightStore);
 }
 
 /**
@@ -187,34 +181,18 @@ export function toPlainHighlightStore(store: HighlightStore): HighlightStore {
 }
 
 export async function saveHighlightStore(store: HighlightStore): Promise<void> {
-  await browser.storage.local.set({
-    [HIGHLIGHTS_KEY]: toPlainHighlightStore(store),
-  });
+  await saveStore(HIGHLIGHTS_KEY, toPlainHighlightStore(store));
 }
 
 /**
  * Observe the store from any context — content script or popup. Returns an
- * unsubscriber; wire it into the feature's cleanup.
- *
- * Uses top-level `browser.storage.onChanged` filtered on the area rather than
- * `browser.storage.local.onChanged`, whose support is patchy on Firefox MV2 —
- * same choice as `watchPresetStore`.
+ * unsubscriber; wire it into the feature's cleanup. The area filter and the
+ * choice of the top-level `onChanged` live in `watchStore`.
  */
 export function watchHighlightStore(
   onChange: (store: HighlightStore) => void,
 ): () => void {
-  const listener = (
-    changes: Record<string, { newValue?: unknown }>,
-    areaName: string,
-  ) => {
-    if (areaName !== 'local') return;
-    const change = changes[HIGHLIGHTS_KEY];
-    if (change === undefined) return;
-    onChange(normalizeHighlightStore(change.newValue));
-  };
-
-  browser.storage.onChanged.addListener(listener);
-  return () => browser.storage.onChanged.removeListener(listener);
+  return watchStore(HIGHLIGHTS_KEY, normalizeHighlightStore, onChange);
 }
 
 // ---------------------------------------------------------------------------

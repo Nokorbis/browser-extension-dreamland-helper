@@ -9,8 +9,14 @@ import {
   findTopicReview,
   readReviewColorUsages,
 } from '@/lib/phpbb';
-import { insertAtRange, readSelection, type TextRange } from '@/lib/textarea';
+import {
+  insertAtRange,
+  readSelection,
+  wrapSelection,
+  type TextRange,
+} from '@/lib/textarea';
 import { log } from '@/lib/log';
+import { setOrRemove } from '@/lib/dom';
 import {
   aggregateUsage,
   canonicalizeColor,
@@ -93,9 +99,11 @@ export const colorGrab: Feature = {
 
     /** Wrap the selection (or drop an empty pair) in the clicked colour. */
     const insertColor = (color: string, range: TextRange, selection: string) => {
-      const open = `[color=${color}]`;
-      const text = selection === '' ? `${open}[/color]` : `${open}${selection}[/color]`;
-      const caretOffset = selection === '' ? open.length : text.length;
+      const { text, caretOffset } = wrapSelection(
+        `[color=${color}]`,
+        '[/color]',
+        selection,
+      );
       insertAtRange(textarea, range, text, caretOffset);
     };
 
@@ -257,9 +265,3 @@ export const colorGrab: Feature = {
     };
   },
 };
-
-/** Put an attribute back exactly as it was — absent if it was absent. */
-function setOrRemove(el: HTMLElement, name: string, value: string | null): void {
-  if (value === null) el.removeAttribute(name);
-  else el.setAttribute(name, value);
-}

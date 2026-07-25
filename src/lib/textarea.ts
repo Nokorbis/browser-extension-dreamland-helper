@@ -95,6 +95,23 @@ export function planInsertion(
 }
 
 /**
+ * The text and caret offset for wrapping a selection in an `open`/`close` pair,
+ * ready to hand to `insertAtRange`. An empty selection yields just the pair with
+ * the caret between them; a non-empty one keeps the selection inside with the
+ * caret after the whole thing. Pure arithmetic, so it is unit-tested — the caret
+ * maths is exactly what silently misplaces the cursor when it's wrong.
+ */
+export function wrapSelection(
+  open: string,
+  close: string,
+  selection: string,
+): { text: string; caretOffset: number } {
+  const text = `${open}${selection}${close}`;
+  const caretOffset = selection === '' ? open.length : text.length;
+  return { text, caretOffset };
+}
+
+/**
  * Replace `range` with `text`, then place the caret `caretOffset` characters
  * into what was inserted.
  *

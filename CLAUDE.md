@@ -18,7 +18,7 @@ Features (all implemented):
    and the reply composer's topic review (keyed by phpBB's numeric post id). Painted with the
    CSS Custom Highlight API — no DOM mutation — and cleared per-thread or globally. See
    `docs/adr/0020-persistent-text-highlights.md`. _(done)_
-3. **BBCode presets** — insert complex BBCode structures in one click, from a button in
+3. **BBCode presets** (`bbcode-presets`) — insert complex BBCode structures in one click, from a button in
    phpBB's BBCode toolbar or a panel beside the editor. Presets live in nested folders and
    are authored in the options page. _(done)_
 4. **Color grabber** (`color-grab`) — reuse a colour already used in the thread: a checkbox
@@ -47,12 +47,15 @@ pnpm test            # vitest — pure logic only (see below)
 `pnpm check` is the type gate — there is no standalone `tsc` build step (WXT/Vite bundles
 without one). Run it after any change to `.ts`/`.svelte`.
 
-`pnpm test` covers **pure logic only**: the preset template engine
-(`src/features/bbcode-presets/template.ts`), the preset store's tree invariants
-(`src/lib/presets.ts`), and the insertion arithmetic (`planInsertion` in
-`src/lib/textarea.ts`). That scoping is deliberate — everything else is DOM/browser glue that
-is cheaper to verify by hand against a real forum page. Don't backfill tests for it; do keep
-new pure logic covered. `pnpm check` and `pnpm test` are both CI gates.
+`pnpm test` covers **pure logic only** — the preset template engine
+(`src/features/bbcode-presets/template.ts`), the preset and highlight store invariants
+(`src/lib/presets.ts`, `src/lib/highlights.ts`), the insertion arithmetic (`planInsertion` /
+`wrapSelection` in `src/lib/textarea.ts`), keymap resolution
+(`src/features/editor-shortcuts/keymap.ts`), highlight anchoring
+(`src/features/highlight/anchor.ts`), and the colour-grab palette filter
+(`src/features/color-grab/palette-filter.ts`). That scoping is deliberate — everything else is
+DOM/browser glue that is cheaper to verify by hand against a real forum page. Don't backfill
+tests for it; do keep new pure logic covered. `pnpm check` and `pnpm test` are both CI gates.
 
 The suite runs on plain node with **no DOM environment**, and adding one isn't the way to
 cover DOM-adjacent code. When a module mixes real arithmetic with DOM work, extract the
@@ -86,10 +89,13 @@ The flow that ties multiple files together:
   the content script reads it on boot. It holds **only** on/off flags — a feature that owns
   *data* gets its own key and module (see below).
 - **Feature-owned data** goes in its own `browser.storage.local` key with its own typed
-  module — `src/lib/presets.ts` is the reference. The version lives *inside* the payload, the
-  shape is flat records linked by id, every read runs a repair pass, and mutations are pure
-  (`store → store`). Follow that shape rather than inventing a second idiom.
-  See `docs/adr/0012-feature-owned-data-stores.md`.
+  module — `src/lib/presets.ts` is the reference, `src/lib/highlights.ts` the second. The
+  version lives *inside* the payload, the shape is flat records linked by id, every read runs a
+  repair pass, and mutations are pure (`store → store`). The identical plumbing every such
+  module needs — `isRecord`/`readString`/`readInt` and the `loadStore`/`saveStore`/`watchStore`
+  helpers — lives in `src/lib/store-kit.ts`; a module still owns its key, its shape, its
+  `normalize`, its own explicit `toPlain…`, and its mutations. Follow that shape rather than
+  inventing a second idiom. See `docs/adr/0012-feature-owned-data-stores.md`.
 - `src/lib/phpbb.ts` is the **only** place that knows phpBB's DOM. All selectors
   (`#message` textarea, `#format-buttons`, `.username-coloured`, etc.) and the forum origin
   (`FORUM_MATCHES`, reused by the content-script manifest) live here. Features must go through

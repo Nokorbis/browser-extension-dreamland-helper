@@ -23,9 +23,9 @@ options:
 # compiled message-key names allow only [A-Za-z0-9_], no hyphens.
 features:
   exitGuard:
-    name: Protection perte de message
+    name: Protection contre la perte de message
     description: >-
-      Avertit avant de quitter un éditeur contenant du texte non enregistré, et
+      Avertit avant de quitter un éditeur contenant du texte non envoyé, et
       vérifie que le serveur répond avant d'envoyer un message.
     serverDown:
       title: Serveur indisponible
@@ -35,7 +35,7 @@ features:
       stay: Rester sur la page
       sendAnyway: Envoyer quand même
   highlight:
-    name: Surligner le texte
+    name: Surlignage du texte
     description: >-
       Surligne des passages d'un message et les conserve — même après
       rechargement et entre le sujet et la fenêtre de réponse — jusqu'à ce que
@@ -57,17 +57,17 @@ features:
         "0": Aucun surlignage
         "1": 1 surlignage
         "n": $1 surlignages
-      clearTopic: Effacer cette discussion
-      clearAll: Effacer tout
+      clearTopic: Effacer ce sujet
+      clearAll: Tout effacer
     # The popup accordion panel.
     popup:
       count:
         "0": Aucun surlignage enregistré
         "1": 1 surlignage enregistré
         "n": $1 surlignages enregistrés
-      clearTopic: Effacer cette discussion
-      clearAll: Effacer tout
-      noThread: Ouvrez un sujet du forum pour effacer une discussion précise.
+      clearTopic: Effacer ce sujet
+      clearAll: Tout effacer
+      noThread: Ouvrez un sujet du forum pour en effacer les surlignages.
   bbcodePresets:
     name: Préréglages BBCode
     description: Insère des structures BBCode complexes en un clic.
@@ -120,7 +120,7 @@ features:
       empty: Aucun préréglage pour l'instant.
       noSelection: Sélectionnez un préréglage à gauche, ou créez-en un.
       saved: Enregistré
-      saveFailed: Échec de l'enregistrement — vos modifications n'ont pas été sauvegardées.
+      saveFailed: Échec de l'enregistrement — vos modifications n'ont pas été enregistrées.
       warningsLabel: Avertissements
       # {sel} / {cur} / {filters} / {example} / {filter} are @wxt-dev/i18n named
       # substitutions, filled from the constants in template.ts. Writing the real
@@ -132,7 +132,7 @@ features:
       warningUnknownFilter: "Filtre inconnu, ignoré : {filter}"
       warningDuplicateCursor: "{cur} n'est pris en compte qu'une seule fois."
   colorGrab:
-    name: Pipette à couleur
+    name: Pipette de couleur
     description: >-
       Filtre la palette de couleurs du forum pour ne montrer que celles déjà
       utilisées dans la relecture du sujet, et indique qui les emploie.
@@ -142,7 +142,7 @@ features:
     # trap documented in CLAUDE.md.
     filter:
       label: Sur la page
-      usedBy: "{color} — utilisé par {roster}"
+      usedBy: "{color} — utilisée par {roster}"
   editorShortcuts:
     name: Raccourcis clavier
     description: >-

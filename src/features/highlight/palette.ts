@@ -25,9 +25,6 @@ export const HIGHLIGHT_COLORS: HighlightColor[] = [
   { id: 'blue', hex: '#a9d8ff' },
 ];
 
-/** The first colour, used when a highlight is created without an explicit pick. */
-export const DEFAULT_HIGHLIGHT_COLOR = HIGHLIGHT_COLORS[0].hex;
-
 /**
  * Text colour painted over a highlight. Forced dark so the pastel backgrounds
  * stay readable whatever colour the forum gives the post text, in either theme.

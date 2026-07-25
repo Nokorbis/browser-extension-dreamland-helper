@@ -6,6 +6,7 @@ import {
   findMessageTextarea,
 } from '@/lib/phpbb';
 import { log, warn } from '@/lib/log';
+import { setOrRemove } from '@/lib/dom';
 import {
   ariaCombo,
   formatCombo,
@@ -158,9 +159,3 @@ export const editorShortcuts: Feature = {
     };
   },
 };
-
-/** Put an attribute back exactly as it was — absent if it was absent. */
-function setOrRemove(el: HTMLElement, name: string, value: string | null): void {
-  if (value === null) el.removeAttribute(name);
-  else el.setAttribute(name, value);
-}

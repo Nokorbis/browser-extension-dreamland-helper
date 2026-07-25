@@ -9,13 +9,13 @@ with [WXT](https://wxt.dev) + Svelte 5.
 | # | Feature | Status | What it does |
 |---|---------|--------|--------------|
 | 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, and checks the forum is reachable before sending. |
-| 2 | Highlight GM text | 🚧 Planned | Keep passages of the GM's post highlighted so you can focus while replying. |
+| 2 | Text highlights | ✅ Done | Highlight any passage in a post and keep it marked in a chosen colour — persists across reloads and between the thread and the reply composer's topic review. |
 | 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders. |
 | 4 | Color grabber | ✅ Done | Reuse a colour already in the thread — a checkbox in the forum's colour palette filters it to the colours used in the topic review. |
 | 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, identical on Chrome and Firefox. |
 
-Each feature is independent and can be toggled on or off from the extension's toolbar popup.
-Planned features appear there marked "soon" and stay off until they're implemented.
+Each feature is independent and can be toggled on or off from the extension's toolbar popup;
+a change takes effect on the forum page's next load.
 
 ### 1. Message loss protection — ✅ done
 
@@ -36,13 +36,15 @@ held back and you get a dialog explaining your message wasn't sent and your text
 there, with the choice to keep waiting or send anyway. Only real submissions are guarded —
 preview and save-draft go through untouched.
 
-### 2. Highlight GM text — 🚧 planned
+### 2. Text highlights — ✅ done
 
-When you're replying to the GM, it helps to keep the passages you still need to respond to
-visibly marked. This feature will let you highlight parts of another post and have the
-highlight **persist** while you write, instead of copying the text into your reply as a
-scratch note. Design is still to be settled (where highlights are stored, how they're keyed
-to a post, how they survive reloads).
+Replying to a long post, it helps to keep the passages you still need to respond to visibly
+marked. Select any passage in a post's message body, pick a colour, and the highlight
+**persists** while you write — across reloads, and on the same post whether you're reading the
+thread or seeing it in the reply composer's topic review (it's keyed to phpBB's numeric post
+id). Painting uses the CSS Custom Highlight API, so nothing in the forum's posts is mutated;
+highlights clear per-thread or all at once. See
+[ADR 0020](./docs/adr/0020-persistent-text-highlights.md).
 
 ### 3. BBCode presets — ✅ done
 
