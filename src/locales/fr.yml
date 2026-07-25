@@ -26,14 +26,15 @@ features:
     name: Protection contre la perte de message
     description: >-
       Avertit avant de quitter un éditeur contenant du texte non envoyé, et
-      vérifie que le serveur répond avant d'envoyer un message.
+      vérifie que le serveur répond avant d'envoyer, de prévisualiser ou
+      d'enregistrer un brouillon.
     serverDown:
       title: Serveur indisponible
       message: >-
-        Le serveur ne répond pas. Réessayez plus tard — votre message n'a pas
-        été envoyé et votre texte est toujours là.
+        Le serveur ne répond pas. Réessayez plus tard — rien n'a été envoyé
+        et votre texte est toujours là.
       stay: Rester sur la page
-      sendAnyway: Envoyer quand même
+      continueAnyway: Continuer quand même
   highlight:
     name: Surlignage du texte
     description: >-

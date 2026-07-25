@@ -23,7 +23,7 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0008](0008-beforeunload-exit-guard.md) | Use `beforeunload` to guard unsaved drafts | Accepted |
 | [0009](0009-i18n-wxt-i18n.md) | Localize UI text with `@wxt-dev/i18n`        | Accepted |
 | [0010](0010-distribution-and-release-automation.md) | Distribution & release automation | Accepted — Chrome half amended by [0018](0018-chrome-web-store-distribution.md) |
-| [0011](0011-presend-server-reachability-check.md) | Pre-send server reachability check for the exit guard | Accepted |
+| [0011](0011-presend-server-reachability-check.md) | Pre-send server reachability check for the exit guard | Accepted — extended by [0021](0021-guard-preview-and-draft-submits.md) |
 | [0012](0012-feature-owned-data-stores.md) | Feature-owned data stores beyond the settings map | Accepted |
 | [0013](0013-undo-safe-text-insertion.md) | Preserve the native undo stack with `execCommand('insertText')` | Accepted |
 | [0014](0014-popup-accordion-options-page.md) | Popup accordion plus an options page for feature settings | Accepted |
@@ -33,3 +33,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0018](0018-chrome-web-store-distribution.md) | Chrome Web Store distribution | Accepted |
 | [0019](0019-color-grab-augments-native-palette.md) | Colour grabber augments phpBB's own colour palette | Accepted |
 | [0020](0020-persistent-text-highlights.md) | Persistent text highlights via the CSS Custom Highlight API | Accepted |
+| [0021](0021-guard-preview-and-draft-submits.md) | Extend the pre-send reachability guard to Preview and Save-draft | Accepted |

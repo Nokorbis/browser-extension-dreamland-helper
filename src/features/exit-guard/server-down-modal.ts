@@ -10,14 +10,17 @@ import { createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
  * docs/adr/0011-presend-server-reachability-check.md.
  *
  * The default / focused button is "Rester sur la page" (safe): a reflexive
- * Enter, Space, Escape or backdrop click keeps the draft. "Envoyer quand même"
- * is the deliberate escape hatch for a false-positive check.
+ * Enter, Space, Escape or backdrop click keeps the draft. "Continuer quand
+ * même" is the deliberate escape hatch for a false-positive check. This modal
+ * is shared by all three guarded submits (post, preview, save-draft), so its
+ * copy is deliberately action-neutral. See
+ * docs/adr/0021-guard-preview-and-draft-submits.md.
  */
 export interface ServerDownModalHandlers {
   /** User chose to stay on the page (default / safe). */
   onStay: () => void;
-  /** User chose to submit anyway despite the failed check. */
-  onSendAnyway: () => void;
+  /** User chose to continue anyway despite the failed check. */
+  onContinueAnyway: () => void;
 }
 
 export function showServerDownModal(
@@ -67,7 +70,7 @@ export function showServerDownModal(
       'background:#f2f2f2;color:#1a1a1a;font:inherit;',
   );
   sendButton.type = 'button';
-  sendButton.textContent = i18n.t('features.exitGuard.serverDown.sendAnyway');
+  sendButton.textContent = i18n.t('features.exitGuard.serverDown.continueAnyway');
 
   let closed = false;
   const close = () => {
@@ -81,9 +84,9 @@ export function showServerDownModal(
     close();
     handlers.onStay();
   };
-  const sendAnyway = () => {
+  const continueAnyway = () => {
     close();
-    handlers.onSendAnyway();
+    handlers.onContinueAnyway();
   };
 
   function onKeydown(event: KeyboardEvent) {
@@ -94,13 +97,13 @@ export function showServerDownModal(
   }
 
   stayButton.addEventListener('click', stay);
-  sendButton.addEventListener('click', sendAnyway);
+  sendButton.addEventListener('click', continueAnyway);
   backdrop.addEventListener('click', (event) => {
     if (event.target === backdrop) stay();
   });
   document.addEventListener('keydown', onKeydown, true);
 
-  // Rester first (primary / safe), Envoyer quand même second.
+  // Rester first (primary / safe), Continuer quand même second.
   buttons.append(stayButton, sendButton);
   dialog.append(title, message, buttons);
   backdrop.append(dialog);

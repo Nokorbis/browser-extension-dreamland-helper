@@ -51,12 +51,13 @@ Deux façons classiques de perdre un message écrit : quitter la page sans avoir
 appuyer sur « Envoyer » au moment où le forum ne répond plus.
 
 • Tant que l'éditeur contient du texte non envoyé, le navigateur demande confirmation avant
-  de quitter la page (retour arrière, fermeture d'onglet, lien suivi). Un éditeur vide ou
-  intact ne déclenche jamais l'avertissement.
-• Avant chaque envoi réel, l'extension vérifie que le forum répond. S'il est indisponible,
-  l'envoi est retenu et une fenêtre vous explique que votre message n'est pas parti et que
-  votre texte est toujours là — libre à vous d'attendre ou d'envoyer quand même.
-  L'aperçu et le brouillon ne sont pas concernés.
+  de quitter la page (retour arrière, fermeture d'onglet, lien suivi) — mais pas pour un
+  aperçu ou un brouillon, qui ne quittent pas vraiment l'écriture. Un éditeur vide ou intact
+  ne déclenche jamais l'avertissement.
+• Avant un envoi réel, un aperçu ou un enregistrement de brouillon, l'extension vérifie que
+  le forum répond. S'il est indisponible, l'action est retenue et une fenêtre vous explique
+  que rien n'est parti et que votre texte est toujours là — libre à vous d'attendre ou de
+  continuer quand même.
 
 ━━━ PRÉRÉGLAGES BBCODE ━━━
 

@@ -6,6 +6,13 @@ import { log } from '@/lib/log';
 import { showServerDownModal } from './server-down-modal';
 
 /**
+ * Submit button names the reachability preflight covers. phpBB's composer form
+ * carries a fourth submitter, Cancel, but it's a plain link on this forum (no
+ * `name="cancel"` submit button exists), so it never reaches this check.
+ */
+const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
+
+/**
  * Feature #1 — Exit guard.
  *
  * Two layers of draft protection on the post editor:
@@ -16,12 +23,14 @@ import { showServerDownModal } from './server-down-modal';
  *    here, so we only decide *whether* to prompt. See
  *    docs/adr/0008-beforeunload-exit-guard.md.
  *
- * 2. Submitting a post first pings the forum (a same-origin HEAD) to confirm it
- *    responds. If the server or an intermediate gateway is down, the POST would
- *    otherwise navigate to an error page and lose the draft — so instead we hold
- *    the submission and show a modal. Its default action keeps the user on the
- *    page (text intact); a "send anyway" escape hatch covers a false-positive
- *    check. See docs/adr/0011-presend-server-reachability-check.md.
+ * 2. Submitting a post, previewing it, or saving it as a draft first pings the
+ *    forum (a same-origin HEAD) to confirm it responds. If the server or an
+ *    intermediate gateway is down, the request would otherwise navigate to an
+ *    error page and lose the draft — so instead we hold it and show a modal.
+ *    Its default action keeps the user on the page (text intact); a "continue
+ *    anyway" escape hatch covers a false-positive check. See
+ *    docs/adr/0011-presend-server-reachability-check.md and
+ *    docs/adr/0021-guard-preview-and-draft-submits.md.
  */
 export const exitGuard: Feature = {
   id: 'exit-guard',
@@ -79,17 +88,20 @@ export const exitGuard: Feature = {
         return;
       }
 
-      // Only guard the real "post" submission; let Preview / Save-draft / Cancel
-      // (which carry other button names) submit normally.
+      // Guard the real "post" submission plus Preview and Save-draft — all three
+      // lose the same way to a dead server, and all three must set `isSubmitting`
+      // below so their real navigation doesn't also trip the beforeunload prompt.
+      // Cancel (a plain link on this forum, not a submit button) and any other
+      // unrecognized submitter still pass through untouched.
       const submitter = event.submitter;
       const submitterName = submitter?.getAttribute('name');
-      if (submitterName && submitterName !== 'post') {
-        log(`…allowed through (button "${submitterName}", not a post)`);
+      if (submitterName && !GUARDED_SUBMITTER_NAMES.has(submitterName)) {
+        log(`…allowed through (button "${submitterName}", not guarded)`);
         return;
       }
 
       event.preventDefault();
-      log(`post submit intercepted (submitter=${submitterName ?? 'none'}) — pinging server`);
+      log(`submit intercepted (submitter=${submitterName ?? 'none'}) — pinging server`);
       if (checking) return;
       checking = true;
 
@@ -114,7 +126,7 @@ export const exitGuard: Feature = {
           onStay: () => {
             closeModal = null;
           },
-          onSendAnyway: () => {
+          onContinueAnyway: () => {
             closeModal = null;
             doSubmit();
           },
