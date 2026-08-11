@@ -101,6 +101,17 @@ bien sur la page du sujet que dans la relecture affichée sous l'éditeur de ré
 • Effacez d'un clic les surlignages d'un sujet, ou tous d'un coup.
 • Rien n'est modifié dans les messages du forum, et tout reste enregistré localement.
 
+━━━ SAUVEGARDE ET RESTAURATION ━━━
+
+Depuis la page des options (icône ⚙ à côté du titre, dans le menu de l'extension), exportez vos
+réglages et votre bibliothèque de préréglages BBCode dans un fichier JSON, pour les garder ou les
+retrouver sur un autre navigateur.
+
+• L'export produit un seul fichier contenant vos réglages et vos préréglages.
+• À l'import, vous choisissez précisément quels préréglages ajouter : chacun indique s'il est
+  déjà identique à l'existant ou s'il en remplacerait un dont le contenu diffère, pour ne rien
+  écraser par erreur.
+
 ━━━ VIE PRIVÉE ━━━
 
 Aucune donnée collectée, aucun traçage, aucune publicité, aucun serveur tiers. Vos réglages
@@ -185,7 +196,10 @@ Stores the user's own settings and content locally: which of the extension's fea
 enabled, the BBCode presets the user authors in the options page, the text passages the user
 has highlighted in threads, and whether the preset panel was left open or collapsed. This is
 the only way to keep a user's presets and highlights between page loads. Nothing is written
-anywhere else, and nothing is transmitted -- storage.local only, never storage.sync.
+anywhere else, and nothing is transmitted -- storage.local only, never storage.sync. The
+extension's options page can export this data (settings and presets) to a JSON file the user
+saves to their own device, and import one back in -- a user-initiated local file operation, not
+a network transmission.
 ```
 
 **Host permission `*://*.dreamland-reborn.net/*`**

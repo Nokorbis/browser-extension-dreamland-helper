@@ -118,9 +118,15 @@ The flow that ties multiple files together:
   `src/entrypoints/popup/panels.ts` (`featureId → Component`) — **never** as a field on
   `Feature`, because `src/features/*` is in the content script's module graph and content
   scripts build as a single IIFE, so any Svelte reference there lands in `content.js` even if
-  lazily imported. Substantial editing belongs in the options page
-  (`src/entrypoints/options/`), opened with `browser.runtime.openOptionsPage()`.
-  See `docs/adr/0014-popup-accordion-options-page.md`.
+  lazily imported. The popup also carries a cog that does nothing but open the options page.
+  The options page (`src/entrypoints/options/`, opened with
+  `browser.runtime.openOptionsPage()`) is the extension's **general** options page: a page
+  `<h1>` and one `<section>` per area, with a nav between them — today `#presets` (the preset
+  editor, inline in `App.svelte`) and `#backup` (`BackupSection.svelte`). Substantial editing,
+  and anything needing a native dialog, belongs there rather than in the popup; adding an area
+  means adding a section, a heading and a nav entry.
+  See `docs/adr/0014-popup-accordion-options-page.md` and
+  `docs/adr/0021-json-export-import.md`.
 
 ### Adding a feature
 
@@ -207,9 +213,16 @@ task, create or update the ADR **in the same change** — do not defer it.
 - `beforeunload` (used by exit-guard) is the only cross-browser way to veto navigation
   including the back button; browsers ignore any custom message, so the prompt wording is
   the browser's own.
-- Toggling a feature in the popup only takes effect on the **next page load** — `bootFeatures`
-  reads settings once at boot. The popup says so; making toggles live would mean watching
-  settings in `registry.ts`.
+- Toggling a feature in the popup — or importing settings from a backup — only takes effect on
+  the **next page load**: `bootFeatures` reads settings once at boot. Both UIs say so; making
+  toggles live would mean watching settings in `registry.ts`.
+- **The action popup closes the instant it loses focus, and a native `<input type="file">` dialog
+  steals focus** — most reliably reproducible on Linux, where that dialog is a separate top-level
+  window, but not guaranteed safe on any platform. A file picker (or any other OS-level dialog)
+  triggered from the popup opens fine, but the popup — and everything waiting inside it, including
+  whatever was meant to receive the picked file — is already gone by the time the user finishes.
+  Anything that needs a native dialog belongs on the options page (a real tab), not the popup; see
+  `docs/adr/0021-json-export-import.md`, which shipped broken in the popup once before landing here.
 - In shadow-DOM UI, test containment with `event.composedPath()`, never
   `element.contains(event.target)` — targets are retargeted to the shadow host.
 - Likewise use `root.activeElement` (the `ShadowRoot`), not `document.activeElement`,
@@ -218,10 +231,15 @@ task, create or update the ADR **in the same change** — do not defer it.
   object, and a `Proxy` is not structured-cloneable: Firefox clones on the way into
   `storage.local` and throws `DataCloneError`, while Chrome serializes by reading properties
   and persists it happily. The result is a feature that saves nothing **on Firefox only**.
-  Rebuild a plain object first — `toPlainStore` in `src/lib/presets.ts` is the pattern (or
-  `$state.snapshot()` at the call site). Test both browsers whenever a UI writes to storage.
-- **Report save failures.** `.finally()` does not catch, so chaining it onto a write shows a
-  success message even when the write rejected — exactly how the bug above stayed invisible.
+  Rebuild a plain object first — `toPlainStore` in `src/lib/presets.ts` and `toPlainSettings` in
+  `src/lib/storage.ts` are the pattern, each called from **inside** its own `save…` so the guard
+  sits at the boundary and not at one call site. Test both browsers whenever a UI writes to
+  storage.
+- **Report save failures, and only report what has resolved.** `.finally()` does not catch, so
+  chaining it onto a write shows a success message even when the write rejected — exactly how the
+  bug above stayed invisible. Equally, never announce a result over a write that is still queued:
+  a debounced write (the preset editor's `commit`) reports through its own status line, so a
+  one-shot bulk operation should `await` its own `save…` rather than borrow that machinery.
 - Custom properties inherit **downwards only**: a `--dlh-*` palette set on a component root is
   invisible to `<body>`. The theme class therefore sits on `<html>` in the popup/options HTML.
 - **In-page UI must follow the forum's theme, not the OS's.** The skin marks dark mode with

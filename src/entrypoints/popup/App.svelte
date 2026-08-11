@@ -1,5 +1,6 @@
 <script lang="ts">
   import { i18n } from '#i18n';
+  import { browser } from '#imports';
   import { ALL_FEATURES } from '@/features/registry';
   import { loadSettings, setFeatureEnabled } from '@/lib/storage';
   import { POPUP_PANELS } from './panels';
@@ -17,10 +18,30 @@
     enabled = { ...enabled, [id]: next };
     await setFeatureEnabled(id, next);
   }
+
+  // The cog is a plain link to the options page — where the preset editor and
+  // the backup section both live. Nothing that needs a native dialog can run
+  // in the popup, which closes the moment one steals focus.
+  // See docs/adr/0021-json-export-import.md.
+  function openOptions() {
+    void browser.runtime.openOptionsPage();
+  }
 </script>
 
 <main>
-  <h1>{i18n.t('extName')}</h1>
+  <div class="header">
+    <h1>{i18n.t('extName')}</h1>
+    <button
+      type="button"
+      class="cog"
+      aria-label={i18n.t('popup.openOptions')}
+      title={i18n.t('popup.openOptions')}
+      onclick={openOptions}
+    >
+      <span aria-hidden="true">⚙</span>
+    </button>
+  </div>
+
   <ul>
     {#each ALL_FEATURES as feature (feature.id)}
       {@const Panel = feature.implemented ? POPUP_PANELS[feature.id] : undefined}
@@ -86,9 +107,35 @@
     color: #1c1b22;
     background: #fff;
   }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
   h1 {
-    margin: 0 0 0.5rem;
+    margin: 0;
     font-size: 1rem;
+  }
+  .cog {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    padding: 0;
+    border: none;
+    border-radius: 0.35rem;
+    background: none;
+    color: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .cog:hover {
+    background: #f2f1f6;
   }
   ul {
     list-style: none;
@@ -185,7 +232,8 @@
       background: #1c1b22;
     }
     label:hover,
-    summary:hover {
+    summary:hover,
+    .cog:hover {
       background: #2a2833;
     }
     .desc {

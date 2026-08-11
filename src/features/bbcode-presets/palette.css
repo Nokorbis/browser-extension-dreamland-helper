@@ -31,6 +31,12 @@
   --dlh-selected: #c3dbf2;
   --dlh-accent: #2f6fed;
   --dlh-shadow: rgba(20, 40, 70, 0.22);
+  /* "Look before you act" — template warnings, and the import badge marking a
+     preset that would overwrite an existing one. Amber rather than red: none
+     of it is an error, it is something to read before confirming. */
+  --dlh-warn-bg: #fdf6e6;
+  --dlh-warn-fg: #8a5a12;
+  --dlh-warn-border: #e6cf9a;
 }
 
 /* In-page: driven by the forum's own theme. */
@@ -45,6 +51,9 @@
   --dlh-selected: #3b4658;
   --dlh-accent: #5b8def;
   --dlh-shadow: rgba(0, 0, 0, 0.45);
+  --dlh-warn-bg: #2e2718;
+  --dlh-warn-fg: #e0b273;
+  --dlh-warn-border: #5c4a26;
 }
 
 /* Extension pages: driven by the OS preference. Same values, different trigger
@@ -61,5 +70,8 @@
     --dlh-selected: #3b4658;
     --dlh-accent: #5b8def;
     --dlh-shadow: rgba(0, 0, 0, 0.45);
+    --dlh-warn-bg: #2e2718;
+    --dlh-warn-fg: #e0b273;
+    --dlh-warn-border: #5c4a26;
   }
 }

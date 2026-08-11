@@ -332,6 +332,23 @@ export function countFolders(store: PresetStore): number {
   return Object.keys(store.folders).length;
 }
 
+/**
+ * Root-to-leaf folder names above `folderId` (empty array at the root).
+ * Safe against cycles because every store reaching here has been through
+ * `normalizePresetStore`, which breaks them.
+ */
+export function folderPath(store: PresetStore, folderId: string | null): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  let current = folderId !== null ? store.folders[folderId] : undefined;
+  while (current !== undefined && !seen.has(current.id)) {
+    names.unshift(current.name);
+    seen.add(current.id);
+    current = current.parentId !== null ? store.folders[current.parentId] : undefined;
+  }
+  return names;
+}
+
 /** True when `candidateId` sits anywhere beneath `ancestorId`. */
 export function isDescendantFolder(
   store: PresetStore,

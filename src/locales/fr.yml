@@ -13,10 +13,51 @@ popup:
   # so a toggle only takes effect on the next page load. Say so rather than
   # letting the user watch an in-page panel outlive the switch they just flipped.
   reloadHint: Rechargez la page du forum pour appliquer les changements.
+  # The cog next to the popup's title. It only opens the options page — nothing
+  # needing a native dialog can live in the popup, which closes the instant one
+  # steals focus. See docs/adr/0021-json-export-import.md.
+  openOptions: Ouvrir les options
 
-# The extension's full-tab options page (manifest `options_ui`).
+# The extension's full-tab options page (manifest `options_ui`), one section per
+# area of settings. `title` doubles as the page's <h1> and its document.title.
 options:
   title: Dreamland Reborn QoL — Options
+  intro: >-
+    Réglages de l'extension. Les fonctionnalités s'activent depuis le menu de
+    l'extension ; cette page sert à les configurer en détail.
+  sectionsLabel: Sections
+  # Export/import of settings + BBCode presets as a single JSON file. Highlights
+  # are deliberately excluded. Not feature-scoped (it covers the feature toggles
+  # *and* the preset library), so it lives under `options`, not under any one
+  # `features.<name>`. See docs/adr/0021-json-export-import.md.
+  backup:
+    heading: Sauvegarde et restauration
+    intro: >-
+      Exportez vos réglages et vos préréglages BBCode dans un fichier JSON, à
+      conserver ou à réutiliser sur un autre navigateur — puis réimportez-le
+      ici, en choisissant précisément ce qu'il faut restaurer.
+    exportButton: Exporter (.json)
+    importButton: Importer un fichier…
+    exportFailed: Échec de l'export — aucun fichier n'a été créé.
+    invalidFile: Fichier invalide — rien n'a été importé.
+    nothingToImport: Ce fichier ne contient rien à importer.
+    importNothingSelected: Rien n'était sélectionné — aucun changement.
+    importDone: Import terminé.
+    # `bootFeatures` reads the enabled flags once, at content-script boot, so
+    # imported toggles need a reload just like the popup's own switches do.
+    importDoneWithSettings: >-
+      Import terminé. Rechargez la page du forum pour appliquer les
+      réglages importés.
+    importFailed: Échec de l'import.
+    modal:
+      heading: Choisir ce qu'il faut importer
+      settingsLabel: Remplacer les réglages actuels (activation des fonctionnalités)
+      presetsHeading: Préréglages
+      noPresetsInFile: Aucun préréglage dans ce fichier.
+      badgeIdentical: Identique à l'existant
+      badgeConflict: Remplacera un préréglage existant (contenu différent)
+      cancel: Annuler
+      confirm: Importer la sélection
 
 # Key segments mirror each feature's exported const name, in camelCase
 # (exitGuard, bbcodePresets, colorGrab) — NOT the kebab-case Feature.id, because

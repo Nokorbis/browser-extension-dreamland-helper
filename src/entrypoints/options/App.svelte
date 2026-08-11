@@ -29,10 +29,19 @@
   } from '@/features/bbcode-presets/template';
   import FolderTree from '@/features/bbcode-presets/FolderTree.svelte';
   import { error } from '@/lib/log';
+  import BackupSection from './BackupSection.svelte';
   // Global (unscoped) — the --dlh-* variables FolderTree reads. This is an
   // extension page, so the theme follows the OS preference (see below), unlike
   // the in-page surfaces which follow the forum's own theme.
   import '@/features/bbcode-presets/palette.css';
+
+  /**
+   * The extension's options page: one page, one section per area of settings.
+   * The BBCode preset editor below is the bulk of it; `BackupSection` handles
+   * export/import of everything (see docs/adr/0021-json-export-import.md).
+   * The popup's cog opens this page, so a section added here needs no other
+   * entry point — just a heading and a line in the nav.
+   */
 
   let store = $state<PresetStore>(emptyPresetStore());
   let selectedKind = $state<'folder' | 'preset' | null>(null);
@@ -271,167 +280,178 @@
 
 <main>
   <header>
-    <h1>{i18n.t('features.bbcodePresets.editor.heading')}</h1>
-    <p class="intro">{i18n.t('features.bbcodePresets.editor.intro')}</p>
+    <h1>{i18n.t('options.title')}</h1>
+    <p class="intro">{i18n.t('options.intro')}</p>
+    <nav aria-label={i18n.t('options.sectionsLabel')}>
+      <a href="#presets">{i18n.t('features.bbcodePresets.editor.heading')}</a>
+      <a href="#backup">{i18n.t('options.backup.heading')}</a>
+    </nav>
   </header>
 
-  <div class="panes">
-    <aside class="tree-pane">
-      <div class="toolbar">
-        <button type="button" onclick={createFolder}>
-          {i18n.t('features.bbcodePresets.editor.addFolder')}
-        </button>
-        <button type="button" class="primary" onclick={createPreset}>
-          {i18n.t('features.bbcodePresets.editor.addPreset')}
-        </button>
-      </div>
+  <section id="presets">
+    <h2>{i18n.t('features.bbcodePresets.editor.heading')}</h2>
+    <p class="intro">{i18n.t('features.bbcodePresets.editor.intro')}</p>
 
-      {#if countPresets(store) === 0 && tree.folders.length === 0}
-        <p class="muted">{i18n.t('features.bbcodePresets.editor.empty')}</p>
-      {:else}
-        <FolderTree
-          folders={tree.folders}
-          presets={tree.presets}
-          {selectedId}
-          onselect={select}
-        />
-      {/if}
-    </aside>
+    <div class="panes">
+      <aside class="tree-pane">
+        <div class="toolbar">
+          <button type="button" onclick={createFolder}>
+            {i18n.t('features.bbcodePresets.editor.addFolder')}
+          </button>
+          <button type="button" class="primary" onclick={createPreset}>
+            {i18n.t('features.bbcodePresets.editor.addPreset')}
+          </button>
+        </div>
 
-    <section class="edit-pane">
-      {#if selectedFolder !== null}
-        <label class="field">
-          <span>{i18n.t('features.bbcodePresets.editor.nameLabel')}</span>
-          <input
-            type="text"
-            value={selectedFolder.name}
-            oninput={(e) =>
-              commit(
-                updateFolder(store, selectedFolder.id, {
-                  name: e.currentTarget.value,
-                }),
-              )}
+        {#if countPresets(store) === 0 && tree.folders.length === 0}
+          <p class="muted">{i18n.t('features.bbcodePresets.editor.empty')}</p>
+        {:else}
+          <FolderTree
+            folders={tree.folders}
+            presets={tree.presets}
+            {selectedId}
+            onselect={select}
           />
-        </label>
-
-        <label class="field">
-          <span>{i18n.t('features.bbcodePresets.editor.moveLabel')}</span>
-          <select
-            value={selectedFolder.parentId ?? ''}
-            onchange={(e) => moveSelected(e.currentTarget.value || null)}
-          >
-            {#each moveTargets as target (target.id ?? 'root')}
-              <option value={target.id ?? ''}>{target.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <button type="button" class="danger" onclick={removeSelected}>
-          {i18n.t('features.bbcodePresets.editor.delete')}
-        </button>
-      {:else if selectedPreset !== null}
-        <label class="field">
-          <span>{i18n.t('features.bbcodePresets.editor.nameLabel')}</span>
-          <input
-            type="text"
-            value={selectedPreset.name}
-            oninput={(e) =>
-              commit(
-                updatePreset(store, selectedPreset.id, {
-                  name: e.currentTarget.value,
-                }),
-              )}
-          />
-        </label>
-
-        <label class="field">
-          <span>{i18n.t('features.bbcodePresets.editor.moveLabel')}</span>
-          <select
-            value={selectedPreset.folderId ?? ''}
-            onchange={(e) => moveSelected(e.currentTarget.value || null)}
-          >
-            {#each moveTargets as target (target.id ?? 'root')}
-              <option value={target.id ?? ''}>{target.label}</option>
-            {/each}
-          </select>
-        </label>
-
-        <label class="field">
-          <span>{i18n.t('features.bbcodePresets.editor.bodyLabel')}</span>
-          <textarea
-            rows="8"
-            spellcheck="false"
-            value={selectedPreset.body}
-            oninput={(e) =>
-              commit(
-                updatePreset(store, selectedPreset.id, {
-                  body: e.currentTarget.value,
-                }),
-              )}
-          ></textarea>
-        </label>
-
-        <p class="help">
-          {i18n.t('features.bbcodePresets.editor.syntaxHelp', {
-            sel: SELECTION_TOKEN,
-            cur: CURSOR_TOKEN,
-          })}
-        </p>
-        <p class="help">
-          {i18n.t('features.bbcodePresets.editor.filtersHelp', {
-            filters: FILTERS.join(', '),
-            example: `[b]${SELECTION_TOKEN.slice(0, -1)}|upper}[/b]`,
-          })}
-        </p>
-
-        {#if previewWithCaret !== null}
-          <div class="field">
-            <span>{i18n.t('features.bbcodePresets.editor.previewLabel')}</span>
-            <pre class="preview">{previewWithCaret.before}<span
-                class="caret"
-                aria-hidden="true"></span>{previewWithCaret.after}</pre>
-          </div>
         {/if}
+      </aside>
 
-        {#if preview !== null && preview.warnings.length > 0}
-          <div class="warnings">
-            <strong>{i18n.t('features.bbcodePresets.editor.warningsLabel')}</strong>
-            <ul>
-              {#each preview.warnings as warning, index (index)}
-                <li>{warningText(warning)}</li>
+      <section class="edit-pane">
+        {#if selectedFolder !== null}
+          <label class="field">
+            <span>{i18n.t('features.bbcodePresets.editor.nameLabel')}</span>
+            <input
+              type="text"
+              value={selectedFolder.name}
+              oninput={(e) =>
+                commit(
+                  updateFolder(store, selectedFolder.id, {
+                    name: e.currentTarget.value,
+                  }),
+                )}
+            />
+          </label>
+
+          <label class="field">
+            <span>{i18n.t('features.bbcodePresets.editor.moveLabel')}</span>
+            <select
+              value={selectedFolder.parentId ?? ''}
+              onchange={(e) => moveSelected(e.currentTarget.value || null)}
+            >
+              {#each moveTargets as target (target.id ?? 'root')}
+                <option value={target.id ?? ''}>{target.label}</option>
               {/each}
-            </ul>
-          </div>
+            </select>
+          </label>
+
+          <button type="button" class="danger" onclick={removeSelected}>
+            {i18n.t('features.bbcodePresets.editor.delete')}
+          </button>
+        {:else if selectedPreset !== null}
+          <label class="field">
+            <span>{i18n.t('features.bbcodePresets.editor.nameLabel')}</span>
+            <input
+              type="text"
+              value={selectedPreset.name}
+              oninput={(e) =>
+                commit(
+                  updatePreset(store, selectedPreset.id, {
+                    name: e.currentTarget.value,
+                  }),
+                )}
+            />
+          </label>
+
+          <label class="field">
+            <span>{i18n.t('features.bbcodePresets.editor.moveLabel')}</span>
+            <select
+              value={selectedPreset.folderId ?? ''}
+              onchange={(e) => moveSelected(e.currentTarget.value || null)}
+            >
+              {#each moveTargets as target (target.id ?? 'root')}
+                <option value={target.id ?? ''}>{target.label}</option>
+              {/each}
+            </select>
+          </label>
+
+          <label class="field">
+            <span>{i18n.t('features.bbcodePresets.editor.bodyLabel')}</span>
+            <textarea
+              rows="8"
+              spellcheck="false"
+              value={selectedPreset.body}
+              oninput={(e) =>
+                commit(
+                  updatePreset(store, selectedPreset.id, {
+                    body: e.currentTarget.value,
+                  }),
+                )}
+            ></textarea>
+          </label>
+
+          <p class="help">
+            {i18n.t('features.bbcodePresets.editor.syntaxHelp', {
+              sel: SELECTION_TOKEN,
+              cur: CURSOR_TOKEN,
+            })}
+          </p>
+          <p class="help">
+            {i18n.t('features.bbcodePresets.editor.filtersHelp', {
+              filters: FILTERS.join(', '),
+              example: `[b]${SELECTION_TOKEN.slice(0, -1)}|upper}[/b]`,
+            })}
+          </p>
+
+          {#if previewWithCaret !== null}
+            <div class="field">
+              <span>{i18n.t('features.bbcodePresets.editor.previewLabel')}</span>
+              <pre class="preview">{previewWithCaret.before}<span
+                  class="caret"
+                  aria-hidden="true"></span>{previewWithCaret.after}</pre>
+            </div>
+          {/if}
+
+          {#if preview !== null && preview.warnings.length > 0}
+            <div class="warnings">
+              <strong>{i18n.t('features.bbcodePresets.editor.warningsLabel')}</strong>
+              <ul>
+                {#each preview.warnings as warning, index (index)}
+                  <li>{warningText(warning)}</li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+
+          <button type="button" class="danger" onclick={removeSelected}>
+            {i18n.t('features.bbcodePresets.editor.delete')}
+          </button>
+        {:else}
+          <p class="muted">{i18n.t('features.bbcodePresets.editor.noSelection')}</p>
         {/if}
+      </section>
+    </div>
 
-        <button type="button" class="danger" onclick={removeSelected}>
-          {i18n.t('features.bbcodePresets.editor.delete')}
-        </button>
-      {:else}
-        <p class="muted">{i18n.t('features.bbcodePresets.editor.noSelection')}</p>
+    <!--
+      The message is rendered conditionally, not just faded with a class: a live
+      region only announces when its *content* changes, so text that is always
+      present is never read out — and sits in the accessibility tree at opacity 0
+      the rest of the time, out of context. Empty when idle, filled on a result.
+    -->
+    <p
+      class="saved"
+      class:visible={justSaved || saveError}
+      class:failed={saveError}
+      role="status"
+      aria-live="polite"
+    >
+      {#if saveError}
+        {i18n.t('features.bbcodePresets.editor.saveFailed')}
+      {:else if justSaved}
+        {i18n.t('features.bbcodePresets.editor.saved')}
       {/if}
-    </section>
-  </div>
+    </p>
+  </section>
 
-  <!--
-    The message is rendered conditionally, not just faded with a class: a live
-    region only announces when its *content* changes, so text that is always
-    present is never read out — and sits in the accessibility tree at opacity 0
-    the rest of the time, out of context. Empty when idle, filled on a result.
-  -->
-  <p
-    class="saved"
-    class:visible={justSaved || saveError}
-    class:failed={saveError}
-    role="status"
-    aria-live="polite"
-  >
-    {#if saveError}
-      {i18n.t('features.bbcodePresets.editor.saveFailed')}
-    {:else if justSaved}
-      {i18n.t('features.bbcodePresets.editor.saved')}
-    {/if}
-  </p>
+  <BackupSection />
 </main>
 
 <style>
@@ -448,14 +468,48 @@
     padding: 1.5rem 1.25rem 3rem;
   }
 
+  header {
+    margin-bottom: 1.75rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--dlh-border);
+  }
   h1 {
     margin: 0 0 0.25rem;
     font-size: 1.35rem;
   }
+  h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+  }
   .intro {
-    margin: 0 0 1.25rem;
+    margin: 0 0 0.8rem;
     color: var(--dlh-muted);
     font-size: 0.9rem;
+  }
+
+  /* Two sections is few enough to skim, but the preset editor is tall enough
+     to push the backup section off-screen — these keep it one click away and
+     make the page read as a set of sections rather than one editor. */
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+    font-size: 0.85rem;
+  }
+  nav a {
+    color: var(--dlh-accent);
+  }
+
+  /* Sections are separated by rules rather than boxes: boxing them would
+     compete with the tree/edit panes, which already carry borders. */
+  main > :global(section + section) {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--dlh-border);
+  }
+  /* An anchored jump must not tuck the heading under the top of the viewport. */
+  main > :global(section) {
+    scroll-margin-top: 1rem;
   }
 
   .panes {
@@ -578,9 +632,9 @@
 
   .warnings {
     padding: 0.5rem 0.7rem;
-    border: 1px solid #e6cf9a;
+    border: 1px solid var(--dlh-warn-border);
     border-radius: 0.4rem;
-    background: #fdf6e6;
+    background: var(--dlh-warn-bg);
     font-size: 0.82rem;
   }
   .warnings ul {
@@ -615,9 +669,9 @@
 
   /*
    * Only what the shared palette does not already cover. Surfaces, borders,
-   * text and hovers all come from --dlh-* (see palette.css), which flips itself
-   * via .dlh-theme-auto — so this block holds just the page chrome and the two
-   * semantic colours (danger, warning) that are local to this editor.
+   * text, hovers and the warning amber all come from --dlh-* (see palette.css),
+   * which flips itself via .dlh-theme-auto — so this block holds just the page
+   * chrome and `danger`, the one semantic colour local to this editor.
    */
   @media (prefers-color-scheme: dark) {
     :global(body) {
@@ -635,10 +689,6 @@
     }
     button.danger:hover {
       background: #3a2626;
-    }
-    .warnings {
-      border-color: #5c4a26;
-      background: #2e2718;
     }
     .saved {
       color: #7ec99a;
