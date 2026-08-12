@@ -132,6 +132,12 @@ features:
       title: Préréglages
       expand: Afficher les préréglages
       collapse: Masquer les préréglages
+    # The in-page dialog a preset carrying {PROMPT:…} fields puts up before it
+    # is inserted. One field per distinct label; cancelling inserts nothing.
+    prompt:
+      title: Compléter le préréglage
+      insert: Insérer
+      cancel: Annuler
     # Popup accordion panel. The count keys use @wxt-dev/i18n plurals: all THREE
     # forms are required — with only "1"/"n" the runtime picks n for zero and
     # renders "0 préréglages", which is wrong in French.
@@ -164,6 +170,10 @@ features:
       bodyLabel: Contenu BBCode
       previewLabel: Aperçu
       previewSample: texte sélectionné
+      # Stands in for a prompt's answer in the preview: the preview is there to
+      # check the template's shape, not to fill it in. {label} is a named
+      # substitution, filled with the prompt's own libellé.
+      previewPromptSample: "‹{label}›"
       empty: Aucun préréglage pour l'instant.
       noSelection: Sélectionnez un préréglage à gauche, ou créez-en un.
       saved: Enregistré
@@ -176,8 +186,17 @@ features:
         Utilisez {sel} pour insérer le texte sélectionné, et {cur} pour choisir
         où placer le curseur après l'insertion.
       filtersHelp: "Filtres disponibles : {filters}. Par exemple : {example}"
+      # The libellé used in the help text's example token, e.g. {PROMPT:lieu}.
+      promptSampleLabel: lieu
+      promptHelp: >-
+        Utilisez {prompt} pour qu'une valeur vous soit demandée au moment de
+        l'insertion : le libellé sert de question, et un même libellé n'est
+        demandé qu'une fois. Par exemple : {example}
       warningUnknownFilter: "Filtre inconnu, ignoré : {filter}"
       warningDuplicateCursor: "{cur} n'est pris en compte qu'une seule fois."
+      warningEmptyPromptLabel: >-
+        {prompt} n'a pas de libellé : indiquez ce qui doit être demandé, sans
+        quoi le texte est inséré tel quel.
   colorGrab:
     name: Pipette de couleur
     description: >-

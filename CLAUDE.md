@@ -20,7 +20,10 @@ Features (all implemented):
    `docs/adr/0020-persistent-text-highlights.md`. _(done)_
 3. **BBCode presets** (`bbcode-presets`) — insert complex BBCode structures in one click, from a button in
    phpBB's BBCode toolbar or a panel beside the editor. Presets live in nested folders and
-   are authored in the options page. _(done)_
+   are authored in the options page. A body can carry `{SELECTION}` / `{CURSOR}` and
+   `{PROMPT:label}` fields, the last of which put up a small form before inserting; the grammar
+   is a **frozen contract** — see `docs/adr/0015-preset-placeholder-syntax.md` and its extension
+   `docs/adr/0026-prompted-preset-placeholders.md`. _(done)_
 4. **Color grabber** (`color-grab`) — reuse a colour already used in the thread: a checkbox
    ("Sur la page") in phpBB's own font-colour palette filters the swatches down to the colours
    used in the topic review, appends any the fixed grid lacks, and each surviving swatch's

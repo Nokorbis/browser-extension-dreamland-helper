@@ -10,7 +10,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 |---|---------|--------|--------------|
 | 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, and checks the forum is reachable before sending. |
 | 2 | Text highlights | ✅ Done | Highlight any passage in a post and keep it marked in a chosen colour — persists across reloads and between the thread and the reply composer's topic review. |
-| 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders. |
+| 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders — with optional fill-in-the-blank fields. |
 | 4 | Color grabber | ✅ Done | Reuse a colour already in the thread — a checkbox in the forum's colour palette filters it to the colours used in the topic review. |
 | 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, in the composer and the chatbox, identical on Chrome and Firefox. |
 | 6 | Emoji picker | ✅ Done | A searchable Unicode emoji panel in the composer and the chatbox, opened from a toolbar button or Alt+I. |
@@ -67,15 +67,16 @@ themselves.
 - a **panel beside the editor**, collapsed to a slim handle until you open it — it remembers
   which way you left it.
 
-**Placeholders.** A preset body is ordinary BBCode plus two optional markers:
+**Placeholders.** A preset body is ordinary BBCode plus three optional markers:
 
 | Marker | Meaning |
 |---|---|
 | `{SELECTION}` | replaced by whatever text you had selected (empty if none) |
 | `{CURSOR}` | where the cursor lands after inserting |
+| `{PROMPT:libellé}` | asked for when you insert, in a small form |
 
-`{SELECTION}` accepts transformations, chained with `|`: `upper`, `lower`, `title`, `trim`.
-So a yell preset might read:
+`{SELECTION}` and `{PROMPT:…}` accept transformations, chained with `|`: `upper`, `lower`,
+`title`, `trim`. So a yell preset might read:
 
 ```
 [b][color=#123456]{SELECTION|upper}[/color][/b]{CURSOR}
@@ -85,6 +86,20 @@ Select a phrase, click the preset, and it comes back bold, coloured and shouted.
 doesn't mention `{SELECTION}` simply replaces the selection instead — and either way a single
 **Ctrl+Z** undoes the whole insertion, because inserting goes through the browser's native
 edit history rather than around it.
+
+**Fill-in-the-blank presets.** A character template is usually *almost* right — the same
+structure with a different place or mood. `{PROMPT:…}` turns the parts that change into
+questions: the label is the question, and a preset carrying any of them puts up a small form
+before it inserts, from either the menu or the panel.
+
+```
+*Il pousse la porte de {PROMPT:lieu}, l'air {PROMPT:humeur}.*{CURSOR}
+```
+
+The same label used twice is only asked once and fills both places, so
+`{PROMPT:lieu}` and `{PROMPT:lieu|title}` share one answer. Cancelling — Escape, *Annuler*, or
+clicking away — inserts nothing at all rather than a half-filled template, and the fields always
+start empty. See [ADR 0026](./docs/adr/0026-prompted-preset-placeholders.md).
 
 ### 4. Color grabber — ✅ done
 
@@ -151,14 +166,13 @@ See [ADR 0021](./docs/adr/0021-json-export-import.md).
 
 ## Planned
 
-Three candidates, none started. Each has a short design note in [`docs/design/`](./docs/design/)
+Two candidates, neither started. Each has a short design note in [`docs/design/`](./docs/design/)
 covering the approach and the questions still open — read those before starting one.
 
 | Idea | Why | Design note |
 |---|---|---|
 | **Draft autosave & recovery** | Feature 1 warns you before you *navigate* away, but nothing survives a crash, a killed tab, or phpBB's form token expiring mid-post — the losses that actually hurt on 30–60 minute posts. | [draft-autosave](./docs/design/draft-autosave.md) |
 | **Quote a selected passage** | phpBB's quote button takes the *whole* post. Replying to one line of a 2000-word post means quoting a wall and deleting it by hand. | [quote-selection](./docs/design/quote-selection.md) |
-| **`{PROMPT:…}` in presets** | Already reserved by [ADR 0015](./docs/adr/0015-preset-placeholder-syntax.md) and deferred for want of an in-page dialog — which now exists. Turns a static template into a small form. | [preset-prompt](./docs/design/preset-prompt.md) |
 
 ## Architecture & decisions
 

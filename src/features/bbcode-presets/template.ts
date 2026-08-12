@@ -1,23 +1,27 @@
 /**
  * The preset placeholder engine.
  *
- * A preset body is plain BBCode with two placeholders woven in — `{SELECTION}`,
- * which stands for whatever the writer had selected, and `{CURSOR}`, which marks
- * where the caret should land afterwards:
+ * A preset body is plain BBCode with three placeholders woven in — `{SELECTION}`,
+ * which stands for whatever the writer had selected, `{CURSOR}`, which marks
+ * where the caret should land afterwards, and `{PROMPT:label}`, which is asked
+ * for at insertion time:
  *
- *     [b][color=#123456]{SELECTION|upper}[/color][/b]{CURSOR}
+ *     [b][color=#123456]{SELECTION|upper}[/color][/b], à {PROMPT:lieu}{CURSOR}
  *
- * This module turns that body plus the current selection into the literal text
- * to insert and the caret position to leave behind. It is deliberately **pure**
- * and DOM-free: the caller reads the selection, calls `renderPreset`, and hands
- * the result to `insertAtRange` in `@/lib/textarea`. That split is what lets the
- * whole grammar be unit-tested, and what will let a future keyboard-shortcut
- * feature reuse this engine for plain BBCode tags.
+ * This module turns that body, the current selection and the answers to any
+ * prompts into the literal text to insert and the caret position to leave
+ * behind. It is deliberately **pure** and DOM-free: the caller reads the
+ * selection, asks `collectPrompts` what to put on the form, collects the
+ * answers, calls `renderPreset`, and hands the result to `insertAtRange` in
+ * `@/lib/textarea`. That split is what lets the whole grammar be unit-tested
+ * even though prompting needs an in-page dialog, and what will let a future
+ * keyboard-shortcut feature reuse this engine for plain BBCode tags.
  *
  * The syntax is a **frozen user-facing contract** — people type it into preset
  * bodies that are saved in their browser, so changing its meaning silently
  * rewrites their presets. Every degradation rule below is deliberate and
- * documented in docs/adr/0015-preset-placeholder-syntax.md.
+ * documented in docs/adr/0015-preset-placeholder-syntax.md, extended by
+ * docs/adr/0026-prompted-preset-placeholders.md.
  */
 
 /** The selection placeholder, verbatim. Referenced from help text — never hardcode it. */
@@ -26,7 +30,22 @@ export const SELECTION_TOKEN = '{SELECTION}';
 /** The caret placeholder, verbatim. Referenced from help text — never hardcode it. */
 export const CURSOR_TOKEN = '{CURSOR}';
 
-/** Transformations applicable to `{SELECTION}`, chainable left-to-right with `|`. */
+/** What a prompt placeholder opens with, verbatim. */
+const PROMPT_PREFIX = 'PROMPT:';
+
+/**
+ * Build a `{PROMPT:label}` token. The prompt placeholder takes an argument, so
+ * it cannot be a constant the way the other two are — help text and the
+ * options-page preview go through this rather than spelling it out.
+ */
+export function promptToken(label: string): string {
+  return `{${PROMPT_PREFIX}${label}}`;
+}
+
+/**
+ * Transformations applicable to `{SELECTION}` and to a `{PROMPT:…}` answer,
+ * chainable left-to-right with `|`.
+ */
 export const FILTERS = ['upper', 'lower', 'title', 'trim'] as const;
 
 export type FilterName = (typeof FILTERS)[number];
@@ -38,13 +57,22 @@ export type FilterName = (typeof FILTERS)[number];
  * mistake can still be fixed.
  */
 export type TemplateWarning =
-  { kind: 'unknownFilter'; filter: string } | { kind: 'duplicateCursor' };
+  | { kind: 'unknownFilter'; filter: string }
+  | { kind: 'duplicateCursor' }
+  | { kind: 'emptyPromptLabel' };
 
 export interface RenderInput {
   /** The preset's raw body, placeholders included. */
   body: string;
   /** The text currently selected in the editor; empty string when nothing is selected. */
   selection: string;
+  /**
+   * What the writer typed for each `{PROMPT:label}`, keyed by the **trimmed**
+   * label — the same strings `collectPrompts` returns. A label with no entry
+   * renders as the empty string, exactly like `{SELECTION}` with nothing
+   * selected; a *cancelled* dialog never calls this function at all.
+   */
+  answers?: Readonly<Record<string, string>>;
 }
 
 export interface RenderResult {
@@ -87,6 +115,59 @@ const FILTER_FNS: Record<FilterName, (value: string) => string> = {
   trim: (value) => value.trim(),
 };
 
+/**
+ * The one grammar, in one place.
+ *
+ * Built fresh on every call: a module-level /g regex carries `lastIndex`
+ * between calls, which would make results depend on call order.
+ *
+ * Group 1 is the token — `SELECTION`, `CURSOR`, or `PROMPT:` followed by a
+ * label. Group 2 is `''` or `'|a|b'`.
+ *
+ * The label class is `[^{}|]*`, which stops of its own accord at the `|` that
+ * opens the filter chain and at the closing `}`. It allows spaces and accents,
+ * because these labels are French and read like questions ("Nom du
+ * personnage"). It allows *zero* characters on purpose: that is what lets
+ * `{PROMPT:}` be matched, so it can be reported as an authoring mistake while
+ * still being emitted byte-for-byte literal.
+ */
+function placeholderPattern(): RegExp {
+  return /\{(SELECTION|CURSOR|PROMPT:[^{}|]*)((?:\|[a-z]+)*)\}/g;
+}
+
+/** The trimmed label of a prompt token, or `null` if this isn't one. */
+function promptLabel(token: string): string | null {
+  return token.startsWith(PROMPT_PREFIX) ? token.slice(PROMPT_PREFIX.length).trim() : null;
+}
+
+/**
+ * The distinct prompts a body asks for, in the order they appear.
+ *
+ * The pure half of the prompt flow: the caller uses this to build its form,
+ * then passes the answers back to `renderPreset`. Keeping it here rather than
+ * making the engine ask keeps `renderPreset` DOM-free.
+ *
+ * Labels are trimmed and **de-duplicated**, so a body mentioning the same label
+ * several times — `{PROMPT:lieu}` and `{PROMPT:lieu|upper}` — asks once and
+ * fills every occurrence from that one answer. Labels that trim to nothing are
+ * left out: they are an authoring mistake, reported by `renderPreset`, not a
+ * question anyone can answer.
+ */
+export function collectPrompts(body: string): string[] {
+  const placeholder = placeholderPattern();
+  const labels: string[] = [];
+  const seen = new Set<string>();
+
+  let match: RegExpExecArray | null;
+  while ((match = placeholder.exec(body)) !== null) {
+    const label = promptLabel(match[1]);
+    if (label === null || label === '' || seen.has(label)) continue;
+    seen.add(label);
+    labels.push(label);
+  }
+  return labels;
+}
+
 function isFilterName(name: string): name is FilterName {
   return (FILTERS as readonly string[]).includes(name);
 }
@@ -110,12 +191,12 @@ function applyFilters(
 }
 
 /**
- * Render a preset body against the current selection.
+ * Render a preset body against the current selection and the prompt answers.
  *
- * Grammar: `{` NAME (`|` filter)* `}` where NAME is `SELECTION` or `CURSOR`
- * (uppercase, exact) and each filter is lowercase ASCII. The token names are
- * case-sensitive on purpose, so that BBCode which happens to contain braces —
- * `{color}`, `{Selection}` — is never mangled.
+ * Grammar: `{` NAME (`|` filter)* `}` where NAME is `SELECTION`, `CURSOR`
+ * (uppercase, exact) or `PROMPT:` plus a label, and each filter is lowercase
+ * ASCII. The token names are case-sensitive on purpose, so that BBCode which
+ * happens to contain braces — `{color}`, `{Selection}` — is never mangled.
  *
  * Degradation rules, all deliberate:
  *
@@ -126,15 +207,21 @@ function applyFilters(
  * - `{CURSOR}` more than once → the first wins; the rest are removed from the
  *   output (never left visible) and reported as a warning.
  * - Filters written on `{CURSOR}` are parsed and ignored, silently.
+ * - `{PROMPT:label}` → the matching answer, filtered like a selection. A label
+ *   with no answer — because the caller never asked, or the writer left the
+ *   field blank — renders as the empty string, same as an empty selection.
+ *   A *cancelled* dialog inserts nothing at all, which is the caller's job:
+ *   it simply never calls this function.
+ * - `{PROMPT:}`, or a label that is nothing but spaces, is left byte-for-byte
+ *   literal **and** warned about. It is the one shape that is both matched and
+ *   emitted verbatim, because a question with no wording cannot be asked.
  * - An unknown filter is skipped, with a warning.
  * - Anything that doesn't match the grammar — `{SELECTION`, `{selection}`,
- *   `{SELECTION|Upper}` (filters must be lowercase), `{PROMPT:nom}` — is left
- *   byte-for-byte literal. `{PROMPT:…}` is reserved for a later iteration.
+ *   `{SELECTION|Upper}` (filters must be lowercase), `{prompt:nom}` — is left
+ *   byte-for-byte literal.
  */
-export function renderPreset({ body, selection }: RenderInput): RenderResult {
-  // Built fresh per call: a module-level /g regex carries `lastIndex` between
-  // calls, which would make results depend on call order.
-  const placeholder = /\{(SELECTION|CURSOR)((?:\|[a-z]+)*)\}/g;
+export function renderPreset({ body, selection, answers }: RenderInput): RenderResult {
+  const placeholder = placeholderPattern();
 
   const warnings: TemplateWarning[] = [];
   let text = '';
@@ -142,8 +229,8 @@ export function renderPreset({ body, selection }: RenderInput): RenderResult {
   let consumed = 0;
 
   // Scan the BODY only, appending substitutions into `text`. Never re-scan what
-  // has been substituted, or a selection containing the literal string
-  // "{SELECTION}" would recurse into itself.
+  // has been substituted, or a selection — or a prompt answer — containing the
+  // literal string "{SELECTION}" would recurse into itself.
   let match: RegExpExecArray | null;
   while ((match = placeholder.exec(body)) !== null) {
     text += body.slice(consumed, match.index);
@@ -162,6 +249,21 @@ export function renderPreset({ body, selection }: RenderInput): RenderResult {
         warnings.push({ kind: 'duplicateCursor' });
       }
       continue; // contributes nothing to the output either way
+    }
+
+    const label = promptLabel(token);
+    if (label !== null) {
+      if (label === '') {
+        // A question with no wording. Put the token back exactly as it was
+        // typed — a preset that round-tripped untouched before this feature
+        // existed must keep doing so — and report it where it can still be
+        // fixed, in the options-page preview.
+        text += match[0];
+        warnings.push({ kind: 'emptyPromptLabel' });
+        continue;
+      }
+      text += applyFilters(answers?.[label] ?? '', filters, warnings);
+      continue;
     }
 
     text += applyFilters(selection, filters, warnings);

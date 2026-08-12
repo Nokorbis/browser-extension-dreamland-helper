@@ -22,6 +22,8 @@
   } from '@/lib/presets';
   import {
     renderPreset,
+    collectPrompts,
+    promptToken,
     SELECTION_TOKEN,
     CURSOR_TOKEN,
     FILTERS,
@@ -241,6 +243,13 @@
     }
   }
 
+  /**
+   * The `{PROMPT:…}` spelling shown in the help text, built through
+   * `promptToken` rather than written out — the same rule the other two tokens
+   * follow, so the grammar has one home.
+   */
+  const promptSample = promptToken(i18n.t('features.bbcodePresets.editor.promptSampleLabel'));
+
   // --- live preview -------------------------------------------------------
   const preview = $derived(
     selectedPreset === null
@@ -248,17 +257,34 @@
       : renderPreset({
           body: selectedPreset.body,
           selection: i18n.t('features.bbcodePresets.editor.previewSample'),
+          // Prompts stand in for themselves rather than being asked here: the
+          // preview is for checking the template's shape, not exercising it.
+          // Filters still visibly apply to the stand-in, which is the point —
+          // {PROMPT:humeur|upper} shows up shouted.
+          answers: Object.fromEntries(
+            collectPrompts(selectedPreset.body).map((label) => [
+              label,
+              i18n.t('features.bbcodePresets.editor.previewPromptSample', { label }),
+            ]),
+          ),
         }),
   );
 
   function warningText(warning: TemplateWarning): string {
-    return warning.kind === 'unknownFilter'
-      ? i18n.t('features.bbcodePresets.editor.warningUnknownFilter', {
+    switch (warning.kind) {
+      case 'unknownFilter':
+        return i18n.t('features.bbcodePresets.editor.warningUnknownFilter', {
           filter: warning.filter,
-        })
-      : i18n.t('features.bbcodePresets.editor.warningDuplicateCursor', {
+        });
+      case 'duplicateCursor':
+        return i18n.t('features.bbcodePresets.editor.warningDuplicateCursor', {
           cur: CURSOR_TOKEN,
         });
+      case 'emptyPromptLabel':
+        return i18n.t('features.bbcodePresets.editor.warningEmptyPromptLabel', {
+          prompt: promptToken(''),
+        });
+    }
   }
 
   /** The caret position, shown in the preview as a visible marker. */
@@ -380,6 +406,12 @@
           {i18n.t('features.bbcodePresets.editor.filtersHelp', {
             filters: FILTERS.join(', '),
             example: `[b]${SELECTION_TOKEN.slice(0, -1)}|upper}[/b]`,
+          })}
+        </p>
+        <p class="help">
+          {i18n.t('features.bbcodePresets.editor.promptHelp', {
+            prompt: promptSample,
+            example: `[i]${promptSample.slice(0, -1)}|title}[/i]`,
           })}
         </p>
 

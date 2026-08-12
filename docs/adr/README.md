@@ -27,7 +27,7 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0012](0012-feature-owned-data-stores.md) | Feature-owned data stores beyond the settings map | Accepted |
 | [0013](0013-undo-safe-text-insertion.md) | Preserve the native undo stack with `execCommand('insertText')` | Accepted |
 | [0014](0014-popup-accordion-options-page.md) | Popup accordion plus an options page for feature settings | Accepted |
-| [0015](0015-preset-placeholder-syntax.md) | Preset placeholder syntax as a frozen contract | Accepted |
+| [0015](0015-preset-placeholder-syntax.md) | Preset placeholder syntax as a frozen contract | Accepted — grammar extended by [0026](0026-prompted-preset-placeholders.md) |
 | [0016](0016-svelte-in-content-script.md) | Svelte in the content script, mounted in a Shadow root | Accepted |
 | [0017](0017-keyboard-shortcuts-delegate-to-toolbar.md) | Keyboard shortcuts drive existing toolbar buttons, across composer surfaces | Accepted |
 | [0018](0018-chrome-web-store-distribution.md) | Chrome Web Store distribution | Accepted |
@@ -38,3 +38,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0023](0023-shared-primitives-in-lib.md) | Cross-feature primitives are promoted to `src/lib` | Accepted |
 | [0024](0024-lint-and-format-gate.md) | A lint and format gate, scoped to what the other gates can't see | Accepted |
 | [0025](0025-feature-ids-as-a-type.md) | Feature ids are a type, not a convention | Accepted |
+| [0026](0026-prompted-preset-placeholders.md) | Prompted preset placeholders — `{PROMPT:label}` | Accepted |

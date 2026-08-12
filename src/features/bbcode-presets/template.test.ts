@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { renderPreset, SELECTION_TOKEN, CURSOR_TOKEN, FILTERS } from './template';
+import {
+  renderPreset,
+  collectPrompts,
+  promptToken,
+  SELECTION_TOKEN,
+  CURSOR_TOKEN,
+  FILTERS,
+} from './template';
 
 /**
  * These tests ARE the frozen contract described in
@@ -10,6 +17,9 @@ import { renderPreset, SELECTION_TOKEN, CURSOR_TOKEN, FILTERS } from './template
  */
 
 const render = (body: string, selection = '') => renderPreset({ body, selection });
+
+const fill = (body: string, answers: Record<string, string>, selection = '') =>
+  renderPreset({ body, selection, answers });
 
 describe('{SELECTION}', () => {
   it('substitutes the selected text', () => {
@@ -120,13 +130,127 @@ describe('filters', () => {
   });
 });
 
+describe('{PROMPT:label}', () => {
+  it('substitutes the answer given for its label', () => {
+    expect(fill('[i]{PROMPT:lieu}[/i]', { lieu: 'la taverne' }).text).toBe(
+      '[i]la taverne[/i]',
+    );
+  });
+
+  it('collapses to nothing when the field was left blank', () => {
+    // The writer chose that. Same shape as {SELECTION} with no selection.
+    expect(fill('[i]{PROMPT:lieu}[/i]', { lieu: '' }).text).toBe('[i][/i]');
+  });
+
+  it('collapses to nothing when no answers were supplied at all', () => {
+    // A *cancelled* dialog is not this case — the caller simply never renders.
+    const { text, warnings } = render('[i]{PROMPT:lieu}[/i]');
+    expect(text).toBe('[i][/i]');
+    expect(warnings).toEqual([]);
+  });
+
+  it('asks once for a repeated label and fills every occurrence', () => {
+    const body = '{PROMPT:lieu} — {PROMPT:lieu|upper}';
+    expect(collectPrompts(body)).toEqual(['lieu']);
+    expect(fill(body, { lieu: 'la taverne' }).text).toBe('la taverne — LA TAVERNE');
+  });
+
+  it('applies a filter chain to the answer, left to right', () => {
+    expect(fill('{PROMPT:nom|trim|title}', { nom: '  jean-pierre  ' }).text).toBe(
+      'Jean-Pierre',
+    );
+  });
+
+  it('skips an unknown filter on a prompt, exactly as on a selection', () => {
+    const { text, warnings } = fill('{PROMPT:nom|bold|upper}', { nom: 'salut' });
+    expect(text).toBe('SALUT');
+    expect(warnings).toEqual([{ kind: 'unknownFilter', filter: 'bold' }]);
+  });
+
+  it('accepts a label with spaces and accents, and trims it', () => {
+    const body = '{PROMPT: Nom du personnage }';
+    expect(collectPrompts(body)).toEqual(['Nom du personnage']);
+    expect(fill(body, { 'Nom du personnage': 'Aurélien' }).text).toBe('Aurélien');
+  });
+
+  it.each([
+    ['no label at all', '[b]{PROMPT:}[/b]'],
+    ['a label of nothing but spaces', '[b]{PROMPT:   }[/b]'],
+  ])('leaves %s literal, but says so', (_label, body) => {
+    // The one shape that is both matched and emitted verbatim: a question with
+    // no wording cannot be asked, and the token must still round-trip.
+    const { text, warnings } = fill(body, {});
+    expect(text).toBe(body);
+    expect(warnings).toEqual([{ kind: 'emptyPromptLabel' }]);
+    expect(collectPrompts(body)).toEqual([]);
+  });
+
+  it('never re-scans an answer', () => {
+    // Otherwise an answer containing a token would expand, and one containing
+    // {CURSOR} would move the caret somewhere the preset never asked for.
+    const { text, caretOffset } = fill('{PROMPT:lieu}{CURSOR}', {
+      lieu: `a${SELECTION_TOKEN}${CURSOR_TOKEN}b`,
+    });
+    expect(text).toBe(`a${SELECTION_TOKEN}${CURSOR_TOKEN}b`);
+    expect(caretOffset).toBe(text.length);
+  });
+
+  it('renders alongside a selection and a caret', () => {
+    const { text, caretOffset, warnings } = renderPreset({
+      body: '[b]{SELECTION|upper}[/b] à {PROMPT:lieu}{CURSOR} — dit-il.',
+      selection: 'attention',
+      answers: { lieu: 'la taverne' },
+    });
+    expect(text).toBe('[b]ATTENTION[/b] à la taverne — dit-il.');
+    expect(caretOffset).toBe('[b]ATTENTION[/b] à la taverne'.length);
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe('collectPrompts', () => {
+  it('returns the labels in the order they appear', () => {
+    expect(collectPrompts('{PROMPT:lieu} {PROMPT:humeur} {PROMPT:heure}')).toEqual([
+      'lieu',
+      'humeur',
+      'heure',
+    ]);
+  });
+
+  it('de-duplicates, keeping the position of the first mention', () => {
+    expect(collectPrompts('{PROMPT:humeur} {PROMPT:lieu} {PROMPT:humeur}')).toEqual([
+      'humeur',
+      'lieu',
+    ]);
+  });
+
+  it('ignores the other tokens', () => {
+    expect(collectPrompts('[b]{SELECTION|upper}[/b]{CURSOR}')).toEqual([]);
+  });
+
+  it('returns nothing for a body with no placeholders', () => {
+    expect(collectPrompts('[hr]')).toEqual([]);
+  });
+
+  it('builds the token it collects', () => {
+    expect(promptToken('lieu')).toBe('{PROMPT:lieu}');
+    expect(collectPrompts(promptToken('lieu'))).toEqual(['lieu']);
+  });
+});
+
 describe('malformed input stays literal', () => {
+  // `['the reserved prompt token', '[b]{PROMPT:nom}[/b]']` used to sit in this
+  // table. It moved to the {PROMPT:label} block below when the token stopped
+  // being reserved — the one deliberate expectation change in this file, made
+  // under docs/adr/0026-prompted-preset-placeholders.md and safe only because
+  // 0015 had parked the token in this "left literal" bucket precisely so it
+  // could be given a meaning later.
   it.each([
     ['an unclosed token', '[b]{SELECTION[/b]'],
     ['a lowercase token name', '[b]{selection}[/b]'],
     ['a mixed-case token name', '[b]{Selection}[/b]'],
     ['an uppercase filter name', '[b]{SELECTION|Upper}[/b]'],
-    ['the reserved prompt token', '[b]{PROMPT:nom}[/b]'],
+    ['a lowercase prompt token', '[b]{prompt:nom}[/b]'],
+    ['an unclosed prompt token', '[b]{PROMPT:nom[/b]'],
     ['ordinary braces in BBCode', '[b]{color}[/b]'],
   ])('leaves %s byte-for-byte', (_label, body) => {
     const { text, warnings } = render(body, 'IGNORÉ');
