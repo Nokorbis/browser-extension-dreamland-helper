@@ -149,6 +149,17 @@ It lives on the options page rather than in the popup for a concrete reason: the
 the instant a file-picker dialog takes focus, taking the pending import with it.
 See [ADR 0021](./docs/adr/0021-json-export-import.md).
 
+## Planned
+
+Three candidates, none started. Each has a short design note in [`docs/design/`](./docs/design/)
+covering the approach and the questions still open — read those before starting one.
+
+| Idea | Why | Design note |
+|---|---|---|
+| **Draft autosave & recovery** | Feature 1 warns you before you *navigate* away, but nothing survives a crash, a killed tab, or phpBB's form token expiring mid-post — the losses that actually hurt on 30–60 minute posts. | [draft-autosave](./docs/design/draft-autosave.md) |
+| **Quote a selected passage** | phpBB's quote button takes the *whole* post. Replying to one line of a 2000-word post means quoting a wall and deleting it by hand. | [quote-selection](./docs/design/quote-selection.md) |
+| **`{PROMPT:…}` in presets** | Already reserved by [ADR 0015](./docs/adr/0015-preset-placeholder-syntax.md) and deferred for want of an in-page dialog — which now exists. Turns a static template into a small form. | [preset-prompt](./docs/design/preset-prompt.md) |
+
 ## Architecture & decisions
 
 The codebase is one thin content script that boots a registry of self-contained features;
