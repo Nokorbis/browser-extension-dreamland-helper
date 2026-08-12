@@ -8,15 +8,28 @@
   interface Props {
     /** Whether the imported file had a `settings` field at all. */
     settingsPresent: boolean;
+    /** Whether the imported file had an `emoji` field at all. */
+    emojiPresent: boolean;
     /** `null` when the file had no `presets` field. */
     importedPresets: PresetStore | null;
     /** The live library, used only to compute the per-preset status badge. */
     currentPresets: PresetStore;
-    onconfirm: (selection: { importSettings: boolean; selectedPresetIds: Set<string> }) => void;
+    onconfirm: (selection: {
+      importSettings: boolean;
+      importEmoji: boolean;
+      selectedPresetIds: Set<string>;
+    }) => void;
     oncancel: () => void;
   }
 
-  let { settingsPresent, importedPresets, currentPresets, onconfirm, oncancel }: Props = $props();
+  let {
+    settingsPresent,
+    emojiPresent,
+    importedPresets,
+    currentPresets,
+    onconfirm,
+    oncancel,
+  }: Props = $props();
 
   // The modal is mounted once per import attempt (App.svelte remounts it via
   // an `{#if}` block for the next file), so these props never change during
@@ -33,6 +46,10 @@
   // Seeded from a prop on purpose — this is independently editable local
   // state from here on, the standard "form default" pattern.
   let importSettings = $state(untrack(() => settingsPresent));
+  // Unchecked by default, unlike settings: a recents list is replaced wholesale
+  // rather than merged, so bringing one in silently discards the one this
+  // browser has built up. Opting in is the only safe default.
+  let importEmoji = $state(false);
   // New presets are safe to bring in by default; anything that would touch an
   // existing preset (identical or conflicting) needs an explicit opt-in —
   // same "never destroy without being asked" spirit as the confirm() guarding
@@ -53,7 +70,7 @@
   }
 
   function confirm() {
-    onconfirm({ importSettings, selectedPresetIds: selectedIds });
+    onconfirm({ importSettings, importEmoji, selectedPresetIds: selectedIds });
   }
 
   function onBackdropKeydown(e: KeyboardEvent) {
@@ -101,6 +118,13 @@
       <label class="settings-row">
         <input type="checkbox" bind:checked={importSettings} />
         {i18n.t('options.backup.modal.settingsLabel')}
+      </label>
+    {/if}
+
+    {#if emojiPresent}
+      <label class="settings-row">
+        <input type="checkbox" bind:checked={importEmoji} />
+        {i18n.t('options.backup.modal.emojiLabel')}
       </label>
     {/if}
 

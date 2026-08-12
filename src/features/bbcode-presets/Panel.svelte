@@ -4,7 +4,7 @@
   import type { MenuState } from './menu-state.svelte';
   import FolderTree from './FolderTree.svelte';
   // Global (unscoped) — defines the --dlh-* variables every surface reads.
-  import './palette.css';
+  import '@/lib/palette.css';
 
   interface Props {
     /** Named `panel`, not `state` — see the note in Menu.svelte. */

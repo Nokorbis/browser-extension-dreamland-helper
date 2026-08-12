@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
     'bbcode-presets': true,
     'color-grab': true,
     'editor-shortcuts': true,
+    'emoji-picker': true,
   },
 };
 

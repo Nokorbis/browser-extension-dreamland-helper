@@ -12,6 +12,7 @@ import {
 } from '@/lib/phpbb';
 import { insertAtRange, readSelection, type TextRange } from '@/lib/textarea';
 import { loadPresetStore, watchPresetStore, type Preset } from '@/lib/presets';
+import { createPopover, type Popover } from '@/lib/popover';
 import { log, warn } from '@/lib/log';
 import { renderPreset } from './template';
 import { createMenuState } from './menu-state.svelte';
@@ -39,6 +40,10 @@ import Panel from './Panel.svelte';
  *    inside a shadow root the skin cannot reach it and it would look foreign.
  * 2. **The menu and panel are Svelte inside shadow roots**, because both are
  *    data-driven and recursive. See docs/adr/0016-svelte-in-content-script.md.
+ *    Only the *menu* is an anchored popover, so only it goes through
+ *    `@/lib/popover` (shared with the emoji picker — docs/adr/0023); the panel
+ *    is an inline block inside `#message-box` with no positioning, no outside-
+ *    click dismissal and no Escape, and is mounted by hand below.
  *
  * ⚠ The button sits inside phpBB's `<form id="postform">`. It **must** stay
  * `type="button"` with no `name`: a submit button here fires a submit event that
@@ -67,7 +72,8 @@ export const bbcodePresets: Feature = {
     const { signal } = controller;
 
     let disposed = false;
-    let menuUi: ShadowRootContentScriptUi<Record<string, unknown>> | null = null;
+    // Assigned at the end of the menu's block, so its callbacks reach it lazily.
+    let menuPopover: Popover | null = null;
     let panelUi: ShadowRootContentScriptUi<Record<string, unknown>> | null =
       null;
     let unwatch: (() => void) | null = null;
@@ -158,23 +164,6 @@ export const bbcodePresets: Feature = {
       formatButtons.append(button);
       trigger = button;
 
-      /**
-       * Publish the trigger's viewport rect to the shadow root as custom
-       * properties; the menu is `position: fixed` and reads them. Measuring here
-       * rather than styling from CSS keeps the menu correct whatever the skin
-       * does to the toolbar row, and lets it escape an `overflow: hidden`
-       * ancestor.
-       */
-      const positionMenu = () => {
-        if (menuUi === null || trigger === null) return;
-        const rect = trigger.getBoundingClientRect();
-        menuUi.shadowHost.style.setProperty(
-          '--dlh-menu-top',
-          `${rect.bottom + 4}px`,
-        );
-        menuUi.shadowHost.style.setProperty('--dlh-menu-left', `${rect.left}px`);
-      };
-
       const closeMenu = () => {
         menuState.open = false;
         button.setAttribute('aria-expanded', 'false');
@@ -195,98 +184,39 @@ export const bbcodePresets: Feature = {
         snapshotSelection();
         menuState.open = true;
         button.setAttribute('aria-expanded', 'true');
-        positionMenu();
+        menuPopover?.position();
       };
 
-      // preventDefault on mousedown so the textarea never loses focus — that is
-      // what keeps the user's selection alive across the click.
-      button.addEventListener('mousedown', (event) => event.preventDefault(), {
-        signal,
-      });
-      button.addEventListener(
-        'click',
-        () => (menuState.open ? closeMenu() : openMenu()),
-        { signal },
-      );
-
-      document.addEventListener(
-        'pointerdown',
-        (event) => {
-          if (!menuState.open) return;
-          // event.target is retargeted to the shadow host for anything inside
-          // the shadow root, so composedPath() is the only reliable containment
-          // test.
-          const path = event.composedPath();
-          if (path.includes(button)) return;
-          if (menuUi !== null && path.includes(menuUi.shadowHost)) return;
-          closeMenu();
-        },
-        { capture: true, signal },
-      );
-
-      // Only fires while focus is *outside* the shadow root — `isolateEvents`
-      // below stops key events escaping it, so the in-menu case is handled by
-      // Menu.svelte calling `onclose`. Both paths must dismiss identically.
-      document.addEventListener(
-        'keydown',
-        (event) => {
-          if (event.key !== 'Escape' || !menuState.open) return;
-          dismissMenu();
-        },
-        { signal },
-      );
-
-      // A fixed menu does not follow the page, so re-measure while it is open.
-      // Capture phase so scrolling inside any container counts, not just window.
-      const reposition = () => {
-        if (menuState.open) positionMenu();
-      };
-      document.addEventListener('scroll', reposition, {
-        capture: true,
-        signal,
-      });
-      window.addEventListener('resize', reposition, { signal });
-
-      // createShadowRootUi is async (it fetches the built CSS) while setup()
-      // hands back its cleanup synchronously, so the `disposed` check after the
-      // await is what stops a fast navigation from leaking a mounted UI.
-      void (async () => {
-        try {
-          const created = await createShadowRootUi(ctx.scriptCtx, {
-            name: 'dlh-bbcode-presets',
-            position: 'inline',
-            anchor: button,
-            append: 'after',
-            isolateEvents: ['keydown', 'keyup', 'keypress'],
-            onMount: (container) =>
-              mount(Menu, {
-                target: container,
-                props: {
-                  menu: menuState,
-                  onselect: insert,
-                  // Escape/Tab from inside the menu — must restore focus, since
-                  // this is the path that actually runs for a keyboard user.
-                  onclose: dismissMenu,
-                },
-              }),
-            onRemove: (mounted) => {
-              if (mounted) void unmount(mounted);
+      // Anchoring, dismissal and the shadow-root mount are all shared with the
+      // emoji picker's panel — see `@/lib/popover` and docs/adr/0023. No `fit`
+      // here: the composer toolbar is near the top of the page, so this menu has
+      // never needed to flip above its trigger or clamp its left edge, and
+      // turning fitting on would change long-settled behaviour for no reported
+      // problem.
+      menuPopover = createPopover({
+        ctx: ctx.scriptCtx,
+        name: 'dlh-bbcode-presets',
+        trigger: button,
+        prefix: 'menu',
+        isOpen: () => menuState.open,
+        isDisposed: () => disposed,
+        onClose: closeMenu,
+        onDismiss: dismissMenu,
+        onToggle: () => (menuState.open ? closeMenu() : openMenu()),
+        render: (container) =>
+          mount(Menu, {
+            target: container,
+            props: {
+              menu: menuState,
+              onselect: insert,
+              // Escape/Tab from inside the menu — must restore focus, since
+              // this is the path that actually runs for a keyboard user.
+              onclose: dismissMenu,
             },
-          });
-          if (disposed) return;
-
-          menuUi = created;
-          menuUi.mount();
-          // The host is only a carrier for the shadow root: the menu inside is
-          // `position: fixed`, so the host itself must take up no layout space
-          // in phpBB's toolbar row.
-          menuUi.shadowHost.style.display = 'inline-block';
-          menuUi.shadowHost.style.width = '0';
-          menuUi.shadowHost.style.height = '0';
-        } catch (err) {
-          warn('bbcode-presets: could not mount the menu', err);
-        }
-      })();
+          }),
+        destroy: (app) => void unmount(app),
+        signal,
+      });
 
       log('bbcode-presets: trigger injected into the BBCode toolbar');
     }
@@ -368,7 +298,7 @@ export const bbcodePresets: Feature = {
       controller.abort();
       unwatch?.();
       unwatchTheme?.();
-      menuUi?.remove();
+      menuPopover?.remove();
       panelUi?.remove();
       trigger?.remove();
     };

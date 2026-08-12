@@ -5,7 +5,7 @@
   import type { MenuState } from './menu-state.svelte';
   import MenuNode from './MenuNode.svelte';
   // Global (unscoped) — defines the --dlh-* variables every surface reads.
-  import './palette.css';
+  import '@/lib/palette.css';
 
   interface Props {
     /** Named `menu`, not `state`: a local binding called `state` would make the

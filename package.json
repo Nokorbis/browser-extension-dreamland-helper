@@ -1,7 +1,7 @@
 {
   "name": "dreamland-reborn-qol",
   "displayName": "Dreamland Reborn QoL",
-  "description": "Writing aids for PHPBB 3.20 roleplay forums: exit guard, text highlighting, BBCode presets, color grabbing, and keyboard shortcuts.",
+  "description": "Writing aids for PHPBB 3.20 roleplay forums: exit guard, text highlighting, BBCode presets, color grabbing, keyboard shortcuts, and an emoji picker.",
   "private": true,
   "version": "1.0.2",
   "license": "MIT",
@@ -15,6 +15,7 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "gen:emoji": "node scripts/gen-emoji.mjs",
     "test": "vitest run",
     "release": "bash scripts/release.sh",
     "postinstall": "wxt prepare"
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@wxt-dev/i18n": "^0.2.6",
     "@wxt-dev/module-svelte": "^2.0.5",
+    "emojibase-data": "^17.0.0",
     "svelte": "^5.56.7",
     "svelte-check": "^4.7.3",
     "typescript": "^5.9.3",

@@ -7,6 +7,7 @@ import {
   applyPresetImport,
 } from './backup';
 import { PRESETS_SCHEMA_VERSION, type PresetStore, type Folder, type Preset } from './presets';
+import { EMOJI_SCHEMA_VERSION, emptyEmojiPrefs, type EmojiPrefs } from './emoji-recents';
 import { DEFAULT_SETTINGS, type Settings } from './storage';
 
 /**
@@ -42,17 +43,24 @@ const settingsOf = (overrides: Record<string, boolean> = {}): Settings => ({
   features: { ...DEFAULT_SETTINGS.features, ...overrides },
 });
 
+const emojiOf = (recent: string[] = []): EmojiPrefs => ({
+  version: EMOJI_SCHEMA_VERSION,
+  recent,
+});
+
 describe('buildExportBundle', () => {
   it('assembles a bundle that parses back to the same stores', () => {
     const settings = settingsOf({ 'exit-guard': false });
     const presets = storeOf([folder('f1', 'Perso')], [preset('p1', 'Intro', 'f1', 'Salut')]);
-    const bundle = buildExportBundle(settings, presets, '2026-08-11T00:00:00.000Z');
+    const emoji = emojiOf(['😀', '❤️']);
+    const bundle = buildExportBundle(settings, presets, emoji, '2026-08-11T00:00:00.000Z');
 
     const parsed = parseImportBundle(JSON.stringify(bundle));
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) throw new Error('unreachable');
     expect(parsed.settings).toEqual(settings);
     expect(parsed.presets).toEqual(presets);
+    expect(parsed.emoji).toEqual(emoji);
   });
 });
 
@@ -78,7 +86,35 @@ describe('parseImportBundle', () => {
 
   it('returns null (not an empty store) for a field absent from the file', () => {
     const result = parseImportBundle(JSON.stringify({ formatVersion: 1 }));
-    expect(result).toEqual({ ok: true, settings: null, presets: null });
+    expect(result).toEqual({ ok: true, settings: null, presets: null, emoji: null });
+  });
+
+  it('reads a v1 file written before the emoji field existed', () => {
+    // `emoji` was added without bumping formatVersion, so both directions have
+    // to keep working: an older file has no emoji field, and reads as "leave
+    // that store alone" rather than as a corrupt bundle.
+    const result = parseImportBundle(
+      JSON.stringify({ formatVersion: 1, settings: { features: {} }, presets: storeOf([]) }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.emoji).toBeNull();
+  });
+
+  it('repairs a present-but-malformed emoji field instead of rejecting it', () => {
+    const result = parseImportBundle(
+      JSON.stringify({ formatVersion: 1, emoji: { recent: ['😀', 7, '😀'] } }),
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.emoji).toEqual(emojiOf(['😀']));
+  });
+
+  it('resets a present-but-unusable emoji field to an empty list', () => {
+    const result = parseImportBundle(JSON.stringify({ formatVersion: 1, emoji: 5 }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error('unreachable');
+    expect(result.emoji).toEqual(emptyEmojiPrefs());
   });
 
   it('repairs a present-but-malformed presets field instead of rejecting it', () => {

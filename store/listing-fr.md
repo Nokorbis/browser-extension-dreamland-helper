@@ -75,12 +75,24 @@ Les préréglages se créent dans la page d'options de l'extension, avec un aper
 
 ━━━ RACCOURCIS CLAVIER ━━━
 
-Les mêmes raccourcis sur Chrome, Brave et Firefox, actifs uniquement dans la zone de
-rédaction : Ctrl+B gras, Ctrl+I italique, Ctrl+U souligné, Ctrl+K lien, Ctrl+E code, puis
-Alt+Q citation, Alt+L liste, Alt+G couleur, Alt+N centrer, Alt+K spoiler… Les raccourcis
-actionnent les boutons du forum lui-même, donc ils suivent exactement le comportement de
-l'éditeur et couvrent aussi les BBCodes propres au forum. Chaque bouton affiche son raccourci
-dans son infobulle.
+Les mêmes raccourcis sur Chrome, Brave et Firefox, actifs uniquement dans une zone de
+rédaction — l'éditeur du forum comme la Tribune : Ctrl+B gras, Ctrl+I italique, Ctrl+U souligné,
+Ctrl+K lien, Ctrl+E code, puis Alt+Q citation, Alt+L liste, Alt+G couleur, Alt+N centrer,
+Alt+K spoiler… Les raccourcis actionnent les boutons du forum lui-même, donc ils suivent
+exactement le comportement de l'éditeur et couvrent aussi les BBCodes propres au forum. Chaque
+bouton affiche son raccourci dans son infobulle.
+
+━━━ SÉLECTEUR D'EMOJI ━━━
+
+Insérez des emoji Unicode dans l'éditeur et dans la Tribune, sans quitter la page. Un bouton
+dans la barre d'outils, ou le raccourci Alt+I, ouvre un panneau de recherche.
+
+• La recherche accepte le français et l'anglais, sans se soucier des accents : « coeur » comme
+  « heart » trouvent ❤️.
+• Les emoji utilisés récemment restent à portée de clic.
+• Les émoticônes en images du forum et de la Tribune ne sont pas modifiées : ceci s'ajoute à
+  elles.
+• Un seul Ctrl+Z annule l'insertion : elle passe par l'historique natif du navigateur.
 
 ━━━ PIPETTE DE COULEUR ━━━
 
@@ -104,10 +116,10 @@ bien sur la page du sujet que dans la relecture affichée sous l'éditeur de ré
 ━━━ SAUVEGARDE ET RESTAURATION ━━━
 
 Depuis la page des options (icône ⚙ à côté du titre, dans le menu de l'extension), exportez vos
-réglages et votre bibliothèque de préréglages BBCode dans un fichier JSON, pour les garder ou les
-retrouver sur un autre navigateur.
+réglages, votre bibliothèque de préréglages BBCode et vos emoji récents dans un fichier JSON,
+pour les garder ou les retrouver sur un autre navigateur.
 
-• L'export produit un seul fichier contenant vos réglages et vos préréglages.
+• L'export produit un seul fichier contenant vos réglages, vos préréglages et vos emoji récents.
 • À l'import, vous choisissez précisément quels préréglages ajouter : chacun indique s'il est
   déjà identique à l'existant ou s'il en remplacerait un dont le contenu diffère, pour ne rien
   écraser par erreur.
@@ -175,7 +187,8 @@ post there without losing it and without retyping the same markup: it warns befo
 composer that still holds unsent text and checks the forum is responding before a post is
 submitted, it inserts user-authored BBCode snippets at the cursor, it filters the forum's own
 colour palette down to the colours already used in the thread so one can be reused in the post,
-it binds keyboard shortcuts to the forum's own BBCode toolbar buttons, and it lets the member
+it binds keyboard shortcuts to the forum's own BBCode toolbar buttons, it offers a searchable
+panel for inserting Unicode emoji into the message being written, and it lets the member
 highlight passages of the thread they are replying to so they keep track of what to answer. All
 of these serve one activity -- composing a post on that forum -- and the extension does nothing
 on any other page: its host permission is limited to *://*.dreamland-reborn.net/*.
@@ -194,12 +207,12 @@ on any other page: its host permission is limited to *://*.dreamland-reborn.net/
 ```
 Stores the user's own settings and content locally: which of the extension's features are
 enabled, the BBCode presets the user authors in the options page, the text passages the user
-has highlighted in threads, and whether the preset panel was left open or collapsed. This is
-the only way to keep a user's presets and highlights between page loads. Nothing is written
-anywhere else, and nothing is transmitted -- storage.local only, never storage.sync. The
-extension's options page can export this data (settings and presets) to a JSON file the user
-saves to their own device, and import one back in -- a user-initiated local file operation, not
-a network transmission.
+has highlighted in threads, the emoji they most recently inserted, and whether the preset panel
+was left open or collapsed. This is the only way to keep a user's presets and highlights between
+page loads. Nothing is written anywhere else, and nothing is transmitted -- storage.local only,
+never storage.sync. The extension's options page can export this data (settings, presets and
+recent emoji) to a JSON file the user saves to their own device, and import one back in -- a
+user-initiated local file operation, not a network transmission.
 ```
 
 **Host permission `*://*.dreamland-reborn.net/*`**
@@ -214,7 +227,10 @@ host is requested and the extension has no access to any other site.
 ```
 
 **Remote code**: *No, I am not using remote code.* — everything is bundled by WXT/Vite into the
-package; MV3 forbids remote code and nothing here loads any.
+package; MV3 forbids remote code and nothing here loads any. The emoji picker does `fetch` its
+emoji table at runtime, but from the extension's *own* package (`emoji/emoji.json`, listed in
+`web_accessible_resources`) — it is packaged data, not code, and not remote. If a reviewer
+queries the `fetch`, that is the answer.
 
 ### Data usage — what to declare
 

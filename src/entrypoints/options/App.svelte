@@ -33,7 +33,7 @@
   // Global (unscoped) — the --dlh-* variables FolderTree reads. This is an
   // extension page, so the theme follows the OS preference (see below), unlike
   // the in-page surfaces which follow the forum's own theme.
-  import '@/features/bbcode-presets/palette.css';
+  import '@/lib/palette.css';
 
   /**
    * The extension's options page: one page, one section per area of settings.

@@ -27,9 +27,16 @@ Features (all implemented):
    tooltip lists who used it and how often. See
    `docs/adr/0019-color-grab-augments-native-palette.md`. _(done)_
 5. **Keyboard shortcuts** (`editor-shortcuts`) — Ctrl+B / Ctrl+I / Alt+Q… over phpBB's BBCode
-   toolbar, consistent across browsers. It *clicks* the forum's own buttons rather than
-   inserting text, so it inherits their behaviour and covers admin-added BBCodes for free.
+   toolbar **and the Tribune chatbox's**, consistent across browsers. It *clicks* the forum's
+   own buttons rather than inserting text, so it inherits their behaviour and covers
+   admin-added BBCodes for free. Surfaces are enumerated, not detected: each is bound if its
+   selectors resolve, so a missing button just leaves that key alone.
    See `docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md`. _(done)_
+6. **Emoji picker** (`emoji-picker`) — a searchable **Unicode** emoji panel on both writing
+   surfaces (composer and chatbox), from a toolbar button or **Alt+I**. Distinct from the
+   forum's own image emoticons, which are left alone. Search is bilingual (fr + en) and
+   accent-blind; recents persist. The ~1900-emoji table is a `public/` asset fetched on first
+   open rather than bundled — see `docs/adr/0022-lazy-loaded-data-assets.md`. _(done)_
 
 ## Commands
 
@@ -42,17 +49,19 @@ pnpm zip             # Distributable zip for Chrome Web Store
 pnpm zip:firefox     # Distributable zip for AMO
 pnpm check           # svelte-check type check (run this instead of `tsc`)
 pnpm test            # vitest — pure logic only (see below)
+pnpm gen:emoji       # regenerate public/emoji/emoji.json (committed; not part of the build)
 ```
 
 `pnpm check` is the type gate — there is no standalone `tsc` build step (WXT/Vite bundles
 without one). Run it after any change to `.ts`/`.svelte`.
 
 `pnpm test` covers **pure logic only** — the preset template engine
-(`src/features/bbcode-presets/template.ts`), the preset and highlight store invariants
-(`src/lib/presets.ts`, `src/lib/highlights.ts`), the insertion arithmetic (`planInsertion` /
-`wrapSelection` in `src/lib/textarea.ts`), keymap resolution
-(`src/features/editor-shortcuts/keymap.ts`), highlight anchoring
-(`src/features/highlight/anchor.ts`), and the colour-grab palette filter
+(`src/features/bbcode-presets/template.ts`), the preset, highlight and emoji-recents store
+invariants (`src/lib/presets.ts`, `src/lib/highlights.ts`, `src/lib/emoji-recents.ts`), the
+insertion arithmetic (`planInsertion` / `wrapSelection` in `src/lib/textarea.ts`), keymap
+resolution and cross-feature shortcut collisions (`src/features/editor-shortcuts/keymap.ts`,
+`src/lib/keys.ts`), highlight anchoring (`src/features/highlight/anchor.ts`), emoji search
+(`src/features/emoji-picker/search.ts`), and the colour-grab palette filter
 (`src/features/color-grab/palette-filter.ts`). That scoping is deliberate — everything else is
 DOM/browser glue that is cheaper to verify by hand against a real forum page. Don't backfill
 tests for it; do keep new pure logic covered. `pnpm check` and `pnpm test` are both CI gates.
@@ -100,7 +109,35 @@ The flow that ties multiple files together:
   (`#message` textarea, `#format-buttons`, `.username-coloured`, etc.) and the forum origin
   (`FORUM_MATCHES`, reused by the content-script manifest) live here. Features must go through
   it rather than querying the DOM directly — when the forum skin changes, this is the one file
-  to update.
+  to update. Its sibling `src/lib/chatbox.ts` does the same for the AJAX Chat ("la Tribune"),
+  which is a *different* system with its own id scheme — and two DOM shapes of its own, the
+  homepage shoutbox (`#ajaxChatInputField`) and the standalone `/chat/` page (`#inputField`),
+  both handled there. A feature that works on both writing surfaces imports from both.
+- **A primitive moves to `src/lib` as soon as a *second* feature needs it** — never
+  `import … from '@/features/<other>/…'`, which is the wrong dependency edge and stops a feature
+  being deletable. See `docs/adr/0023-shared-primitives-in-lib.md`; `src/lib` takes what is
+  feature-agnostic, and anything encoding what *one* feature means stays in its folder.
+- `src/lib/keys.ts` owns keyboard-combo primitives — the modifier rows, `RESERVED_LETTERS`,
+  layout-independent letter reading, and the tooltip/`aria-keyshortcuts` spellings. Any feature
+  claiming a shortcut goes through it and registers its combo in `src/lib/keys.test.ts`'s
+  `CLAIMED` list, which is the one place collisions across features are checked. Which BBCode a
+  combo drives stays private to `editor-shortcuts/keymap.ts`, which deliberately does **not**
+  re-export the shared names — there is one import path for them.
+- `src/lib/popover.ts` (`createPopover`) owns the **anchored popover**: a Svelte surface in a
+  shadow root, `position: fixed` against a trigger button in the page, dismissed on outside click
+  or Escape, re-measured on scroll/resize, mounted through the async `createShadowRootUi` dance
+  that has to survive a navigation landing mid-`await`. Both `bbcode-presets`' menu and
+  `emoji-picker`'s panel go through it; the optional `fit` (flip above the trigger, clamp
+  horizontally) is on only for the picker, whose chat surface sits at the page bottom. It is
+  separate from `src/lib/shadow-ui.ts`, which serves the *vanilla* `.style`-built controls.
+  **It has no automated coverage by design** — editing it means re-verifying both surfaces by
+  hand, in both themes and both browsers.
+- **Bulk feature data ships as a `public/` asset, not in the bundle.** Content scripts build as
+  a single IIFE, so an imported data table is parsed on every forum page whether or not it is
+  used. Generate it with a committed script, commit the output, declare it in
+  `web_accessible_resources` scoped to the forum, and `fetch` it through
+  `browser.runtime.getURL` on first use. `src/features/emoji-picker/data.ts` +
+  `scripts/gen-emoji.mjs` are the reference; see `docs/adr/0022-lazy-loaded-data-assets.md`.
 - `src/lib/textarea.ts` is how anything writes **into** the editor. Never assign `.value` or
   call `setRangeText` directly: both destroy the browser's undo stack. `insertAtRange` uses
   `execCommand('insertText')`, which is deprecated but the only API that keeps Ctrl+Z working.
@@ -223,6 +260,19 @@ task, create or update the ADR **in the same change** — do not defer it.
   whatever was meant to receive the picked file — is already gone by the time the user finishes.
   Anything that needs a native dialog belongs on the options page (a real tab), not the popup; see
   `docs/adr/0021-json-export-import.md`, which shipped broken in the popup once before landing here.
+- **`web_accessible_resources` is emitted differently per target.** WXT rewrites the MV3 object
+  form (`[{ resources, matches }]`) into MV2's bare array (`['…']`) for the Firefox build, so
+  the two manifests genuinely differ here — check **both** `.output/*/manifest.json` after
+  touching it. A missing entry is not a build error: the `fetch` just fails at runtime, which
+  is why `emoji-picker/data.ts` names that cause in its warning.
+- **A panel that stays open across insertions must re-snapshot the range *and* restore focus
+  after each one.** The emoji picker only closes on Escape or an outside click, so every insert
+  has to (a) read the caret back off the textarea — `insertAtRange` moved it, and reusing the
+  stale range makes each emoji overwrite the last — and (b) hand focus back to its search box,
+  which `insertAtRange` had to take to run `execCommand`. The `bbcode-presets` menu needs
+  neither because it closes on select and has nothing to type into; it takes the opposite
+  approach throughout (never focus, keep the selection alive via `preventDefault` on mousedown).
+  Copying either pattern without its counterpart loses the user's selection.
 - In shadow-DOM UI, test containment with `event.composedPath()`, never
   `element.contains(event.target)` — targets are retargeted to the shadow host.
 - Likewise use `root.activeElement` (the `ShadowRoot`), not `document.activeElement`,
@@ -248,7 +298,7 @@ task, create or update the ADR **in the same change** — do not defer it.
   desktop. CSS can't read the host page's classes from inside a shadow root portably
   (`:host-context()` is unsupported in Firefox), so the flag is detected in JS and pushed in
   as a `.dark` class. Colours come from the shared `--dlh-*` palette
-  (`src/features/bbcode-presets/palette.css`): `.dlh-theme` for in-page surfaces (class-driven),
+  (`src/lib/palette.css`): `.dlh-theme` for in-page surfaces (class-driven),
   `.dlh-theme-auto` for the popup and options page (media-query-driven). Components should
   read `var(--dlh-…)` and never hardcode a colour.
 - Icons live in `public/icon/{16,32,48,96,128}.png` (WXT's default `public/` dir, at repo

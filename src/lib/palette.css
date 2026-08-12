@@ -1,6 +1,10 @@
 /**
- * One palette for every preset surface: the in-page menu and panel, the options
- * page, and the popup panel.
+ * One palette for every surface the extension draws: the in-page menus and
+ * panels (BBCode presets, the emoji picker), the options page and the popup.
+ *
+ * It lives in `src/lib` rather than in any one feature's folder because it is
+ * shared — a second feature reaching into a first one's directory for its
+ * colours is the wrong dependency edge.
  *
  * Components only ever read `var(--dlh-…)`, never a literal colour. Whoever
  * mounts them picks *which signal* decides the theme, which is what lets the

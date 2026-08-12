@@ -1,9 +1,9 @@
 /**
- * Export/import bundle: settings plus the BBCode preset library, as a single
- * portable JSON file. Highlights are deliberately out of scope — see
- * docs/adr/0021-json-export-import.md.
+ * Export/import bundle: settings, the BBCode preset library and the emoji
+ * picker's recents, as a single portable JSON file. Highlights are deliberately
+ * out of scope — see docs/adr/0021-json-export-import.md.
  *
- * Both `Settings` and `PresetStore` already repair themselves on read
+ * Every store in here already repairs itself on read
  * (docs/adr/0012-feature-owned-data-stores.md), so parsing an imported file
  * reuses the exact same `normalize…` functions a `storage.local` read already
  * goes through: a hand-edited or partially corrupt file is repaired rather
@@ -19,10 +19,20 @@ import {
   type Preset,
   type PresetStore,
 } from '@/lib/presets';
+import { normalizeEmojiPrefs, type EmojiPrefs } from '@/lib/emoji-recents';
 import { normalizeSettings, type Settings } from '@/lib/storage';
 import { isRecord } from '@/lib/store-kit';
 
-/** Bump only when the envelope shape changes incompatibly. */
+/**
+ * Bump only when the envelope shape changes *incompatibly*.
+ *
+ * `emoji` was added after v1 shipped and did not bump it: an added optional
+ * field is compatible in both directions. A new build reads an old file (the
+ * field is simply absent, which already means "leave that store alone"), and an
+ * old build reads a new one by ignoring what it doesn't know. Bumping would
+ * have made every new export unreadable by an installed older version for no
+ * gain.
+ */
 export const BACKUP_FORMAT_VERSION = 1;
 
 export interface ExportBundleV1 {
@@ -30,14 +40,16 @@ export interface ExportBundleV1 {
   exportedAt: string;
   settings: Settings;
   presets: PresetStore;
+  emoji?: EmojiPrefs;
 }
 
 export function buildExportBundle(
   settings: Settings,
   presets: PresetStore,
+  emoji: EmojiPrefs,
   exportedAt: string,
 ): ExportBundleV1 {
-  return { formatVersion: BACKUP_FORMAT_VERSION, exportedAt, settings, presets };
+  return { formatVersion: BACKUP_FORMAT_VERSION, exportedAt, settings, presets, emoji };
 }
 
 export interface ParsedImportBundle {
@@ -46,6 +58,8 @@ export interface ParsedImportBundle {
   settings: Settings | null;
   /** `null` means the file had no `presets` field — leave the store untouched. */
   presets: PresetStore | null;
+  /** `null` means the file had no `emoji` field — leave the store untouched. */
+  emoji: EmojiPrefs | null;
 }
 
 export interface InvalidImportBundle {
@@ -84,6 +98,7 @@ export function parseImportBundle(
     ok: true,
     settings: raw.settings === undefined ? null : normalizeSettings(raw.settings),
     presets: raw.presets === undefined ? null : normalizePresetStore(raw.presets),
+    emoji: raw.emoji === undefined ? null : normalizeEmojiPrefs(raw.emoji),
   };
 }
 

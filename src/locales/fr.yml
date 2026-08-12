@@ -33,9 +33,9 @@ options:
   backup:
     heading: Sauvegarde et restauration
     intro: >-
-      Exportez vos réglages et vos préréglages BBCode dans un fichier JSON, à
-      conserver ou à réutiliser sur un autre navigateur — puis réimportez-le
-      ici, en choisissant précisément ce qu'il faut restaurer.
+      Exportez vos réglages, vos préréglages BBCode et vos emoji récents dans un
+      fichier JSON, à conserver ou à réutiliser sur un autre navigateur — puis
+      réimportez-le ici, en choisissant précisément ce qu'il faut restaurer.
     exportButton: Exporter (.json)
     importButton: Importer un fichier…
     exportFailed: Échec de l'export — aucun fichier n'a été créé.
@@ -52,6 +52,8 @@ options:
     modal:
       heading: Choisir ce qu'il faut importer
       settingsLabel: Remplacer les réglages actuels (activation des fonctionnalités)
+      # Unchecked by default: the recents list is replaced, not merged.
+      emojiLabel: Remplacer la liste des emoji récents
       presetsHeading: Préréglages
       noPresetsInFile: Aucun préréglage dans ce fichier.
       badgeIdentical: Identique à l'existant
@@ -195,3 +197,26 @@ features:
     # title, {combo} the shortcut(s) — both are intended @wxt-dev/i18n named
     # substitutions, unlike the {SELECTION} trap documented above.
     tooltip: "{base} ({combo})"
+  emojiPicker:
+    name: Sélecteur d'emoji
+    description: >-
+      Insère des emoji Unicode dans l'éditeur et la Tribune, avec une recherche
+      en français et en anglais — depuis la barre d'outils ou avec Alt+I.
+    trigger:
+      title: Emoji
+      # {base} is the label above, {combo} the shortcut — intended @wxt-dev/i18n
+      # named substitutions, unlike the {SELECTION} trap documented above.
+      tooltip: "{base} ({combo})"
+    panel:
+      title: Sélecteur d'emoji
+      searchLabel: Rechercher un emoji
+      searchPlaceholder: Rechercher…
+      recent: Récents
+      categoriesLabel: Catégories
+      noResults: Aucun emoji ne correspond.
+      loading: Chargement des emoji…
+      loadFailed: Impossible de charger la liste des emoji.
+      # insertAtRange refuses an insertion that would exceed the textarea's
+      # maxlength — the Tribune caps messages at 1040 characters — and would
+      # otherwise do nothing at all, with no explanation.
+      tooLong: Message trop long — l'emoji n'a pas été inséré.

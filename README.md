@@ -12,7 +12,8 @@ with [WXT](https://wxt.dev) + Svelte 5.
 | 2 | Text highlights | ✅ Done | Highlight any passage in a post and keep it marked in a chosen colour — persists across reloads and between the thread and the reply composer's topic review. |
 | 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders. |
 | 4 | Color grabber | ✅ Done | Reuse a colour already in the thread — a checkbox in the forum's colour palette filters it to the colours used in the topic review. |
-| 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, identical on Chrome and Firefox. |
+| 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, in the composer and the chatbox, identical on Chrome and Firefox. |
+| 6 | Emoji picker | ✅ Done | A searchable Unicode emoji panel in the composer and the chatbox, opened from a toolbar button or Alt+I. |
 
 Each feature is independent and can be toggled on or off from the extension's toolbar popup;
 a change takes effect on the forum page's next load.
@@ -101,15 +102,34 @@ See [ADR 0019](./docs/adr/0019-color-grab-augments-native-palette.md).
 
 ### 5. Keyboard shortcuts — ✅ done
 
-The same shortcuts on every browser, active only inside the composer: **Ctrl+B** bold,
-**Ctrl+I** italic, **Ctrl+U** underline, **Ctrl+K** link, **Ctrl+E** code, then **Alt+Q** quote,
-**Alt+L** list, **Alt+G** colour, **Alt+N** centre, **Alt+K** spoiler and the rest — reusing
-phpBB's own accesskey letters where it has them, so existing muscle memory keeps working.
+The same shortcuts on every browser, active only inside a writing area — the composer **and the
+Tribune's chatbox**: **Ctrl+B** bold, **Ctrl+I** italic, **Ctrl+U** underline, **Ctrl+K** link,
+**Ctrl+E** code, then **Alt+Q** quote, **Alt+L** list, **Alt+G** colour, **Alt+N** centre,
+**Alt+K** spoiler and the rest — reusing phpBB's own accesskey letters where it has them, so
+existing muscle memory keeps working.
 
 They *click the forum's own toolbar buttons* rather than inserting text, so they inherit each
 button's behaviour and cover admin-added BBCodes for free; each button's tooltip is rewritten to
-show its combo. Nothing the browser or the composer already owns is claimed — Ctrl+Z above all.
+show its combo. Whichever buttons a surface actually has are the ones that bind — the chat has no
+list or centre button, so those keys keep their browser meaning there. Nothing the browser or the
+composer already owns is claimed — Ctrl+Z above all.
 See [ADR 0017](./docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md).
+
+### 6. Emoji picker — ✅ done
+
+A searchable **Unicode emoji** panel in the composer *and* the Tribune's chatbox, opened from a
+toolbar button or with **Alt+I**. This is separate from the forum's own image emoticons, which
+both surfaces already have and which are left untouched.
+
+Search matches **French and English** names and keywords, accent- and punctuation-blind, so both
+`coeur` and `heart` find ❤️; the emoji you use come back as a **Récents** row. Insertion goes
+through the same undo-safe path as everything else, so a single **Ctrl+Z** takes it back, and the
+chat's 1040-character cap is checked *before* writing so an over-long message says so instead of
+silently doing nothing.
+
+The ~1900-emoji table ships as an extension asset fetched the first time the panel opens, rather
+than being bundled into the content script that runs on every forum page.
+See [ADR 0022](./docs/adr/0022-lazy-loaded-data-assets.md).
 
 ## Architecture & decisions
 

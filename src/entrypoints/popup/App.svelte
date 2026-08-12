@@ -5,7 +5,7 @@
   import { loadSettings, setFeatureEnabled } from '@/lib/storage';
   import { POPUP_PANELS } from './panels';
   // Global (unscoped) — the --dlh-* variables the feature panels read.
-  import '@/features/bbcode-presets/palette.css';
+  import '@/lib/palette.css';
 
   // Feature id → enabled. Seeded from storage on mount.
   let enabled = $state<Record<string, boolean>>({});

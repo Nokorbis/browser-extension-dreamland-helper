@@ -1,6 +1,7 @@
 <script lang="ts">
   /**
-   * Export and import of settings + the BBCode preset library as one JSON file.
+   * Export and import of settings, the BBCode preset library and the emoji
+   * picker's recents as one JSON file.
    * See docs/adr/0021-json-export-import.md. Highlights are out of scope.
    *
    * Both halves live here, on the options page, rather than in the popup. The
@@ -11,7 +12,7 @@
    * splitting one feature across two surfaces was worse than the second click
    * it costs to get here; the popup's cog is now a plain link to this page.
    *
-   * This section owns its own copies of both stores and persists them itself.
+   * This section owns its own copies of every store and persists them itself.
    * The preset editor in the section above is not consulted: it watches
    * `storage.local` for changes from any context, so a write from here reaches
    * it the same way a write from the popup would.
@@ -25,17 +26,24 @@
     emptyPresetStore,
     type PresetStore,
   } from '@/lib/presets';
+  import {
+    loadEmojiPrefs,
+    saveEmojiPrefs,
+    watchEmojiPrefs,
+    type EmojiPrefs,
+  } from '@/lib/emoji-recents';
   import { buildExportBundle, parseImportBundle, applyPresetImport } from '@/lib/backup';
   import { error } from '@/lib/log';
   import ImportModal from './ImportModal.svelte';
 
-  // Both stores, loaded on mount and kept live. Staying subscribed matters:
+  // Every store, loaded on mount and kept live. Staying subscribed matters:
   // this page is long-lived and the preset editor sitting right above can
   // change the library at any moment, so a one-shot snapshot taken at mount
   // would export a stale one.
   let settings = $state<Settings | null>(null);
   let presetStore = $state<PresetStore | null>(null);
-  const ready = $derived(settings !== null && presetStore !== null);
+  let emojiPrefs = $state<EmojiPrefs | null>(null);
+  const ready = $derived(settings !== null && presetStore !== null && emojiPrefs !== null);
 
   void loadPresetStore().then((loaded) => {
     presetStore = loaded;
@@ -48,6 +56,12 @@
   });
   watchSettings((next) => {
     settings = next;
+  });
+  void loadEmojiPrefs().then((loaded) => {
+    emojiPrefs = loaded;
+  });
+  watchEmojiPrefs((next) => {
+    emojiPrefs = next;
   });
 
   /** The single status line for this section. `null` clears it. */
@@ -76,10 +90,11 @@
   }
 
   function exportBundle() {
-    if (settings === null || presetStore === null) return; // the button is disabled until then
+    // the button is disabled until every store has loaded
+    if (settings === null || presetStore === null || emojiPrefs === null) return;
     try {
       const now = new Date();
-      const bundle = buildExportBundle(settings, presetStore, now.toISOString());
+      const bundle = buildExportBundle(settings, presetStore, emojiPrefs, now.toISOString());
       downloadJson(
         `dreamland-reborn-qol-${now.toISOString().slice(0, 10)}.json`,
         JSON.stringify(bundle, null, 2),
@@ -95,8 +110,11 @@
   // --- import -------------------------------------------------------------
 
   let fileInput: HTMLInputElement | undefined = $state();
-  let pendingImport: { settings: Settings | null; presets: PresetStore | null } | null =
-    $state(null);
+  let pendingImport: {
+    settings: Settings | null;
+    presets: PresetStore | null;
+    emoji: EmojiPrefs | null;
+  } | null = $state(null);
 
   function triggerImport() {
     fileInput?.click();
@@ -112,7 +130,7 @@
       report(i18n.t('options.backup.invalidFile'), true);
       return;
     }
-    if (parsed.settings === null && parsed.presets === null) {
+    if (parsed.settings === null && parsed.presets === null && parsed.emoji === null) {
       report(i18n.t('options.backup.nothingToImport'), true);
       return;
     }
@@ -122,6 +140,7 @@
 
   async function onImportConfirm(selection: {
     importSettings: boolean;
+    importEmoji: boolean;
     selectedPresetIds: Set<string>;
   }) {
     const importing = pendingImport;
@@ -132,7 +151,8 @@
     // straight through.
     const presets = selection.selectedPresetIds.size > 0 ? importing.presets : null;
     const settings = selection.importSettings ? importing.settings : null;
-    if (presets === null && settings === null) {
+    const emoji = selection.importEmoji ? importing.emoji : null;
+    if (presets === null && settings === null && emoji === null) {
       report(i18n.t('options.backup.importNothingSelected'));
       return;
     }
@@ -147,8 +167,14 @@
       if (settings !== null) {
         await saveSettings(settings);
       }
+      if (emoji !== null) {
+        // Wholesale replacement, not a merge: a recents list is an ordering,
+        // and interleaving two of them would produce an order neither device
+        // ever had.
+        await saveEmojiPrefs(emoji);
+      }
     } catch (err) {
-      // Both writes are awaited, so a result is only ever announced for
+      // Every write is awaited, so a result is only ever announced for
       // something that resolved — never "Import terminé" over a pending write.
       report(i18n.t('options.backup.importFailed'), true);
       error('failed to import backup', err);
@@ -199,6 +225,7 @@
 {#if pendingImport !== null}
   <ImportModal
     settingsPresent={pendingImport.settings !== null}
+    emojiPresent={pendingImport.emoji !== null}
     importedPresets={pendingImport.presets}
     currentPresets={presetStore ?? emptyPresetStore()}
     onconfirm={onImportConfirm}

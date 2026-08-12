@@ -12,14 +12,8 @@ import {
 } from '@/lib/chatbox';
 import { log, warn } from '@/lib/log';
 import { setOrRemove } from '@/lib/dom';
-import {
-  ariaCombo,
-  formatCombo,
-  isMacPlatform,
-  KEYMAP,
-  resolveShortcut,
-  type Shortcut,
-} from './keymap';
+import { ariaCombo, formatCombo, isMacPlatform } from '@/lib/keys';
+import { KEYMAP, resolveShortcut, type Shortcut } from './keymap';
 
 /**
  * Feature #5 — Keyboard shortcuts for the BBCode toolbar.

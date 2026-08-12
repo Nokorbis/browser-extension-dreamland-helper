@@ -34,9 +34,9 @@ export function createShadowHost(): { host: HTMLElement; shadow: ShadowRoot } {
 
 /**
  * The chrome palette for an injected control, mirroring the `--dlh-*` custom
- * properties in `src/features/bbcode-presets/palette.css`. Vanilla `.style`
- * controls can't read those CSS variables, so the subset they need is kept here
- * as the single JS source — keep the two in step when either changes.
+ * properties in `src/lib/palette.css`. Vanilla `.style` controls can't read
+ * those CSS variables, so the subset they need is kept here as the single JS
+ * source — keep the two in step when either changes.
  */
 export interface Chrome {
   surface: string;

@@ -11,13 +11,11 @@ import { describe, it, expect } from 'vitest';
 import {
   ariaCombo,
   formatCombo,
-  KEYMAP,
   RESERVED_LETTERS,
-  resolveShortcut,
   type KeyEventLike,
   type Row,
-  type Shortcut,
-} from './keymap';
+} from '@/lib/keys';
+import { KEYMAP, resolveShortcut, type Shortcut } from './keymap';
 
 /** A key event with nothing held; spread over it to add modifiers. */
 function press(overrides: Partial<KeyEventLike> = {}): KeyEventLike {

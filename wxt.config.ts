@@ -25,6 +25,17 @@ export default defineConfig({
     // the store-review-visible permission — keep it narrow.
     host_permissions: ['*://*.dreamland-reborn.net/*'],
     permissions: ['storage'],
+    // The emoji picker's dataset is fetched from the extension at runtime
+    // instead of being bundled into the content script — see docs/adr/0022.
+    // A content script's own `fetch` of a moz-/chrome-extension: URL is gated
+    // on this list. Scoped to the forum so no other site can read it; WXT
+    // rewrites the MV3 object form to MV2's bare array for the Firefox build.
+    web_accessible_resources: [
+      {
+        resources: ['emoji/emoji.json'],
+        matches: ['*://*.dreamland-reborn.net/*'],
+      },
+    ],
     // Firefox reads this; Chrome ignores it harmlessly. The id is required for
     // signing on AMO; data_collection declares we collect nothing. No
     // `update_url` here on purpose: the add-on is distributed listed on AMO,
