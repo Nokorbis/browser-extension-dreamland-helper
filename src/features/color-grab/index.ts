@@ -17,11 +17,7 @@ import {
 } from '@/lib/textarea';
 import { log } from '@/lib/log';
 import { setOrRemove } from '@/lib/dom';
-import {
-  aggregateUsage,
-  canonicalizeColor,
-  partitionByGrid,
-} from './palette-filter';
+import { aggregateUsage, canonicalizeColor, partitionByGrid } from './palette-filter';
 
 /**
  * Feature #4 — Colour grabber.
@@ -45,7 +41,7 @@ import {
  */
 
 /** Marks our injected nodes so a reinstall can't double them up. */
-const MARKER = 'data-dlh-color-grab';
+const TRIGGER_MARKER = 'data-dlh-color-grab';
 
 interface CellState {
   a: HTMLAnchorElement;
@@ -57,8 +53,10 @@ interface CellState {
   originalTitle: string | null;
 }
 
-export const colorGrab: Feature = {
-  id: 'color-grab',
+export const colorGrab = {
+  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
+  // built from these, and a widened `string` would make it match anything.
+  id: 'color-grab' as const,
   name: i18n.t('features.colorGrab.name'),
   description: i18n.t('features.colorGrab.description'),
   implemented: true,
@@ -159,7 +157,7 @@ export const colorGrab: Feature = {
 
     // --- the checkbox, above the grid inside the (collapsible) palette ---
     const wrapper = document.createElement('div');
-    wrapper.setAttribute(MARKER, '');
+    wrapper.setAttribute(TRIGGER_MARKER, '');
     wrapper.style.margin = '0 0 4px';
     wrapper.style.fontSize = '11px';
 
@@ -172,7 +170,10 @@ export const colorGrab: Feature = {
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox'; // no name → never part of the submitted form
-    label.append(checkbox, document.createTextNode(i18n.t('features.colorGrab.filter.label')));
+    label.append(
+      checkbox,
+      document.createTextNode(i18n.t('features.colorGrab.filter.label')),
+    );
     wrapper.append(label);
     // Sit below phpBB's "Couleur de la police" label — i.e. just before the swatch
     // grid. The grid lives in #color_palette_placeholder, which phpBB regenerates
@@ -210,14 +211,29 @@ export const colorGrab: Feature = {
       cells = [];
     };
 
-    const install = () => {
+    // phpBB replaces the placeholder's table on DOM-ready — which may land after
+    // us — wiping our cells and appended row. Reinstall when that happens; our
+    // own writes run while disconnected, so this only fires for phpBB's rebuild.
+    //
+    // This observer and `install` reference each other, so one of the pair has to be
+    // reachable before its own definition. `install` is a hoisted `function` for exactly
+    // that reason — declaring both as `const` only worked by accident of call order.
+    const observer = new MutationObserver(() => {
+      const stale = cells.length === 0 || !cells[0].a.isConnected;
+      const rowGone = customRow !== null && !customRow.isConnected;
+      if (stale || rowGone) install();
+    });
+    const reconnect = () =>
+      observer.observe(placeholder ?? palette, { childList: true, subtree: true });
+
+    function install() {
       // Suppress our own DOM writes so they don't re-trigger the observer.
       observer.disconnect();
       teardownGrid();
 
       cells = findColourPaletteCells().map((a) => ({
         a,
-        td: a.closest('td') as HTMLElement | null,
+        td: a.closest<HTMLElement>('td'),
         color: canonicalizeColor(a.dataset.color ?? ''),
         originalTitle: a.getAttribute('title'),
       }));
@@ -230,7 +246,7 @@ export const colorGrab: Feature = {
         const body = findColourPaletteBody();
         if (body !== null) {
           const row = document.createElement('tr');
-          row.setAttribute(MARKER, '');
+          row.setAttribute(TRIGGER_MARKER, '');
           for (const color of custom) row.append(makeCustomCell(color));
           body.append(row);
           customRow = row;
@@ -239,18 +255,7 @@ export const colorGrab: Feature = {
 
       apply();
       reconnect();
-    };
-
-    // phpBB replaces the placeholder's table on DOM-ready — which may land after
-    // us — wiping our cells and appended row. Reinstall when that happens; our
-    // own writes run while disconnected, so this only fires for phpBB's rebuild.
-    const observer = new MutationObserver(() => {
-      const stale = cells.length === 0 || !cells[0].a.isConnected;
-      const rowGone = customRow !== null && !customRow.isConnected;
-      if (stale || rowGone) install();
-    });
-    const reconnect = () =>
-      observer.observe(placeholder ?? palette, { childList: true, subtree: true });
+    }
 
     checkbox.addEventListener('change', apply, { signal });
     install();
@@ -264,4 +269,4 @@ export const colorGrab: Feature = {
       wrapper.remove();
     };
   },
-};
+} satisfies Feature;

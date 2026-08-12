@@ -18,9 +18,7 @@
   let { menu, onselect, onclose }: Props = $props();
 
   const tree = $derived(buildPresetTree(menu.store));
-  const isEmpty = $derived(
-    countPresets(menu.store) === 0 && tree.folders.length === 0,
-  );
+  const isEmpty = $derived(countPresets(menu.store) === 0 && tree.folders.length === 0);
 
   let root = $state<HTMLElement | null>(null);
 
@@ -91,7 +89,10 @@
     background: var(--dlh-surface);
     color: var(--dlh-fg);
     box-shadow: 0 6px 20px var(--dlh-shadow);
-    font: 12.5px/1.35 system-ui, -apple-system, sans-serif;
+    font:
+      12.5px/1.35 system-ui,
+      -apple-system,
+      sans-serif;
     text-align: left;
   }
 

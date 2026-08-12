@@ -1,5 +1,6 @@
 import { i18n } from '#i18n';
-import { createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
+import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
+import { isDarkTheme } from '@/lib/phpbb';
 
 /**
  * The "server unavailable" confirmation the exit guard shows when the pre-send
@@ -22,10 +23,15 @@ export interface ServerDownModalHandlers {
   onContinueAnyway: () => void;
 }
 
-export function showServerDownModal(
-  handlers: ServerDownModalHandlers,
-): () => void {
+export function showServerDownModal(handlers: ServerDownModalHandlers): () => void {
   const { host, shadow } = createShadowHost();
+
+  // Follow the *forum's* theme, like every other in-page surface. This modal used to
+  // hardcode a white card, which meant a light dialog flashing over a dark forum at the
+  // worst possible moment — the reader is about to lose a long post. Read once rather
+  // than watched: the modal is transient, and a theme switch underneath it would mean
+  // the user went looking for the toggle instead of answering the question.
+  const chrome = chromeFor(isDarkTheme());
 
   const backdrop = styled(
     document.createElement('div'),
@@ -37,24 +43,34 @@ export function showServerDownModal(
   const dialog = styled(
     document.createElement('div'),
     'box-sizing:border-box;max-width:420px;width:calc(100% - 32px);padding:20px;' +
-      'border-radius:10px;background:#fff;color:#1a1a1a;' +
-      'box-shadow:0 10px 40px rgba(0,0,0,0.3);',
+      `border-radius:10px;background:${chrome.surface};color:${chrome.fg};` +
+      `box-shadow:0 10px 40px ${chrome.shadow};`,
   );
+  // A real dialog for assistive tech: without these it announces as an unlabelled group
+  // and the reader gets no signal that the page behind it is inert.
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
 
   const title = styled(
     document.createElement('h2'),
     'margin:0 0 10px;font-size:17px;font-weight:600;',
   );
+  title.id = 'dlh-server-down-title';
   title.textContent = `⚠ ${i18n.t('features.exitGuard.serverDown.title')}`;
+  dialog.setAttribute('aria-labelledby', title.id);
 
   const message = styled(document.createElement('p'), 'margin:0 0 20px;');
+  message.id = 'dlh-server-down-message';
   message.textContent = i18n.t('features.exitGuard.serverDown.message');
+  dialog.setAttribute('aria-describedby', message.id);
 
   const buttons = styled(
     document.createElement('div'),
     'display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;',
   );
 
+  // The accent stays fixed in both themes: it is the safe, default action, and the
+  // palette's own accent already shifts for dark. White-on-accent reads either way.
   const stayButton = styled(
     document.createElement('button'),
     'cursor:pointer;padding:9px 16px;border-radius:6px;border:none;' +
@@ -65,8 +81,8 @@ export function showServerDownModal(
 
   const sendButton = styled(
     document.createElement('button'),
-    'cursor:pointer;padding:9px 16px;border-radius:6px;border:1px solid #c9c9c9;' +
-      'background:#f2f2f2;color:#1a1a1a;font:inherit;',
+    'cursor:pointer;padding:9px 16px;border-radius:6px;font:inherit;' +
+      `border:1px solid ${chrome.border};background:${chrome.hover};color:${chrome.fg};`,
   );
   sendButton.type = 'button';
   sendButton.textContent = i18n.t('features.exitGuard.serverDown.continueAnyway');
@@ -92,6 +108,23 @@ export function showServerDownModal(
     if (event.key === 'Escape') {
       event.preventDefault();
       stay();
+      return;
+    }
+
+    // Keep Tab inside the dialog. Without this it walks straight out into the composer
+    // behind — a page the modal is telling the reader not to act on yet — and there is
+    // no visible way back. Only two stops, so the cycle is written out rather than
+    // computed from a focusable-element query.
+    if (event.key !== 'Tab') return;
+    // `document.activeElement` reports the shadow *host* for anything focused inside a
+    // shadow root; the root's own `activeElement` is the one that resolves.
+    const focused = shadow.activeElement;
+    const [first, last] = event.shiftKey
+      ? [stayButton, sendButton]
+      : [sendButton, stayButton];
+    if (focused === first) {
+      event.preventDefault();
+      last.focus();
     }
   }
 

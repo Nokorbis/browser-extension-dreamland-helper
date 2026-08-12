@@ -1,8 +1,26 @@
 # 0021. JSON export/import of settings and BBCode presets
 
-Status: Accepted
+Status: Accepted — bundle extended, see the amendment below
 
 Date: 2026-08-11
+
+> **Amendment (2026-08-12): the bundle carries a third store.**
+>
+> The emoji picker ([[0022-lazy-loaded-data-assets]]) shipped after this record was accepted and
+> added its recents list to the bundle as an **optional** `emoji` field, without bumping
+> `formatVersion`. The record below therefore under-describes the shipped format in three
+> places, all read as of that date: "two stores are in scope" is now three; `settings` is a
+> six-key map, not five; and the payload sketch omits `emoji`.
+>
+> The format version deliberately stayed at 1. An added optional field is compatible in both
+> directions — a new build reading an old file finds it absent, which already means "leave that
+> store alone", and an old build ignores what it doesn't know. Bumping would have made every new
+> export unreadable by an installed older version for no gain. See `BACKUP_FORMAT_VERSION` in
+> `src/lib/backup.ts`.
+>
+> Everything else here — the decision, the selective-import design, why it lives on the options
+> page — is unchanged and still describes the code. This note exists because ADRs are immutable
+> once accepted: the original text is left as written rather than quietly corrected.
 
 ## Context
 

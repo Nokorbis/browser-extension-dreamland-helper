@@ -55,8 +55,7 @@ function clamp(value: number, min: number, max: number): number {
  * can say how far over the limit it went.
  */
 export type InsertionPlan =
-  | { ok: true; start: number; end: number }
-  | { ok: false; projected: number };
+  { ok: true; start: number; end: number } | { ok: false; projected: number };
 
 /**
  * Decide the clamped replacement range and whether the result still fits.
@@ -145,7 +144,9 @@ export function insertAtRange(
   el.focus();
   el.setSelectionRange(start, end);
 
-  let inserted = false;
+  // Not initialised: both branches below assign it, and an initialiser here would only
+  // hide it if that ever stopped being true.
+  let inserted: boolean;
   try {
     inserted = document.execCommand('insertText', false, value);
   } catch {

@@ -42,7 +42,13 @@
       {#if node.folders.length > 0 || node.presets.length > 0}
         <!-- Indent lives on this wrapper, not a `ul ul` rule — see FolderTree.svelte. -->
         <div class="children">
-          <Self folders={node.folders} presets={node.presets} {statuses} {selectedIds} {ontoggle} />
+          <Self
+            folders={node.folders}
+            presets={node.presets}
+            {statuses}
+            {selectedIds}
+            {ontoggle}
+          />
         </div>
       {/if}
     </li>

@@ -14,22 +14,27 @@ Chrome Web Store shows above the description.
   shot needs a label, bake it into the image (see below).
 - Same rules on AMO, which accepts these files as-is — shoot once, use twice.
 
-## Shot list
+## What is currently shipped
 
-In order of how much they sell the extension:
+Five shots, all at the store's limit — replace one before adding another:
 
-1. **Le panneau de préréglages, ouvert à côté de l'éditeur.** A real reply page, composer
-   visible with a few lines of text, the side panel expanded showing a folder tree with
-   believable preset names (one folder per character). This is the flagship feature.
-2. **Le bouton dans la barre d'outils BBCode, menu déroulé.** Tight on the composer toolbar,
-   the extension's button next to B / i / u, its folder menu open over the editor.
-3. **La popup de l'extension.** Click the toolbar icon: the feature list with its toggles.
-   Shows at a glance that everything is opt-out.
-4. **La page d'options.** Preset tree on the left, name + BBCode body + live preview on the
-   right. Shows presets are authored, not hardcoded.
-5. *(optional)* **La fenêtre « Serveur indisponible ».** Hardest to stage — the exit guard's
-   dialog only appears on a real failed send. Only worth it if it comes for free during a
-   forum outage; skip otherwise.
+| File | Shows |
+|---|---|
+| `dr_qol_presets_usage.png` | The preset panel/menu in use beside the composer. The flagship. |
+| `dr_qol_presets_config.png` | The options page: preset tree, BBCode body, live preview — presets are authored, not hardcoded. |
+| `dr_qol_highlights.png` | Text highlights painted on a post. |
+| `dr_qol_colors.png` | The colour grabber's "Sur la page" filter inside phpBB's own palette. |
+| `dr_qol_options.png` | The options page as a whole. |
+
+Two shots that earlier drafts of this list called for were never taken, and the reasons
+still hold if you are deciding what to add next:
+
+- **La popup de l'extension** — the feature list with its toggles. Would show at a glance
+  that everything is opt-out. The strongest candidate for a sixth slot, if one frees up.
+- **La fenêtre « Serveur indisponible »** — hardest to stage, since the exit guard's dialog
+  only appears on a real failed send. Only worth it if it comes for free during an outage.
+
+Nothing here covers the emoji picker or export/import yet either.
 
 Practical notes:
 

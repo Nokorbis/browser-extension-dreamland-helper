@@ -13,6 +13,9 @@ popup:
   # so a toggle only takes effect on the next page load. Say so rather than
   # letting the user watch an in-page panel outlive the switch they just flipped.
   reloadHint: Rechargez la page du forum pour appliquer les changements.
+  # Shown when writing a toggle to storage rejects. The switch is put back to where it
+  # was, so this explains why it moved on its own rather than leaving the user to guess.
+  saveFailed: Échec de l'enregistrement. Le réglage n'a pas été modifié.
   # The cog next to the popup's title. It only opens the options page — nothing
   # needing a native dialog can live in the popup, which closes the instant one
   # steals focus. See docs/adr/0021-json-export-import.md.

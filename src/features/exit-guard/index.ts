@@ -2,7 +2,7 @@ import { i18n } from '#i18n';
 import type { Feature } from '../types';
 import { findMessageTextarea, findPostForm, findSubmitButton } from '@/lib/phpbb';
 import { isForumReachable } from '@/lib/reachability';
-import { log } from '@/lib/log';
+import { error, log } from '@/lib/log';
 import { showServerDownModal } from './server-down-modal';
 
 /**
@@ -31,8 +31,10 @@ const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
  *    anyway" escape hatch covers a false-positive check. See
  *    docs/adr/0011-presend-server-reachability-check.md.
  */
-export const exitGuard: Feature = {
-  id: 'exit-guard',
+export const exitGuard = {
+  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
+  // built from these, and a widened `string` would make it match anything.
+  id: 'exit-guard' as const,
   name: i18n.t('features.exitGuard.name'),
   description: i18n.t('features.exitGuard.description'),
   implemented: true,
@@ -43,7 +45,12 @@ export const exitGuard: Feature = {
     let isSubmitting = false;
     // One-shot: the next submit event is our own re-submit — let it pass.
     let bypass = false;
-    // A reachability check / modal is already in flight; ignore repeat submits.
+    // True from the moment a submit is intercepted until the check resolves *and* any
+    // modal it raised has been dismissed. Both halves matter. Without the first, a
+    // double-click fires two probes; without the second, a submit arriving while the
+    // modal is up raises a *second* modal, overwrites `closeModal`, and leaves the
+    // first one's shadow host in the page forever. It is therefore released by the
+    // modal's own handlers, not by a `finally` that runs the instant it is shown.
     let checking = false;
     let closeModal: (() => void) | null = null;
 
@@ -100,9 +107,12 @@ export const exitGuard: Feature = {
       }
 
       event.preventDefault();
-      log(`submit intercepted (submitter=${submitterName ?? 'none'}) — pinging server`);
-      if (checking) return;
+      if (checking) {
+        log('…ignored: a check or its modal is already up');
+        return;
+      }
       checking = true;
+      log(`submit intercepted (submitter=${submitterName ?? 'none'}) — pinging server`);
 
       const doSubmit = () => {
         bypass = true;
@@ -117,32 +127,52 @@ export const exitGuard: Feature = {
         const reachable = await isForumReachable(probeUrl);
         log('server reachable =', reachable);
         if (reachable) {
+          checking = false;
           doSubmit();
           return;
         }
         log('server unreachable — showing modal');
+        // `checking` stays true across this call on purpose — see its declaration.
+        // Whichever handler dismisses the modal is what releases it.
         closeModal = showServerDownModal({
           onStay: () => {
             closeModal = null;
+            checking = false;
           },
           onContinueAnyway: () => {
             closeModal = null;
+            checking = false;
             doSubmit();
           },
         });
-      } finally {
+      } catch (err) {
+        // `isForumReachable` never rejects, but `requestSubmit` and building the modal
+        // can. Leaving `checking` stuck true would wedge the composer for the rest of
+        // the page's life — with the submit already prevented — so release it and let
+        // the next attempt through.
         checking = false;
+        error('exit-guard: pre-send check failed; the message was not sent', err);
       }
     };
 
+    // `onSubmit` is async, so a throw inside it becomes an unhandled rejection that
+    // nobody sees. It handles its own failures; this is the backstop that keeps one
+    // from escaping into the console as a bare promise.
+    const onSubmitListener = (event: SubmitEvent) => {
+      void onSubmit(event).catch((err) => {
+        error('exit-guard: submit handler failed', err);
+      });
+    };
+
     window.addEventListener('beforeunload', onBeforeUnload);
-    document.addEventListener('submit', onSubmit, true);
+    document.addEventListener('submit', onSubmitListener, true);
     log('exit-guard: listeners attached (beforeunload + submit)');
 
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
-      document.removeEventListener('submit', onSubmit, true);
+      document.removeEventListener('submit', onSubmitListener, true);
       closeModal?.();
+      closeModal = null;
     };
   },
-};
+} satisfies Feature;

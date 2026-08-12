@@ -20,6 +20,7 @@ import {
   deletePreset,
   moveFolder,
   movePreset,
+  folderPath,
   toPlainStore,
   newId,
   type PresetStore,
@@ -95,9 +96,7 @@ describe('normalizePresetStore', () => {
   });
 
   it('reparents a folder whose parent no longer exists', () => {
-    const result = normalizePresetStore(
-      storeOf([folder('child', 'Dialogue', 'ghost')]),
-    );
+    const result = normalizePresetStore(storeOf([folder('child', 'Dialogue', 'ghost')]));
     expect(result.folders.child.parentId).toBeNull();
   });
 
@@ -110,9 +109,7 @@ describe('normalizePresetStore', () => {
     const result = normalizePresetStore(
       storeOf([folder('a', 'A', 'b'), folder('b', 'B', 'a')]),
     );
-    const roots = Object.values(result.folders).filter(
-      (f) => f.parentId === null,
-    );
+    const roots = Object.values(result.folders).filter((f) => f.parentId === null);
     expect(roots).toHaveLength(1);
     // Still reachable, still present — nothing was deleted to fix it.
     expect(Object.keys(result.folders).sort()).toEqual(['a', 'b']);
@@ -140,10 +137,7 @@ describe('normalizePresetStore', () => {
 
   it('renumbers each sibling group independently', () => {
     const result = normalizePresetStore(
-      storeOf([
-        folder('root', 'Root', null, 7),
-        folder('kid', 'Kid', 'root', 9),
-      ]),
+      storeOf([folder('root', 'Root', null, 7), folder('kid', 'Kid', 'root', 9)]),
     );
     expect(result.folders.root.order).toBe(0);
     expect(result.folders.kid.order).toBe(0);
@@ -167,10 +161,7 @@ describe('buildPresetTree', () => {
             folder('aramis', 'Aramis', null, 0),
             folder('dialogue', 'Dialogue', 'aramis', 0),
           ],
-          [
-            preset('cri', 'Cri', 'dialogue', 0),
-            preset('libre', 'Libre', null, 0),
-          ],
+          [preset('cri', 'Cri', 'dialogue', 0), preset('libre', 'Libre', null, 0)],
         ),
       ),
     );
@@ -316,9 +307,7 @@ describe('mutations', () => {
   });
 
   it('reparents a folder on move', () => {
-    const store = normalizePresetStore(
-      storeOf([folder('a', 'A'), folder('b', 'B')]),
-    );
+    const store = normalizePresetStore(storeOf([folder('a', 'A'), folder('b', 'B')]));
     const after = moveFolder(store, 'b', 'a', 0);
     expect(after.folders.b.parentId).toBe('a');
     expect(after.folders.b.order).toBe(0);
@@ -421,9 +410,7 @@ describe('toPlainStore', () => {
     // properties, persists it fine. That asymmetry made saving fail on Firefox
     // only. `toPlainStore` is what unwraps it.
     const proxied = new Proxy(
-      normalizePresetStore(
-        storeOf([folder('f', 'Aramis')], [preset('p', 'Cri', 'f')]),
-      ),
+      normalizePresetStore(storeOf([folder('f', 'Aramis')], [preset('p', 'Cri', 'f')])),
       {},
     );
 
@@ -442,10 +429,12 @@ describe('persistence', () => {
   });
 
   it('round-trips a store through storage', async () => {
-    const store = addPreset(
-      addFolder(emptyPresetStore(), { id: 'f', name: 'Aramis' }),
-      { id: 'p', name: 'Cri', body: '[b]{SELECTION}[/b]', folderId: 'f' },
-    );
+    const store = addPreset(addFolder(emptyPresetStore(), { id: 'f', name: 'Aramis' }), {
+      id: 'p',
+      name: 'Cri',
+      body: '[b]{SELECTION}[/b]',
+      folderId: 'f',
+    });
     await savePresetStore(store);
     expect(await loadPresetStore()).toEqual(store);
   });
@@ -462,17 +451,13 @@ describe('persistence', () => {
     const seen: PresetStore[] = [];
     const unwatch = watchPresetStore((store) => seen.push(store));
 
-    await savePresetStore(
-      addFolder(emptyPresetStore(), { id: 'f', name: 'Aramis' }),
-    );
+    await savePresetStore(addFolder(emptyPresetStore(), { id: 'f', name: 'Aramis' }));
 
     expect(seen).toHaveLength(1);
     expect(seen[0].folders.f.name).toBe('Aramis');
 
     unwatch();
-    await savePresetStore(
-      addFolder(emptyPresetStore(), { id: 'g', name: 'Lyra' }),
-    );
+    await savePresetStore(addFolder(emptyPresetStore(), { id: 'g', name: 'Lyra' }));
     expect(seen).toHaveLength(1);
   });
 
@@ -481,5 +466,47 @@ describe('persistence', () => {
     watchPresetStore((store) => seen.push(store));
     await fakeBrowser.storage.local.set({ settings: { features: {} } });
     expect(seen).toHaveLength(0);
+  });
+});
+
+/**
+ * `folderPath` had no direct coverage despite being load-bearing for import matching:
+ * `backup.ts` identifies a preset across two stores by its folder path plus its name, so
+ * a wrong path here silently duplicates presets or overwrites the wrong one.
+ */
+describe('folderPath', () => {
+  const tree = storeOf([
+    folder('a', 'Aramis'),
+    folder('b', 'Dialogue', 'a'),
+    folder('c', 'Cris', 'b'),
+  ]);
+
+  it('is empty at the root', () => {
+    expect(folderPath(tree, null)).toEqual([]);
+  });
+
+  it('names each ancestor, outermost first', () => {
+    expect(folderPath(tree, 'c')).toEqual(['Aramis', 'Dialogue', 'Cris']);
+  });
+
+  it('is empty for a folder that is not there', () => {
+    expect(folderPath(tree, 'ghost')).toEqual([]);
+  });
+
+  it('stops at a dangling parent instead of walking off the end', () => {
+    const orphan = storeOf([folder('kid', 'Kid', 'ghost')]);
+    expect(folderPath(orphan, 'kid')).toEqual(['Kid']);
+  });
+
+  it('terminates on a parent cycle', () => {
+    // `normalizePresetStore` breaks cycles on read, but this is an exported pure
+    // function and its neighbours all guard defensively rather than trust that.
+    const cyclic = storeOf([folder('a', 'A', 'b'), folder('b', 'B', 'a')]);
+    expect(folderPath(cyclic, 'a')).toEqual(['B', 'A']);
+  });
+
+  it('terminates on a folder that is its own parent', () => {
+    const selfish = storeOf([folder('a', 'A', 'a')]);
+    expect(folderPath(selfish, 'a')).toEqual(['A']);
   });
 });

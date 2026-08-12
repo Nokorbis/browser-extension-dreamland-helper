@@ -24,6 +24,7 @@ import {
   newId,
   readInt,
   readString,
+  runMigrations,
   saveStore,
   watchStore,
 } from '@/lib/store-kit';
@@ -97,7 +98,10 @@ export function normalizeHighlightStore(raw: unknown): HighlightStore {
 
   if (isRecord(raw.highlights)) {
     for (const [id, value] of Object.entries(raw.highlights)) {
-      if (!isRecord(value)) {
+      // The id comes from the object key and is otherwise never checked. An empty one
+      // would collide with itself in `deleteHighlight` and in `allHighlights`'
+      // `localeCompare` tie-break, so it is dropped like any other unusable record.
+      if (id === '' || !isRecord(value)) {
         dropped += 1;
         continue;
       }
@@ -132,12 +136,12 @@ export function normalizeHighlightStore(raw: unknown): HighlightStore {
   }
 
   // --- migrations ---
-  let version = readInt(raw.version) ?? 0;
-  let migrated = store;
-  while (version < HIGHLIGHTS_SCHEMA_VERSION && MIGRATIONS[version]) {
-    migrated = MIGRATIONS[version](migrated);
-    version += 1;
-  }
+  const migrated = runMigrations(
+    store,
+    readInt(raw.version),
+    HIGHLIGHTS_SCHEMA_VERSION,
+    MIGRATIONS,
+  );
   migrated.version = HIGHLIGHTS_SCHEMA_VERSION;
 
   if (dropped > 0) {
@@ -228,8 +232,7 @@ export function countHighlights(store: HighlightStore): number {
 
 export function countForTopic(store: HighlightStore, topicId: string): number {
   if (topicId === '') return 0;
-  return Object.values(store.highlights).filter((h) => h.topicId === topicId)
-    .length;
+  return Object.values(store.highlights).filter((h) => h.topicId === topicId).length;
 }
 
 // ---------------------------------------------------------------------------
@@ -305,9 +308,7 @@ export function deleteHighlights(
 /** Clear every highlight in one discussion. `''` clears nothing. */
 export function clearTopic(store: HighlightStore, topicId: string): HighlightStore {
   if (topicId === '') return store;
-  const survivors = Object.values(store.highlights).filter(
-    (h) => h.topicId !== topicId,
-  );
+  const survivors = Object.values(store.highlights).filter((h) => h.topicId !== topicId);
   if (survivors.length === Object.keys(store.highlights).length) return store;
   const next = emptyHighlightStore();
   next.version = store.version;

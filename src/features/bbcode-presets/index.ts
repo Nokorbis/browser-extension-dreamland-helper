@@ -6,7 +6,7 @@ import {
   findFormatButtons,
   findMessageBox,
   findMessageTextarea,
-  FORMAT_BUTTON_CLASS,
+  createFormatButton,
   isDarkTheme,
   watchTheme,
 } from '@/lib/phpbb';
@@ -54,8 +54,10 @@ import Panel from './Panel.svelte';
 /** Marks our injected button so a re-run (phpBB's "Aperçu") doesn't double up. */
 const TRIGGER_MARKER = 'data-dlh-presets';
 
-export const bbcodePresets: Feature = {
-  id: 'bbcode-presets',
+export const bbcodePresets = {
+  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
+  // built from these, and a widened `string` would make it match anything.
+  id: 'bbcode-presets' as const,
   name: i18n.t('features.bbcodePresets.name'),
   description: i18n.t('features.bbcodePresets.description'),
   implemented: true,
@@ -74,8 +76,7 @@ export const bbcodePresets: Feature = {
     let disposed = false;
     // Assigned at the end of the menu's block, so its callbacks reach it lazily.
     let menuPopover: Popover | null = null;
-    let panelUi: ShadowRootContentScriptUi<Record<string, unknown>> | null =
-      null;
+    let panelUi: ShadowRootContentScriptUi<Record<string, unknown>> | null = null;
     let unwatch: (() => void) | null = null;
     let unwatchTheme: (() => void) | null = null;
     let trigger: HTMLButtonElement | null = null;
@@ -139,8 +140,7 @@ export const bbcodePresets: Feature = {
     // Stage 2: the toolbar sits behind {IF S_BBCODE_ALLOWED} and a custom skin
     // may not have it. Skip just this surface; the panel below still mounts.
     const formatButtons = findFormatButtons();
-    const alreadyInjected =
-      formatButtons?.querySelector(`[${TRIGGER_MARKER}]`) != null;
+    const alreadyInjected = formatButtons?.querySelector(`[${TRIGGER_MARKER}]`) != null;
 
     if (formatButtons === null) {
       warn('bbcode-presets: no BBCode toolbar here — menu trigger skipped');
@@ -148,19 +148,10 @@ export const bbcodePresets: Feature = {
       log('bbcode-presets: trigger already present, skipping');
     } else {
       const label = i18n.t('features.bbcodePresets.trigger.title');
-      const button = document.createElement('button');
-      button.type = 'button'; // MANDATORY — see the ⚠ note above
-      button.className = FORMAT_BUTTON_CLASS;
+      // `createFormatButton` owns the markup, including the `type="button"` rule in the
+      // ⚠ above — which it enforces structurally rather than leaving it to be remembered.
+      const button = createFormatButton({ icon: 'fa-magic', label, popup: 'menu' });
       button.setAttribute(TRIGGER_MARKER, '');
-      button.title = label;
-      button.setAttribute('aria-label', label);
-      button.setAttribute('aria-haspopup', 'menu');
-      button.setAttribute('aria-expanded', 'false');
-      // Deliberately no accesskey: phpBB already claims b/i/u/q/c/l/o/y/p/w/d.
-      const icon = document.createElement('i');
-      icon.className = 'icon fa-magic fa-fw';
-      icon.setAttribute('aria-hidden', 'true');
-      button.append(icon);
       formatButtons.append(button);
       trigger = button;
 
@@ -303,4 +294,4 @@ export const bbcodePresets: Feature = {
       trigger?.remove();
     };
   },
-};
+} satisfies Feature;

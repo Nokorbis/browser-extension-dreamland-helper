@@ -33,6 +33,8 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0018](0018-chrome-web-store-distribution.md) | Chrome Web Store distribution | Accepted |
 | [0019](0019-color-grab-augments-native-palette.md) | Colour grabber augments phpBB's own colour palette | Accepted |
 | [0020](0020-persistent-text-highlights.md) | Persistent text highlights via the CSS Custom Highlight API | Accepted |
-| [0021](0021-json-export-import.md) | JSON export/import of settings and BBCode presets | Accepted |
+| [0021](0021-json-export-import.md) | JSON export/import of settings, BBCode presets and emoji recents | Accepted — bundle extended by [0022](0022-lazy-loaded-data-assets.md)'s feature; see its amendment note |
 | [0022](0022-lazy-loaded-data-assets.md) | Ship bulk feature data as a lazily fetched extension asset | Accepted |
 | [0023](0023-shared-primitives-in-lib.md) | Cross-feature primitives are promoted to `src/lib` | Accepted |
+| [0024](0024-lint-and-format-gate.md) | A lint and format gate, scoped to what the other gates can't see | Accepted |
+| [0025](0025-feature-ids-as-a-type.md) | Feature ids are a type, not a convention | Accepted |

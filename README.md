@@ -34,8 +34,9 @@ browser's own and can't be customized; the extension only decides *whether* to r
 whole — the page navigates away, the request fails, and your text is gone. So before a post is
 actually sent, the extension checks that the forum is responding. If it isn't, the submit is
 held back and you get a dialog explaining your message wasn't sent and your text is still
-there, with the choice to keep waiting or send anyway. Only real submissions are guarded —
-preview and save-draft go through untouched.
+there, with the choice to keep waiting or send anyway. **Posting, previewing and saving a
+draft are all guarded** — all three navigate away, so all three lose the text the same way
+when the forum is down.
 
 ### 2. Text highlights — ✅ done
 
@@ -130,6 +131,23 @@ silently doing nothing.
 The ~1900-emoji table ships as an extension asset fetched the first time the panel opens, rather
 than being bundled into the content script that runs on every forum page.
 See [ADR 0022](./docs/adr/0022-lazy-loaded-data-assets.md).
+
+### Backup — export & import
+
+Not a toggleable feature, but a section of the options page (the cog in the popup): everything
+the extension stores — your feature toggles, the whole BBCode preset library, and the emoji
+picker's recents — exports to a single JSON file, and imports back from one.
+
+Import is deliberately cautious rather than a wholesale overwrite. It shows you what the file
+holds before anything is written, and lets you pick: new presets are ticked by default, while
+anything that would replace a preset you already have is flagged and left unticked until you
+say so. Recents are unticked by default too, since a recents list is replaced rather than
+merged. Highlights are out of scope — they are anchored to specific posts on this forum and
+mean nothing in another browser's copy.
+
+It lives on the options page rather than in the popup for a concrete reason: the popup closes
+the instant a file-picker dialog takes focus, taking the pending import with it.
+See [ADR 0021](./docs/adr/0021-json-export-import.md).
 
 ## Architecture & decisions
 

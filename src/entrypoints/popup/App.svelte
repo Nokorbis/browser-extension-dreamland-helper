@@ -3,20 +3,40 @@
   import { browser } from '#imports';
   import { ALL_FEATURES } from '@/features/registry';
   import { loadSettings, setFeatureEnabled } from '@/lib/storage';
+  import { error } from '@/lib/log';
   import { POPUP_PANELS } from './panels';
   // Global (unscoped) — the --dlh-* variables the feature panels read.
   import '@/lib/palette.css';
 
   // Feature id → enabled. Seeded from storage on mount.
   let enabled = $state<Record<string, boolean>>({});
+  let saveFailed = $state(false);
 
-  loadSettings().then((settings) => {
+  void loadSettings().then((settings) => {
     enabled = settings.features;
   });
 
+  /**
+   * Flip a feature, optimistically, then report the outcome rather than assume it.
+   *
+   * The checkbox moves first because a storage write is fast and the alternative is a
+   * visibly laggy control. But an optimistic update that is never reconciled is just a
+   * UI that lies: a rejected write (Firefox refusing to clone a `$state` proxy is the
+   * one that bit this project before) would leave the box ticked with nothing persisted.
+   * So a failure puts the box back and says so — the same stance as the options page's
+   * `commit`, which is where that lesson was learned. See CLAUDE.md.
+   */
   async function toggle(id: string, next: boolean) {
+    const previous = enabled[id] ?? false;
     enabled = { ...enabled, [id]: next };
-    await setFeatureEnabled(id, next);
+    saveFailed = false;
+    try {
+      await setFeatureEnabled(id, next);
+    } catch (err) {
+      enabled = { ...enabled, [id]: previous };
+      saveFailed = true;
+      error('failed to save the feature toggle', err);
+    }
   }
 
   // The cog is a plain link to the options page — where the preset editor and
@@ -84,7 +104,8 @@
             <span class="text">
               <span class="name">
                 {feature.name}
-                {#if !feature.implemented}<em class="soon">{i18n.t('popup.soon')}</em>{/if}
+                {#if !feature.implemented}<em class="soon">{i18n.t('popup.soon')}</em
+                  >{/if}
               </span>
               <span class="desc">{feature.description}</span>
             </span>
@@ -94,6 +115,14 @@
     {/each}
   </ul>
   <p class="hint">{i18n.t('popup.reloadHint')}</p>
+  <!--
+    Rendered conditionally rather than faded with a class: a live region only announces
+    when its *content* changes, so text that is always present is never read out. Same
+    reasoning as the options page's save status.
+  -->
+  <p class="save-failed" role="status" aria-live="polite">
+    {#if saveFailed}{i18n.t('popup.saveFailed')}{/if}
+  </p>
 </main>
 
 <style>
@@ -226,6 +255,16 @@
     font-size: 0.72rem;
   }
 
+  .save-failed {
+    /* Empty while nothing has failed, so it would collapse and shift the popup the
+       moment a message arrives. Reserve the line instead. */
+    min-height: 1lh;
+    margin: 0.4rem 0 0;
+    color: #a12626;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
   @media (prefers-color-scheme: dark) {
     main {
       color: #eceaf4;
@@ -245,6 +284,9 @@
     .hint {
       border-top-color: #2f2d38;
       color: #a7a5b0;
+    }
+    .save-failed {
+      color: #ef9a9a;
     }
   }
 </style>

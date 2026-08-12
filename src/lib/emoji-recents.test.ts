@@ -91,9 +91,7 @@ describe('normalizeEmojiPrefs', () => {
 
   it('trims a list longer than the limit', () => {
     const recent = Array.from({ length: RECENT_LIMIT + 10 }, (_, i) => `e${i}`);
-    expect(normalizeEmojiPrefs({ version: 1, recent }).recent).toHaveLength(
-      RECENT_LIMIT,
-    );
+    expect(normalizeEmojiPrefs({ version: 1, recent }).recent).toHaveLength(RECENT_LIMIT);
   });
 });
 
@@ -103,5 +101,50 @@ describe('toPlainEmojiPrefs', () => {
     const plain = toPlainEmojiPrefs(prefs);
     expect(plain).toEqual(prefs);
     expect(plain.recent).not.toBe(prefs.recent);
+  });
+});
+
+describe('pushRecent boundaries', () => {
+  it('treats a limit of 0 as unbounded, not as "keep nothing"', () => {
+    // The `limit > 0` guard makes 0 mean "no cap" — the exact mirror of the
+    // `maxLength === 0` rule in `planInsertion`, and worth pinning for the same reason:
+    // a future reader could plausibly expect either meaning.
+    const prefs = pushRecent(pushRecent(emptyEmojiPrefs(), '😀', 0), '🐈', 0);
+    expect(prefs.recent).toEqual(['🐈', '😀']);
+  });
+
+  it('ignores an empty character rather than storing a blank cell', () => {
+    const before = emptyEmojiPrefs();
+    expect(pushRecent(before, '')).toBe(before);
+  });
+
+  it('keeps a ZWJ sequence as a single entry', () => {
+    const prefs = pushRecent(pushRecent(emptyEmojiPrefs(), '🐈‍⬛'), '🐈‍⬛');
+    expect(prefs.recent).toEqual(['🐈‍⬛']);
+  });
+
+  it('treats a variation-selector emoji as distinct from its bare form', () => {
+    // '❤' (U+2764) and '❤️' (U+2764 U+FE0F) are different strings, so they occupy two
+    // slots and render as two visually identical cells. Dedupe is byte equality
+    // throughout — recording the behaviour rather than claiming it is ideal, since
+    // normalising here would have to agree with whatever the dataset ships.
+    const prefs = pushRecent(pushRecent(emptyEmojiPrefs(), '❤'), '❤️');
+    expect(prefs.recent).toEqual(['❤️', '❤']);
+  });
+});
+
+describe('normalizeEmojiPrefs version handling', () => {
+  it('does not carry a version from a newer build through', () => {
+    // Stamped back down to what this build understands. Lossy but deliberate, and the
+    // same in all three stores — worth pinning so a change to it is a visible decision.
+    expect(normalizeEmojiPrefs({ version: 99, recent: ['😀'] }).version).toBe(
+      EMOJI_SCHEMA_VERSION,
+    );
+  });
+
+  it('survives a corrupt version', () => {
+    for (const version of [-3, 1.5, 'two', null]) {
+      expect(normalizeEmojiPrefs({ version, recent: ['😀'] }).recent).toEqual(['😀']);
+    }
   });
 });

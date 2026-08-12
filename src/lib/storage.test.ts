@@ -47,7 +47,9 @@ describe('normalizeSettings', () => {
 
   it('keeps a flag for a feature this build does not know', () => {
     // An import from a newer version must not lose the flag on the way through.
-    expect(normalizeSettings({ features: { 'from-the-future': false } }).features).toMatchObject({
+    expect(
+      normalizeSettings({ features: { 'from-the-future': false } }).features,
+    ).toMatchObject({
       'from-the-future': false,
     });
   });
@@ -106,7 +108,9 @@ describe('persistence', () => {
   });
 
   it('repairs damaged data on the way out of storage', async () => {
-    await fakeBrowser.storage.local.set({ [SETTINGS_KEY]: { features: { highlight: 'yes' } } });
+    await fakeBrowser.storage.local.set({
+      [SETTINGS_KEY]: { features: { highlight: 'yes' } },
+    });
     expect(await loadSettings()).toEqual(DEFAULT_SETTINGS);
   });
 
@@ -133,5 +137,38 @@ describe('persistence', () => {
 
     expect(seen).toHaveLength(1);
     expect(seen[0]['color-grab']).toBe(false);
+  });
+});
+
+/*
+ * There is deliberately no runtime check here that `DEFAULT_SETTINGS.features` and
+ * `ALL_FEATURES` agree. Importing the registry pulls in every feature module, and those
+ * import Svelte components — which this node-only suite cannot parse. It is the same
+ * constraint that keeps `POPUP_PANELS` off the `Feature` interface (CLAUDE.md).
+ *
+ * The check that matters is a compile-time one instead: `DEFAULT_SETTINGS` is typed
+ * `Record<FeatureId, boolean>`, so a feature added to `ALL_FEATURES` and forgotten here
+ * fails `pnpm check` by name. Only the harmless direction — a leftover entry for a
+ * removed feature, which `bootFeatures` simply never looks up — goes unchecked.
+ */
+
+describe('normalizeSettings against hostile input', () => {
+  it('does not let a prototype-polluting key reach the prototype', () => {
+    // `features` comes straight from an import file the user was handed by someone else.
+    const result = normalizeSettings({
+      features: { __proto__: true, constructor: true, highlight: false },
+    });
+    expect(result.features.highlight).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call({}, 'polluted')).toBe(false);
+    const probe: Record<string, unknown> = {};
+    expect(probe.constructor).toBe(Object);
+  });
+
+  it('keeps an unknown feature id rather than dropping it', () => {
+    // A flag from a newer build must survive a round trip through an older one, or
+    // installing an update after an export would silently reset it.
+    const result = normalizeSettings({ features: { 'from-the-future': false } });
+    expect(result.features['from-the-future']).toBe(false);
+    expect(toPlainSettings(result).features['from-the-future']).toBe(false);
   });
 });

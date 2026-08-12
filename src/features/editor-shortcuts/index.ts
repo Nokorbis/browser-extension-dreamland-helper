@@ -1,10 +1,6 @@
 import { i18n } from '#i18n';
 import type { Feature } from '../types';
-import {
-  findFormatButton,
-  findFormatButtons,
-  findMessageTextarea,
-} from '@/lib/phpbb';
+import { findFormatButton, findFormatButtons, findMessageTextarea } from '@/lib/phpbb';
 import {
   findChatBBCodeButton,
   findChatBBCodeContainer,
@@ -49,7 +45,7 @@ import { KEYMAP, resolveShortcut, type Shortcut } from './keymap';
  */
 
 /** Marks a button we have already annotated, so a re-run can't double the hint. */
-const MARKER = 'data-dlh-shortcut';
+const TRIGGER_MARKER = 'data-dlh-shortcut';
 
 /** One composer surface this feature can bind shortcuts inside. */
 interface Target {
@@ -59,8 +55,10 @@ interface Target {
   findButton: (bbcode: string) => HTMLElement | null;
 }
 
-export const editorShortcuts: Feature = {
-  id: 'editor-shortcuts',
+export const editorShortcuts = {
+  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
+  // built from these, and a widened `string` would make it match anything.
+  id: 'editor-shortcuts' as const,
   name: i18n.t('features.editorShortcuts.name'),
   description: i18n.t('features.editorShortcuts.description'),
   implemented: true,
@@ -112,7 +110,7 @@ export const editorShortcuts: Feature = {
       for (const undo of restore) undo();
     };
   },
-};
+} satisfies Feature;
 
 /**
  * Binds shortcuts to a single composer textarea, resolving each `KEYMAP` entry
@@ -136,13 +134,11 @@ function bindTarget(
   const combos = new Map<string, Shortcut[]>();
 
   for (const shortcut of KEYMAP) {
-    let button = buttons.get(shortcut.bbcode);
-    if (button === undefined) {
+    if (!buttons.has(shortcut.bbcode)) {
       const found = findButton(shortcut.bbcode);
       // A BBCode this surface doesn't have: leave the key alone entirely, so
       // it keeps whatever the browser does with it.
       if (found === null) continue;
-      button = found;
       buttons.set(shortcut.bbcode, found);
     }
     combos.set(shortcut.bbcode, [...(combos.get(shortcut.bbcode) ?? []), shortcut]);
@@ -152,7 +148,7 @@ function bindTarget(
 
   // --- discoverability: say so on the buttons themselves ---
   for (const [bbcode, button] of buttons) {
-    if (button.hasAttribute(MARKER)) continue;
+    if (button.hasAttribute(TRIGGER_MARKER)) continue;
     const bound = combos.get(bbcode) ?? [];
 
     const original = {
@@ -164,7 +160,7 @@ function bindTarget(
       setOrRemove(button, 'title', original.title);
       setOrRemove(button, 'accesskey', original.accesskey);
       setOrRemove(button, 'aria-keyshortcuts', original.aria);
-      button.removeAttribute(MARKER);
+      button.removeAttribute(TRIGGER_MARKER);
     });
 
     const hint = bound.map((shortcut) => formatCombo(shortcut, mac)).join(' / ');
@@ -185,7 +181,7 @@ function bindTarget(
     // reach both our handler *and* the native accesskey for the same button.
     // Only buttons we bound lose theirs; the rest keep the surface's behaviour.
     button.removeAttribute('accesskey');
-    button.setAttribute(MARKER, '');
+    button.setAttribute(TRIGGER_MARKER, '');
   }
 
   // --- the shortcuts themselves ---

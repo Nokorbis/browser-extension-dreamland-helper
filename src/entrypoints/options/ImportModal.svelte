@@ -36,7 +36,9 @@
   // its lifetime — `$derived` would be needless churn for a value computed
   // once. `untrack` says so explicitly instead of leaving it to look like an
   // accidental one-shot read of reactive state.
-  const tree = untrack(() => (importedPresets !== null ? buildPresetTree(importedPresets) : null));
+  const tree = untrack(() =>
+    importedPresets !== null ? buildPresetTree(importedPresets) : null,
+  );
   const statuses = untrack(() =>
     importedPresets !== null
       ? diffImportedPresets(currentPresets, importedPresets)
@@ -95,7 +97,6 @@
   a text selection started inside the dialog and released outside it, throwing
   the user's choices away mid-drag.
 -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
   class="backdrop"
   onclick={(e) => {
@@ -146,7 +147,9 @@
     {/if}
 
     <div class="actions">
-      <button type="button" onclick={oncancel}>{i18n.t('options.backup.modal.cancel')}</button>
+      <button type="button" onclick={oncancel}
+        >{i18n.t('options.backup.modal.cancel')}</button
+      >
       <button type="button" class="primary" onclick={confirm}>
         {i18n.t('options.backup.modal.confirm')}
       </button>

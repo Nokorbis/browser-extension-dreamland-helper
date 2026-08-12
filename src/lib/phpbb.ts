@@ -6,6 +6,8 @@
  * place to update. Features should never hard-code selectors themselves.
  */
 
+import { isSafeBBCodeName } from './dom';
+
 /** Origins the extension runs on. Single source of truth for the manifest match. */
 export const FORUM_MATCHES = ['*://*.dreamland-reborn.net/*'];
 
@@ -36,9 +38,7 @@ export function findPostForm(): HTMLFormElement | null {
  * the form programmatically, so phpBB still receives the `post` field.
  */
 export function findSubmitButton(form: HTMLFormElement): HTMLElement | null {
-  return form.querySelector<HTMLElement>(
-    'input[name="post"], button[name="post"]',
-  );
+  return form.querySelector<HTMLElement>('input[name="post"], button[name="post"]');
 }
 
 /**
@@ -58,9 +58,7 @@ export function findSubmitButton(form: HTMLFormElement): HTMLElement | null {
  * carrying `button-secondary` instead. We append after all of them.
  */
 export function findFormatButtons(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(
-    '#format-buttons, .format-buttons',
-  );
+  return document.querySelector<HTMLElement>('#format-buttons, .format-buttons');
 }
 
 /**
@@ -83,7 +81,7 @@ export function findFormatButtons(): HTMLElement | null {
 export function findFormatButton(bbcode: string): HTMLElement | null {
   // The names are literals from callers' own tables, but an invalid one would
   // make querySelector throw a SyntaxError and take the whole feature down.
-  if (!/^[a-z0-9-]+$/.test(bbcode)) return null;
+  if (!isSafeBBCodeName(bbcode)) return null;
   return (
     findFormatButtons()?.querySelector<HTMLElement>(
       `button[class~="bbcode-${bbcode}"]`,
@@ -102,10 +100,56 @@ export function findFormatButton(bbcode: string): HTMLElement | null {
  *     <i class="icon fa-bold fa-fw" aria-hidden="true"></i>
  *   </button>
  * so our own `<i class="icon fa-… fa-fw">` child inherits the same FontAwesome
- * sizing. We deliberately omit their `name` and `accesskey` — see the ⚠ note in
- * `src/features/bbcode-presets/index.ts`.
+ * sizing. We deliberately omit their `name` and `accesskey` — see the ⚠ note on
+ * `createFormatButton` below.
  */
 export const FORMAT_BUTTON_CLASS = 'button button-icon-only';
+
+/** What a toolbar trigger needs to look and behave like one of phpBB's own. */
+export interface FormatButtonOptions {
+  /** FontAwesome glyph class, e.g. `fa-magic` or `fa-face-smile`. */
+  icon: string;
+  /** Accessible name. */
+  label: string;
+  /** Tooltip — usually the label plus the keyboard combo. Defaults to `label`. */
+  tooltip?: string;
+  /** Sets `aria-haspopup` and seeds `aria-expanded="false"` for a surface it opens. */
+  popup?: 'menu' | 'dialog';
+  /** `aria-keyshortcuts` spelling, from `formatCombo`/`ariaCombo` in `@/lib/keys`. */
+  keyshortcuts?: string;
+}
+
+/**
+ * Build a button styled as one of phpBB's own toolbar buttons.
+ *
+ * ⚠ **This is why the helper exists.** The composer toolbar lives inside
+ * `<form id="postform">`. A button there that is not `type="button"`, or that carries a
+ * `name`, is a *submit* button: clicking it fires a submit event which the exit guard
+ * reads as a genuine post, and **the half-written message is sent**. Both features that
+ * inject a trigger carried their own copy of that warning, and nothing enforced it. Here
+ * the type is set and the name is never accepted, so the hazard is unrepresentable rather
+ * than remembered. See `src/features/exit-guard/index.ts`.
+ */
+export function createFormatButton(opts: FormatButtonOptions): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button'; // MANDATORY — see above. Never add a `name`.
+  button.className = FORMAT_BUTTON_CLASS;
+  button.title = opts.tooltip ?? opts.label;
+  button.setAttribute('aria-label', opts.label);
+  if (opts.popup !== undefined) {
+    button.setAttribute('aria-haspopup', opts.popup);
+    button.setAttribute('aria-expanded', 'false');
+  }
+  if (opts.keyshortcuts !== undefined) {
+    button.setAttribute('aria-keyshortcuts', opts.keyshortcuts);
+  }
+  // Deliberately no `accesskey`: phpBB already claims b/i/u/q/c/l/o/y/p/w/d.
+  const icon = document.createElement('i');
+  icon.className = `icon ${opts.icon} fa-fw`;
+  icon.setAttribute('aria-hidden', 'true');
+  button.append(icon);
+  return button;
+}
 
 /**
  * The `<div id="message-box">` wrapping the composer textarea — the anchor for
@@ -280,9 +324,7 @@ export function findColourPaletteCells(): HTMLAnchorElement[] {
 
 /** The palette grid's `<tbody>` — where extra rows of swatches get appended. */
 export function findColourPaletteBody(): HTMLElement | null {
-  return document.querySelector<HTMLElement>(
-    '#color_palette_placeholder table tbody',
-  );
+  return document.querySelector<HTMLElement>('#color_palette_placeholder table tbody');
 }
 
 /**
@@ -306,9 +348,7 @@ export function readReviewColorUsages(): { rawColor: string; author: string }[] 
     if (author === null) continue;
     const content = post.querySelector<HTMLElement>('.content');
     if (content === null) continue;
-    for (const span of content.querySelectorAll<HTMLElement>(
-      'span[style*="color"]',
-    )) {
+    for (const span of content.querySelectorAll<HTMLElement>('span[style*="color"]')) {
       const rawColor = span.style.color;
       if (rawColor.trim() === '') continue; // e.g. a stray background-color span
       usages.push({ rawColor, author });

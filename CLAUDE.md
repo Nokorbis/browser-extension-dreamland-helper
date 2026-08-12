@@ -48,23 +48,43 @@ pnpm build:firefox   # Production build → .output/firefox-mv2/
 pnpm zip             # Distributable zip for Chrome Web Store
 pnpm zip:firefox     # Distributable zip for AMO
 pnpm check           # svelte-check type check (run this instead of `tsc`)
+pnpm lint            # eslint + prettier --check (CI gate)
+pnpm format          # prettier --write, to fix what `pnpm lint` complains about
 pnpm test            # vitest — pure logic only (see below)
 pnpm gen:emoji       # regenerate public/emoji/emoji.json (committed; not part of the build)
+pnpm release         # tag-and-push a release; see docs/PUBLISHING.md
+                     # `postinstall` runs `wxt prepare` for you after every install
 ```
 
 `pnpm check` is the type gate — there is no standalone `tsc` build step (WXT/Vite bundles
 without one). Run it after any change to `.ts`/`.svelte`.
 
+⚠ **`pnpm check` is not the whole compiler.** svelte-check validates types, not every rune
+rule: a `$state(…)` returned directly from a function (rather than assigned to a declaration
+first) type-checks cleanly and then fails `pnpm build` with `state_invalid_placement`. After
+touching a `.svelte` or `.svelte.ts` file, run a build too — CI does.
+
+`pnpm lint` is the second gate. ESLint's rule set is deliberately small: `pnpm check` already
+owns type errors and Prettier owns layout, so `eslint.config.js` carries only rules that catch
+a *class of defect* neither can see (a dropped promise rejection, a `const` used before its
+declaration, an `as` on unvalidated data). Prettier skips `*.md` and `src/locales/*.yml` on
+purpose — see `.prettierignore` for why. Details in
+`docs/adr/0024-lint-and-format-gate.md`.
+
 `pnpm test` covers **pure logic only** — the preset template engine
 (`src/features/bbcode-presets/template.ts`), the preset, highlight and emoji-recents store
 invariants (`src/lib/presets.ts`, `src/lib/highlights.ts`, `src/lib/emoji-recents.ts`), the
-insertion arithmetic (`planInsertion` / `wrapSelection` in `src/lib/textarea.ts`), keymap
-resolution and cross-feature shortcut collisions (`src/features/editor-shortcuts/keymap.ts`,
-`src/lib/keys.ts`), highlight anchoring (`src/features/highlight/anchor.ts`), emoji search
-(`src/features/emoji-picker/search.ts`), and the colour-grab palette filter
+settings and backup layers (`src/lib/storage.ts`, `src/lib/backup.ts`), the shared store
+plumbing (`src/lib/store-kit.ts`), the insertion arithmetic (`planInsertion` /
+`wrapSelection` in `src/lib/textarea.ts`), keymap resolution and cross-feature shortcut
+collisions (`src/features/editor-shortcuts/keymap.ts`, `src/lib/keys.ts`), highlight
+anchoring (`src/features/highlight/anchor.ts`), emoji search and dataset repair
+(`src/features/emoji-picker/search.ts`, `src/features/emoji-picker/data.ts`), popover
+placement (`src/lib/anchor-position.ts`), and the colour-grab palette filter
 (`src/features/color-grab/palette-filter.ts`). That scoping is deliberate — everything else is
 DOM/browser glue that is cheaper to verify by hand against a real forum page. Don't backfill
-tests for it; do keep new pure logic covered. `pnpm check` and `pnpm test` are both CI gates.
+tests for it; do keep new pure logic covered. `pnpm check`, `pnpm lint` and `pnpm test` are
+all CI gates.
 
 The suite runs on plain node with **no DOM environment**, and adding one isn't the way to
 cover DOM-adjacent code. When a module mixes real arithmetic with DOM work, extract the
@@ -76,6 +96,13 @@ keeps only the `execCommand` and focus handling.
 (Brave: `brave://extensions` → Developer mode → Load unpacked) or `.output/firefox-mv2`
 (Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → pick `manifest.json`).
 `pnpm dev` does this automatically with live reload.
+
+**Checking a selector without the live forum:** `real_snippets/` holds saved HTML of the four
+pages that matter — `viewtopic.html`, `posting.html`, `chat.html` (the standalone `/chat/`
+page) and `index.html` (the homepage, which carries the embedded shoutbox). Every selector in
+`phpbb.ts` and `chatbox.ts` was verified against them, and several ADRs cite them as evidence.
+It is **gitignored** (it is a few hundred kB of real forum content, including member posts), so
+it exists only on a machine where someone saved it — re-save from the forum if it's missing.
 
 ## Architecture
 
@@ -113,6 +140,9 @@ The flow that ties multiple files together:
   which is a *different* system with its own id scheme — and two DOM shapes of its own, the
   homepage shoutbox (`#ajaxChatInputField`) and the standalone `/chat/` page (`#inputField`),
   both handled there. A feature that works on both writing surfaces imports from both.
+  Both also own how to *build* a button that matches their toolbar — `createFormatButton` /
+  `FORMAT_BUTTON_CLASS` in `phpbb.ts`, `CHAT_BUTTON_CLASS` in `chatbox.ts`. A feature that
+  hardcodes those classes is a place the next skin change gets missed.
 - **A primitive moves to `src/lib` as soon as a *second* feature needs it** — never
   `import … from '@/features/<other>/…'`, which is the wrong dependency edge and stops a feature
   being deletable. See `docs/adr/0023-shared-primitives-in-lib.md`; `src/lib` takes what is
@@ -130,8 +160,13 @@ The flow that ties multiple files together:
   `emoji-picker`'s panel go through it; the optional `fit` (flip above the trigger, clamp
   horizontally) is on only for the picker, whose chat surface sits at the page bottom. It is
   separate from `src/lib/shadow-ui.ts`, which serves the *vanilla* `.style`-built controls.
-  **It has no automated coverage by design** — editing it means re-verifying both surfaces by
-  hand, in both themes and both browsers.
+  **Its event plumbing has no automated coverage by design** — editing the mount or dismissal
+  path means re-verifying both surfaces by hand, in both themes and both browsers. Its
+  *geometry* is a different matter and does not live here: `src/lib/anchor-position.ts`
+  (`placeAnchored`) owns where a floating surface goes — preferred side, flip when it would
+  leave the viewport, horizontal clamp — as pure arithmetic on plain numbers, shared with
+  `highlight/toolbar.ts` and unit-tested. Callers measure, call it, and assign; that is the
+  same split as `planInsertion` / `insertAtRange`.
 - **Bulk feature data ships as a `public/` asset, not in the bundle.** Content scripts build as
   a single IIFE, so an imported data table is parsed on every forum page whether or not it is
   used. Generate it with a committed script, commit the output, declare it in
@@ -167,14 +202,29 @@ The flow that ties multiple files together:
 
 ### Adding a feature
 
+This list is authoritative (`docs/adr/0004-feature-registry.md` says so) — steps 6 and 7 are
+conditional, the rest always apply.
+
 1. Create `src/features/<id>/index.ts` exporting a `Feature` (`implemented: true` once real).
+   Write it as `export const x = { … } satisfies Feature` with `id: '<id>' as const` — see
+   step 4 for why the literal matters.
 2. Add its `name`/`description` keys under `features.<camelCaseName>` in `src/locales/fr.yml`
    (camelCase, **not** the kebab id — message keys forbid `-`), and set `name`/`description`
    on the feature to `i18n.t('features.<camelCaseName>.name')` / `.description`.
 3. Add it to `ALL_FEATURES` in `src/features/registry.ts`.
 4. Add its default enabled state to `DEFAULT_SETTINGS.features` in `src/lib/storage.ts`.
-5. Put any new DOM knowledge in `src/lib/phpbb.ts`, and any new UI text in `src/locales/fr.yml`
-   — not in the feature or component.
+   `DEFAULT_SETTINGS` is typed `Record<FeatureId, boolean>` against the union derived from
+   `ALL_FEATURES`, so **forgetting this is a compile error** naming the missing id. It used
+   to be a silent failure: the feature shipped and simply never booted.
+5. Put any new DOM knowledge in `src/lib/phpbb.ts` (or `src/lib/chatbox.ts` for the Tribune),
+   and any new UI text in `src/locales/fr.yml` — not in the feature or component.
+6. **If it has settings**, register a popup panel in `src/entrypoints/popup/panels.ts`
+   (`featureId → Component`) — never as a field on `Feature`, for the reason in the UI
+   surfaces note above. See `docs/adr/0014-popup-accordion-options-page.md`.
+7. **If it claims a keyboard combo**, build it through `src/lib/keys.ts` and register it in
+   the `CLAIMED` list in `src/lib/keys.test.ts` — the one place collisions across features
+   are checked. Nothing enforces this registration; an unregistered combo passes the gate
+   silently. See `docs/adr/0023-shared-primitives-in-lib.md`.
 
 The `Feature.id` is the persisted settings key — **never rename an id once shipped**.
 A routine feature that stays within this pattern needs no ADR; a feature that introduces a
@@ -230,8 +280,11 @@ task, create or update the ADR **in the same change** — do not defer it.
   `i18n.t('…syntaxHelp', { sel: SELECTION_TOKEN, cur: CURSOR_TOKEN })`.
 - **A button injected into phpBB's composer must be `type="button"` with no `name`.**
   `<form id="postform">` is where our toolbar trigger lives; a submit-type button there fires
-  a submit event that exit-guard reads as a genuine post (its `submitterName !== 'post'`
-  short-circuit doesn't catch a `null` name) and **sends the half-written message**.
+  a submit event that exit-guard reads as a genuine post (its `GUARDED_SUBMITTER_NAMES`
+  check short-circuits on a *recognised* name, so a `null` name falls through to being
+  guarded) and **sends the half-written message**. Build such buttons with
+  `createFormatButton` in `src/lib/phpbb.ts`, which sets the type and never accepts a name
+  — the hazard is structural there rather than something to remember at each call site.
 - **phpBB regenerates the colour palette grid.** `registerPalette` (core.js) replaces
   `#color_palette_placeholder`'s server-rendered table on DOM-ready and binds each swatch's
   click *per-anchor*, and a content script can run either side of that. Anything decorating the

@@ -33,6 +33,7 @@ import {
   type ContentScriptContext,
   type ShadowRootContentScriptUi,
 } from '#imports';
+import { placeAnchored } from './anchor-position';
 import { warn } from './log';
 
 /** Gap between the trigger and the surface, and its margin from the viewport edge. */
@@ -127,32 +128,23 @@ export function createPopover<App>(options: PopoverOptions<App>): Popover {
 
   let ui: ShadowRootContentScriptUi<App> | null = null;
 
+  // Measure, delegate the arithmetic, assign. The geometry itself lives in
+  // `@/lib/anchor-position`, shared with the highlight toolbar and unit-tested there.
   const position = () => {
     if (ui === null) return;
     const rect = trigger.getBoundingClientRect();
 
-    // The unfitted placement, and the whole of it when `fit` is off: directly
-    // below the trigger, left edges aligned.
-    let top = rect.bottom + GAP;
-    let left = rect.left;
+    // Both read 0 until Svelte has drawn the surface, which `placeAnchored` treats as
+    // "nothing to fit yet" — `positionSoon` comes back for it on the next frame.
+    const box =
+      fit === undefined ? null : ui.shadow.querySelector<HTMLElement>(fit.selector);
 
-    if (fit !== undefined) {
-      const box = ui.shadow.querySelector<HTMLElement>(fit.selector);
-      // Both read 0 until Svelte has drawn the surface, which each guard below
-      // treats as "nothing to fit yet" — `positionSoon` comes back for it.
-      const height = box?.offsetHeight ?? 0;
-      const width = box?.offsetWidth ?? 0;
-
-      // Flip only when there is genuinely more room above — falling off the top
-      // is no better than falling off the bottom.
-      const above = rect.top - GAP - height;
-      if (height > 0 && top + height > window.innerHeight && above >= GAP) {
-        top = above;
-      }
-      if (width > 0) {
-        left = Math.max(GAP, Math.min(left, window.innerWidth - width - GAP));
-      }
-    }
+    const { top, left } = placeAnchored(
+      rect,
+      { width: box?.offsetWidth ?? 0, height: box?.offsetHeight ?? 0 },
+      { width: window.innerWidth, height: window.innerHeight },
+      { gap: GAP, align: 'left', side: 'below', fit: fit !== undefined },
+    );
 
     const host = ui.shadowHost.style;
     host.setProperty(`--dlh-${prefix}-top`, `${top}px`);

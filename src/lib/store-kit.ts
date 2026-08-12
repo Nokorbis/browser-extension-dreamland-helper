@@ -42,6 +42,41 @@ export function newId(): string {
   return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * Step a store up to the current schema version.
+ *
+ * Each store used to inline this loop, and the three had drifted into three shapes.
+ * `presets` and `highlights` incremented a local counter; `emoji-recents` did **not** —
+ * it re-read `prefs.version` and trusted the migration to bump it, so the first migration
+ * that forgot would have looped forever inside a `normalize…` that runs on every read, on
+ * every page load. `presets` also read its version with a helper that accepts any finite
+ * number, so a corrupt `version: -3` or `0.5` skipped every migration and still got
+ * stamped as current — silently mislabelling unmigrated data.
+ *
+ * One implementation removes both. The counter is local and always advances, so the loop
+ * terminates whatever a migration returns; `from` is floored to a non-negative integer,
+ * so a corrupt version replays from 0 rather than skipping ahead.
+ *
+ * Exported (rather than living inside each store) so the migration paths are reachable
+ * from a test with a synthetic `migrations` map — they had no possible coverage before.
+ */
+export function runMigrations<T>(
+  store: T,
+  from: number | null,
+  to: number,
+  migrations: Record<number, (store: T) => T>,
+): T {
+  let version = from === null || from < 0 ? 0 : Math.trunc(from);
+  let migrated = store;
+  while (version < to) {
+    const migrate = migrations[version];
+    if (migrate === undefined) break;
+    migrated = migrate(migrated);
+    version += 1;
+  }
+  return migrated;
+}
+
 /** Load and repair a store from its `storage.local` key. */
 export async function loadStore<T>(
   key: string,

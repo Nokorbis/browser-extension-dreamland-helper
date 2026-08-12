@@ -15,24 +15,35 @@ import { emojiPicker } from './emoji-picker';
  * under `src/features/`, then add it here. Both the content script (to boot
  * them) and the popup (to list them) read this array — nothing else enumerates
  * features.
+ *
+ * `as const satisfies readonly Feature[]` rather than `: Feature[]`: the literal types of
+ * the ids survive, which is what lets `FeatureId` below be a union instead of `string`.
  */
-export const ALL_FEATURES: Feature[] = [
+export const ALL_FEATURES = [
   exitGuard,
   editorShortcuts,
   bbcodePresets,
   emojiPicker,
   colorGrab,
   highlight,
-];
+] as const satisfies readonly Feature[];
+
+/**
+ * Every shipped feature's id, as a union.
+ *
+ * This is what makes step 4 of CLAUDE.md's "Adding a feature" checklist — add the id to
+ * `DEFAULT_SETTINGS.features` — a compile error rather than a silent failure. With `id`
+ * typed as a bare `string`, forgetting it left the feature type-checking, building,
+ * shipping, and never booting, with nothing reported anywhere.
+ */
+export type FeatureId = (typeof ALL_FEATURES)[number]['id'];
 
 /**
  * Start every enabled feature on the current forum page. Cleanup functions are
  * tied to the content-script context so they run on nav/HMR invalidation.
  * A crash in one feature is logged and never blocks the others.
  */
-export async function bootFeatures(
-  scriptCtx: ContentScriptContext,
-): Promise<void> {
+export async function bootFeatures(scriptCtx: ContentScriptContext): Promise<void> {
   const settings = await loadSettings();
 
   for (const feature of ALL_FEATURES) {

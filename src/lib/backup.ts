@@ -90,7 +90,10 @@ export function parseImportBundle(
   // Only reject a *newer* format we don't understand yet. A missing or older
   // formatVersion is still worth a best-effort read — mirrors how the preset
   // store treats a missing `version` as 0 rather than refusing to load.
-  if (typeof raw.formatVersion === 'number' && raw.formatVersion > BACKUP_FORMAT_VERSION) {
+  if (
+    typeof raw.formatVersion === 'number' &&
+    raw.formatVersion > BACKUP_FORMAT_VERSION
+  ) {
     return { ok: false };
   }
 
@@ -145,9 +148,12 @@ export function diffImportedPresets(
 
   const statuses = new Map<string, PresetImportStatus>();
   for (const preset of Object.values(imported.presets)) {
-    const existing = currentByKey.get(matchKey(folderPath(imported, preset.folderId), preset.name));
+    const existing = currentByKey.get(
+      matchKey(folderPath(imported, preset.folderId), preset.name),
+    );
     if (existing === undefined) statuses.set(preset.id, 'new');
-    else statuses.set(preset.id, existing.body === preset.body ? 'identical' : 'conflict');
+    else
+      statuses.set(preset.id, existing.body === preset.body ? 'identical' : 'conflict');
   }
   return statuses;
 }

@@ -11,91 +11,55 @@
  * One instance is created per surface (composer, chat), because each has its
  * own trigger, its own open state and its own textarea — but they share the one
  * dataset and the one recents list, which `index.ts` pushes into both.
+ *
+ * A single `$state` object rather than one rune per field behind a getter/setter pair —
+ * see the note in `menu-state.svelte.ts`, including why the resulting proxy must never
+ * reach `browser.storage`. It doesn't: `index.ts` keeps its own plain `prefs` object for
+ * the write and pushes only the array into here.
  */
 import { emptyEmojiData, type EmojiData } from './types';
 
 /** What the panel is currently able to show. */
 export type PickerStatus = 'loading' | 'ready' | 'failed';
 
-export function createPickerState() {
-  let data = $state<EmojiData>(emptyEmojiData());
-  let status = $state<PickerStatus>('loading');
-  let recent = $state<string[]>([]);
-  let open = $state(false);
-  let dark = $state(false);
-  let query = $state('');
-  let group = $state(0);
-  /** Set when an insertion was refused for length; cleared on the next open. */
-  let tooLong = $state(false);
-
-  return {
-    /** The emoji dataset, fetched once per page by `data.ts`. */
-    get data(): EmojiData {
-      return data;
-    },
-    set data(next: EmojiData) {
-      data = next;
-    },
-
-    get status(): PickerStatus {
-      return status;
-    },
-    set status(next: PickerStatus) {
-      status = next;
-    },
-
-    /** Most recently used first, kept fresh by `watchEmojiPrefs`. */
-    get recent(): string[] {
-      return recent;
-    },
-    set recent(next: string[]) {
-      recent = next;
-    },
-
-    /** Whether this surface's panel is showing. */
-    get open(): boolean {
-      return open;
-    },
-    set open(next: boolean) {
-      open = next;
-    },
-
-    /**
-     * Whether the *forum* is in dark mode, from `html.dark`. Pushed in from
-     * `setup()` because CSS inside a shadow root cannot read the host page's
-     * classes portably. See `isDarkTheme` in `@/lib/phpbb`.
-     */
-    get dark(): boolean {
-      return dark;
-    },
-    set dark(next: boolean) {
-      dark = next;
-    },
-
-    /** The search box's contents. Empty means "show the selected category". */
-    get query(): string {
-      return query;
-    },
-    set query(next: string) {
-      query = next;
-    },
-
-    /** Index into `data.groups` of the selected category tab. */
-    get group(): number {
-      return group;
-    },
-    set group(next: number) {
-      group = next;
-    },
-
-    /** True when the last insertion was refused for exceeding `maxlength`. */
-    get tooLong(): boolean {
-      return tooLong;
-    },
-    set tooLong(next: boolean) {
-      tooLong = next;
-    },
-  };
+export interface PickerState {
+  /** The emoji dataset, fetched once per page by `data.ts`. */
+  data: EmojiData;
+  status: PickerStatus;
+  /** Most recently used first, kept fresh by `watchEmojiPrefs`. */
+  recent: string[];
+  /** Whether this surface's panel is showing. */
+  open: boolean;
+  /**
+   * Whether the *forum* is in dark mode, from `html.dark`. Pushed in from `setup()`
+   * because CSS inside a shadow root cannot read the host page's classes portably.
+   * See `isDarkTheme` in `@/lib/phpbb`.
+   */
+  dark: boolean;
+  /** The search box's contents. Empty means "show the selected category". */
+  query: string;
+  /** Index into `data.groups` of the selected category tab. */
+  group: number;
+  /**
+   * True when the last insertion was refused for exceeding `maxlength` — the chat caps
+   * messages at 1040 characters. Set on a refused insert, cleared on the next open.
+   */
+  tooLong: boolean;
 }
 
-export type PickerState = ReturnType<typeof createPickerState>;
+export function createPickerState(): PickerState {
+  // Assigned to a local and then returned, not returned directly: `$state` is only
+  // valid as a variable declaration's initialiser (`state_invalid_placement`). Note
+  // `pnpm check` does not catch that — `pnpm build` is what fails.
+  const state: PickerState = $state({
+    data: emptyEmojiData(),
+    status: 'loading',
+    recent: [],
+    open: false,
+    dark: false,
+    query: '',
+    group: 0,
+    tooLong: false,
+  });
+  return state;
+}

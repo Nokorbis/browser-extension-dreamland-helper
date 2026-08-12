@@ -261,7 +261,10 @@
     background: var(--dlh-surface);
     color: var(--dlh-fg);
     box-shadow: 0 6px 20px var(--dlh-shadow);
-    font: 12.5px/1.35 system-ui, -apple-system, sans-serif;
+    font:
+      12.5px/1.35 system-ui,
+      -apple-system,
+      sans-serif;
     text-align: left;
   }
 
@@ -368,8 +371,9 @@
     background: transparent;
     /* The emoji itself renders in the user's own system font — nothing is
        bundled, so the font stack must reach the platform's colour emoji face. */
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
-      'Twemoji Mozilla', sans-serif;
+    font-family:
+      'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla',
+      sans-serif;
     font-size: 1.15rem;
     line-height: 1;
     cursor: pointer;

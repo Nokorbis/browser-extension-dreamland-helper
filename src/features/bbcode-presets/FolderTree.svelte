@@ -43,12 +43,7 @@
           such a selector as unused.
         -->
         <div class="children">
-          <Self
-            folders={node.folders}
-            presets={node.presets}
-            {selectedId}
-            {onselect}
-          />
+          <Self folders={node.folders} presets={node.presets} {selectedId} {onselect} />
         </div>
       {/if}
     </li>

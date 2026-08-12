@@ -1,12 +1,14 @@
 import { i18n } from '#i18n';
-import {
-  chromeFor,
-  createShadowHost,
-  MAX_Z,
-  styled,
-  SYSTEM_FONT,
-} from '@/lib/shadow-ui';
+import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
+import { placeAnchored } from '@/lib/anchor-position';
 import { HIGHLIGHT_COLORS } from './palette';
+
+/**
+ * Gap between the selection and the toolbar, and its minimum margin from a viewport
+ * edge. Was two separate magic numbers (8 and 6) before the placement maths moved to
+ * `@/lib/anchor-position`, which takes one.
+ */
+const GAP = 6;
 
 /**
  * The two vanilla in-page controls for the highlight feature:
@@ -145,14 +147,20 @@ export function createSelectionToolbar(
     showAt(rect, opts) {
       eraser.style.display = opts.canErase ? 'inline-flex' : 'none';
       bar.style.display = 'inline-flex';
-      // Measure off-screen, then place centred above the selection (or below).
+      // Measure off-screen first: the bar's width depends on whether the eraser is
+      // showing, so it has to be laid out before it can be placed.
       bar.style.left = '-9999px';
       bar.style.top = '-9999px';
       const box = bar.getBoundingClientRect();
-      let left = rect.left + rect.width / 2 - box.width / 2;
-      left = Math.max(6, Math.min(left, window.innerWidth - box.width - 6));
-      let top = rect.top - box.height - 8;
-      if (top < 6) top = rect.bottom + 8;
+
+      // Above the selection and centred on it, dropping below only when there is no room
+      // up there. The geometry is shared with the popover — see `@/lib/anchor-position`.
+      const { top, left } = placeAnchored(
+        rect,
+        { width: box.width, height: box.height },
+        { width: window.innerWidth, height: window.innerHeight },
+        { gap: GAP, align: 'center', side: 'above', fit: true },
+      );
       bar.style.left = `${Math.round(left)}px`;
       bar.style.top = `${Math.round(top)}px`;
       shown = true;
@@ -187,9 +195,7 @@ export interface ClearControl {
   destroy(): void;
 }
 
-export function createClearControl(
-  handlers: ClearControlHandlers,
-): ClearControl {
+export function createClearControl(handlers: ClearControlHandlers): ClearControl {
   let chrome = chromeFor(false);
   let expanded = false;
 
@@ -248,11 +254,14 @@ export function createClearControl(
   const toggleLabel = document.createElement('span');
   toggle.append(document.createTextNode('🖍'), toggleLabel);
 
-  const collapse = () => {
+  // A hoisted `function`, not a `const`: `mkMenuButton` above wires this into a click
+  // handler before this point in the file. That is safe only because the handler runs
+  // later, and hoisting is what makes it safe by construction rather than by luck.
+  function collapse() {
     expanded = false;
     menu.style.display = 'none';
     toggle.setAttribute('aria-expanded', 'false');
-  };
+  }
   const openMenu = () => {
     expanded = true;
     menu.style.display = 'flex';
@@ -297,10 +306,7 @@ export function createClearControl(
       if (!host.isConnected) document.body.append(host);
       root.style.display = 'flex';
       clearTopicBtn.style.display = hasTopic ? 'block' : 'none';
-      toggleLabel.textContent = i18n.t(
-        'features.highlight.control.count',
-        count,
-      );
+      toggleLabel.textContent = i18n.t('features.highlight.control.count', count);
     },
     setDark(dark) {
       chrome = chromeFor(dark);

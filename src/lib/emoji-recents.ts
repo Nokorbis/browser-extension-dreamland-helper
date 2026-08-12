@@ -14,7 +14,14 @@
  * invalidating it, and an emoji that later leaves the dataset simply stops
  * being offered.
  */
-import { isRecord, loadStore, readInt, saveStore, watchStore } from './store-kit';
+import {
+  isRecord,
+  loadStore,
+  readInt,
+  runMigrations,
+  saveStore,
+  watchStore,
+} from './store-kit';
 import { warn } from './log';
 
 export const EMOJI_KEY = 'emojiPicker';
@@ -80,16 +87,12 @@ export function normalizeEmojiPrefs(raw: unknown): EmojiPrefs {
     recent.length = RECENT_LIMIT;
   }
 
-  let prefs: EmojiPrefs = {
-    version: readInt(raw.version) ?? 0,
-    recent,
-  };
-
-  while (prefs.version < EMOJI_SCHEMA_VERSION) {
-    const migrate = MIGRATIONS[prefs.version];
-    if (migrate === undefined) break;
-    prefs = migrate(prefs);
-  }
+  const prefs = runMigrations(
+    { version: readInt(raw.version) ?? 0, recent },
+    readInt(raw.version),
+    EMOJI_SCHEMA_VERSION,
+    MIGRATIONS,
+  );
   prefs.version = EMOJI_SCHEMA_VERSION;
 
   if (repairs.length > 0) warn('emoji recents repaired on read', repairs);
@@ -132,8 +135,6 @@ export async function saveEmojiPrefs(prefs: EmojiPrefs): Promise<void> {
   await saveStore(EMOJI_KEY, toPlainEmojiPrefs(prefs));
 }
 
-export function watchEmojiPrefs(
-  onChange: (prefs: EmojiPrefs) => void,
-): () => void {
+export function watchEmojiPrefs(onChange: (prefs: EmojiPrefs) => void): () => void {
   return watchStore(EMOJI_KEY, normalizeEmojiPrefs, onChange);
 }

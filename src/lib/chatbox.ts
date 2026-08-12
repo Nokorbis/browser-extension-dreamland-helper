@@ -13,13 +13,13 @@
  *    individual but bbcode-inconsistent ids, e.g. `#bbCodeURL` for `url`).
  */
 
+import { isSafeBBCodeName } from './dom';
+
 /**
  * The chat's message-composer textarea, in either DOM shape.
  */
 export function findChatTextarea(): HTMLTextAreaElement | null {
-  return document.querySelector<HTMLTextAreaElement>(
-    '#ajaxChatInputField, #inputField',
-  );
+  return document.querySelector<HTMLTextAreaElement>('#ajaxChatInputField, #inputField');
 }
 
 /**
@@ -29,6 +29,17 @@ export function findChatTextarea(): HTMLTextAreaElement | null {
 export function findChatBBCodeContainer(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#bbCodeContainer');
 }
+
+/**
+ * The chat toolbar's own button classes, so an injected trigger inherits the widget's
+ * look instead of standing out. The counterpart of `FORMAT_BUTTON_CLASS` in `phpbb.ts`,
+ * and here for the same reason: this is chat-DOM knowledge, and a feature that hardcodes
+ * it is a place the skin change gets missed.
+ *
+ * Note the chat is not phpBB and does not load the FontAwesome icon font, so its buttons
+ * are `<input type="button">` with a text `value` rather than an icon child.
+ */
+export const CHAT_BUTTON_CLASS = 'button button-secondary';
 
 /**
  * A single toolbar button, addressed by the BBCode it inserts.
@@ -48,7 +59,7 @@ export function findChatBBCodeContainer(): HTMLElement | null {
 export function findChatBBCodeButton(bbcode: string): HTMLElement | null {
   // Same guard as findFormatButton: an invalid literal would make
   // querySelector throw a SyntaxError and take the whole feature down.
-  if (!/^[a-z0-9-]+$/.test(bbcode)) return null;
+  if (!isSafeBBCodeName(bbcode)) return null;
   return (
     findChatBBCodeContainer()?.querySelector<HTMLElement>(
       `input[onclick*="insertBBCode('${bbcode}')"]`,

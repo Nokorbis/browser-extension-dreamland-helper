@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  renderPreset,
-  SELECTION_TOKEN,
-  CURSOR_TOKEN,
-  FILTERS,
-} from './template';
+import { renderPreset, SELECTION_TOKEN, CURSOR_TOKEN, FILTERS } from './template';
 
 /**
  * These tests ARE the frozen contract described in
@@ -14,14 +9,11 @@ import {
  * superseding ADR — never "just update the expectation".
  */
 
-const render = (body: string, selection = '') =>
-  renderPreset({ body, selection });
+const render = (body: string, selection = '') => renderPreset({ body, selection });
 
 describe('{SELECTION}', () => {
   it('substitutes the selected text', () => {
-    expect(render('[b]{SELECTION}[/b]', 'Bonjour').text).toBe(
-      '[b]Bonjour[/b]',
-    );
+    expect(render('[b]{SELECTION}[/b]', 'Bonjour').text).toBe('[b]Bonjour[/b]');
   });
 
   it('collapses to nothing when there is no selection', () => {
@@ -84,9 +76,7 @@ describe('filters', () => {
   });
 
   it('capitalises accented initials (needs the \\p{L} + u flag)', () => {
-    expect(render('{SELECTION|title}', 'élan Étrange').text).toBe(
-      'Élan Étrange',
-    );
+    expect(render('{SELECTION|title}', 'élan Étrange').text).toBe('Élan Étrange');
   });
 
   it('treats a hyphen as a word boundary', () => {
@@ -97,15 +87,12 @@ describe('filters', () => {
     ["l'atrocité", "L'atrocité"],
     ["c'est", "C'est"],
     ['l’ombre', 'L’ombre'],
-  ])(
-    'does NOT treat an apostrophe as a word boundary (%s)',
-    (input, expected) => {
-      // Deliberate: French elision puts an apostrophe inside ordinary words far
-      // more often than at a name break, so boundary-ing on it would produce
-      // "C'Est". Losing "L'Atrocité" is the accepted cost.
-      expect(render('{SELECTION|title}', input).text).toBe(expected);
-    },
-  );
+  ])('does NOT treat an apostrophe as a word boundary (%s)', (input, expected) => {
+    // Deliberate: French elision puts an apostrophe inside ordinary words far
+    // more often than at a name break, so boundary-ing on it would produce
+    // "C'Est". Losing "L'Atrocité" is the accepted cost.
+    expect(render('{SELECTION|title}', input).text).toBe(expected);
+  });
 
   it('normalises shouted input rather than preserving it', () => {
     // Idempotent: same output whichever way the source was typed.
@@ -118,12 +105,8 @@ describe('filters', () => {
 
   it('chains left to right', () => {
     // Order is observable: title-then-upper shouts, upper-then-title does not.
-    expect(render('{SELECTION|title|upper}', 'cri de guerre').text).toBe(
-      'CRI DE GUERRE',
-    );
-    expect(render('{SELECTION|upper|title}', 'cri de guerre').text).toBe(
-      'Cri De Guerre',
-    );
+    expect(render('{SELECTION|title|upper}', 'cri de guerre').text).toBe('CRI DE GUERRE');
+    expect(render('{SELECTION|upper|title}', 'cri de guerre').text).toBe('Cri De Guerre');
   });
 
   it('skips an unknown filter but keeps applying the rest of the chain', () => {

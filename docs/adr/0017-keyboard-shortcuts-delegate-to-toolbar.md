@@ -36,7 +36,11 @@ uses.
 **Which composer surfaces.** The forum also runs a non-native chat widget (AJAX Chat, branded
 "la Tribune") — same-origin and never an iframe, so already reachable from the same content
 script (`FORUM_MATCHES` covers it with no manifest change). It exists in two DOM shapes, both
-verified against committed reference snapshots (`real_snippets/index.html`, `real_snippets/chat.html`):
+verified against captured reference snapshots (`real_snippets/index.html`, `real_snippets/chat.html`)
+— *[correction, 2026-08-12: this originally said "committed" snapshots. `real_snippets/` is and
+always was gitignored, so these are local captures, not repository artefacts. Re-capture them from
+the live forum if you need to re-verify. The DOM facts recorded below were checked against them and
+are unchanged.]*:
 
 - the shoutbox embedded on the forum homepage: `<textarea id="ajaxChatInputField">`, whose
   toolbar buttons carry **no id and no per-bbcode class** — only a shared

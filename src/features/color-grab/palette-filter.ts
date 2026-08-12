@@ -35,15 +35,28 @@ export interface ColorUsage {
  * uppercase hex in `data-color` — down to a single lowercase `#rrggbb`, so the
  * same visual colour groups into one entry however it was authored. Returns
  * `null` for anything we can't read as an opaque RGB colour.
+ *
+ * An alpha channel is read but **ignored**: the palette groups by visual hue, and phpBB
+ * never authors a translucent colour, so `rgba(r,g,b,0)` canonicalises to that RGB rather
+ * than being rejected. Pinned by test — it is a decision, not an oversight.
  */
 export function canonicalizeColor(raw: string): string | null {
   if (typeof raw !== 'string') return null;
   const value = raw.trim().toLowerCase();
   if (value === '') return null;
 
-  const rgb = value.match(
-    /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*[\d.]+\s*)?\)$/,
-  );
+  const rgb =
+    // Legacy comma form — `rgb(r, g, b)` / `rgba(r, g, b, a)`. What every engine
+    // currently serialises `.style.color` to, so this is the live path.
+    value.match(
+      /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*[\d.]+%?\s*)?\)$/,
+    ) ??
+    // CSS Color 4 space form — `rgb(r g b)` / `rgb(r g b / a)`. Not what browsers emit
+    // today. Read anyway because the failure mode if one starts is silent: the colour
+    // just vanishes from the filter, with nothing to indicate why.
+    value.match(
+      /^rgba?\(\s*(\d{1,3})\s+(\d{1,3})\s+(\d{1,3})\s*(?:\/\s*[\d.]+%?\s*)?\)$/,
+    );
   if (rgb !== null) {
     const r = Number(rgb[1]);
     const g = Number(rgb[2]);

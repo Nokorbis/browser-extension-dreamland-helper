@@ -1,6 +1,7 @@
 # GitHub Actions CI.
 #
-# Every push and pull request: install, type-check (`pnpm check`), run the unit tests
+# Every push and pull request: install, type-check (`pnpm check`), lint and format-check
+# (`pnpm lint`), run the unit tests
 # (`pnpm test`), and build BOTH browser targets — so breakage is caught on any branch. Only on
 # the default branch (`main`) does it additionally package store-ready zips and upload them as
 # artifacts; feature branches and PRs validate but never deploy artifacts.
@@ -32,6 +33,9 @@ jobs:
 
       - name: Type check
         run: pnpm check
+
+      - name: Lint & format check
+        run: pnpm lint
 
       - name: Test
         run: pnpm test

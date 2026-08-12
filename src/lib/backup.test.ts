@@ -6,7 +6,12 @@ import {
   diffImportedPresets,
   applyPresetImport,
 } from './backup';
-import { PRESETS_SCHEMA_VERSION, type PresetStore, type Folder, type Preset } from './presets';
+import {
+  PRESETS_SCHEMA_VERSION,
+  type PresetStore,
+  type Folder,
+  type Preset,
+} from './presets';
 import { EMOJI_SCHEMA_VERSION, emptyEmojiPrefs, type EmojiPrefs } from './emoji-recents';
 import { DEFAULT_SETTINGS, type Settings } from './storage';
 
@@ -51,9 +56,17 @@ const emojiOf = (recent: string[] = []): EmojiPrefs => ({
 describe('buildExportBundle', () => {
   it('assembles a bundle that parses back to the same stores', () => {
     const settings = settingsOf({ 'exit-guard': false });
-    const presets = storeOf([folder('f1', 'Perso')], [preset('p1', 'Intro', 'f1', 'Salut')]);
+    const presets = storeOf(
+      [folder('f1', 'Perso')],
+      [preset('p1', 'Intro', 'f1', 'Salut')],
+    );
     const emoji = emojiOf(['😀', '❤️']);
-    const bundle = buildExportBundle(settings, presets, emoji, '2026-08-11T00:00:00.000Z');
+    const bundle = buildExportBundle(
+      settings,
+      presets,
+      emoji,
+      '2026-08-11T00:00:00.000Z',
+    );
 
     const parsed = parseImportBundle(JSON.stringify(bundle));
     expect(parsed.ok).toBe(true);
@@ -94,7 +107,11 @@ describe('parseImportBundle', () => {
     // to keep working: an older file has no emoji field, and reads as "leave
     // that store alone" rather than as a corrupt bundle.
     const result = parseImportBundle(
-      JSON.stringify({ formatVersion: 1, settings: { features: {} }, presets: storeOf([]) }),
+      JSON.stringify({
+        formatVersion: 1,
+        settings: { features: {} },
+        presets: storeOf([]),
+      }),
     );
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error('unreachable');
@@ -157,22 +174,44 @@ describe('diffImportedPresets', () => {
   });
 
   it('classifies matching path + name + body as identical', () => {
-    const current = storeOf([folder('cf', 'Perso')], [preset('cp', 'Intro', 'cf', 'Salut')]);
-    const imported = storeOf([folder('if', 'Perso')], [preset('ip', 'Intro', 'if', 'Salut')]);
-    expect(diffImportedPresets(current, imported)).toEqual(new Map([['ip', 'identical']]));
+    const current = storeOf(
+      [folder('cf', 'Perso')],
+      [preset('cp', 'Intro', 'cf', 'Salut')],
+    );
+    const imported = storeOf(
+      [folder('if', 'Perso')],
+      [preset('ip', 'Intro', 'if', 'Salut')],
+    );
+    expect(diffImportedPresets(current, imported)).toEqual(
+      new Map([['ip', 'identical']]),
+    );
   });
 
   it('classifies matching path + name with different body as conflict', () => {
-    const current = storeOf([folder('cf', 'Perso')], [preset('cp', 'Intro', 'cf', 'Salut')]);
-    const imported = storeOf([folder('if', 'Perso')], [preset('ip', 'Intro', 'if', 'Bonjour')]);
+    const current = storeOf(
+      [folder('cf', 'Perso')],
+      [preset('cp', 'Intro', 'cf', 'Salut')],
+    );
+    const imported = storeOf(
+      [folder('if', 'Perso')],
+      [preset('ip', 'Intro', 'if', 'Bonjour')],
+    );
     expect(diffImportedPresets(current, imported)).toEqual(new Map([['ip', 'conflict']]));
   });
 
   it('matches by path and name, not by id', () => {
     // Same path + name, completely different ids on both sides.
-    const current = storeOf([folder('cf', 'Perso')], [preset('cp', 'Intro', 'cf', 'Salut')]);
-    const imported = storeOf([folder('zzz', 'Perso')], [preset('yyy', 'Intro', 'zzz', 'Salut')]);
-    expect(diffImportedPresets(current, imported)).toEqual(new Map([['yyy', 'identical']]));
+    const current = storeOf(
+      [folder('cf', 'Perso')],
+      [preset('cp', 'Intro', 'cf', 'Salut')],
+    );
+    const imported = storeOf(
+      [folder('zzz', 'Perso')],
+      [preset('yyy', 'Intro', 'zzz', 'Salut')],
+    );
+    expect(diffImportedPresets(current, imported)).toEqual(
+      new Map([['yyy', 'identical']]),
+    );
   });
 
   it('treats different folder paths with the same name as unrelated', () => {
@@ -198,10 +237,7 @@ describe('applyPresetImport', () => {
     const current = storeOf([]);
     const imported = storeOf(
       [folder('if1', 'Perso'), folder('if2', 'Jean', 'if1')],
-      [
-        preset('p1', 'Intro', 'if2', 'Salut'),
-        preset('p2', 'Outro', 'if2', 'Au revoir'),
-      ],
+      [preset('p1', 'Intro', 'if2', 'Salut'), preset('p2', 'Outro', 'if2', 'Au revoir')],
     );
     const next = applyPresetImport(current, imported, new Set(['p1', 'p2']));
 
@@ -221,7 +257,10 @@ describe('applyPresetImport', () => {
       [folder('cf', 'Perso')],
       [preset('cp', 'Intro', 'cf', 'Salut', 0)],
     );
-    const imported = storeOf([folder('if', 'Perso')], [preset('ip', 'Intro', 'if', 'Bonjour')]);
+    const imported = storeOf(
+      [folder('if', 'Perso')],
+      [preset('ip', 'Intro', 'if', 'Bonjour')],
+    );
     const next = applyPresetImport(current, imported, new Set(['ip']));
 
     expect(Object.keys(next.presets)).toEqual(['cp']);
@@ -230,12 +269,22 @@ describe('applyPresetImport', () => {
   });
 
   it('files a new preset into an existing folder rather than duplicating it', () => {
-    const current = storeOf([folder('cf', 'Perso')], [preset('cp', 'Intro', 'cf', 'Salut')]);
-    const imported = storeOf([folder('if', 'Perso')], [preset('ip', 'Outro', 'if', 'Au revoir')]);
+    const current = storeOf(
+      [folder('cf', 'Perso')],
+      [preset('cp', 'Intro', 'cf', 'Salut')],
+    );
+    const imported = storeOf(
+      [folder('if', 'Perso')],
+      [preset('ip', 'Outro', 'if', 'Au revoir')],
+    );
     const next = applyPresetImport(current, imported, new Set(['ip']));
 
     expect(Object.keys(next.folders)).toEqual(['cf']);
-    expect(Object.values(next.presets).map((p) => p.name).sort()).toEqual(['Intro', 'Outro']);
+    expect(
+      Object.values(next.presets)
+        .map((p) => p.name)
+        .sort(),
+    ).toEqual(['Intro', 'Outro']);
     expect(Object.values(next.presets).every((p) => p.folderId === 'cf')).toBe(true);
   });
 
@@ -266,5 +315,81 @@ describe('applyPresetImport', () => {
     );
     const next = applyPresetImport(current, imported, new Set());
     expect(next).toEqual(current);
+  });
+});
+
+describe('parseImportBundle version gating', () => {
+  it('accepts a bundle with no formatVersion at all', () => {
+    // Mirrors how the preset store treats a missing `version` as 0 rather than
+    // refusing to load: a best-effort read beats rejecting the user's own backup.
+    const result = parseImportBundle(JSON.stringify({ settings: settingsOf() }));
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects only a numerically newer format', () => {
+    const newer = JSON.stringify({ formatVersion: BACKUP_FORMAT_VERSION + 1 });
+    expect(parseImportBundle(newer).ok).toBe(false);
+  });
+
+  it('best-effort reads a formatVersion that is not a number', () => {
+    // The guard is `typeof === 'number'` first, so a string "2" or a NaN falls through
+    // to the lenient path. Pinning current behaviour: every field is normalised anyway,
+    // so the worst case is a repaired store rather than a corrupt one.
+    for (const formatVersion of ['2', NaN, null, {}]) {
+      expect(parseImportBundle(JSON.stringify({ formatVersion })).ok).toBe(true);
+    }
+  });
+
+  it('rejects text that is not JSON, and JSON that is not an object', () => {
+    for (const text of ['', 'not json', '[]', '"a string"', '42', 'null']) {
+      expect(parseImportBundle(text).ok).toBe(false);
+    }
+  });
+});
+
+describe('applyPresetImport defensive paths', () => {
+  it('returns the current store untouched when nothing is selected', () => {
+    const current = storeOf([folder('f', 'Perso')], [preset('p', 'Intro', 'f', 'Salut')]);
+    const imported = storeOf(
+      [folder('if', 'Autre')],
+      [preset('ip', 'Outro', 'if', 'Bye')],
+    );
+    const result = applyPresetImport(current, imported, new Set());
+    expect(result).toBe(current);
+  });
+
+  it('creates no folders for presets that were not selected', () => {
+    const current = storeOf([]);
+    const imported = storeOf(
+      [folder('if', 'Perso')],
+      [preset('ip', 'Intro', 'if', 'Salut')],
+    );
+    const result = applyPresetImport(current, imported, new Set());
+    expect(Object.keys(result.folders)).toHaveLength(0);
+  });
+
+  it('survives a cycle in the imported folder chain', () => {
+    // The branch most likely to stack-overflow in production, and the one carrying a
+    // five-line comment justifying its existence. `parseImportBundle` normalises (which
+    // breaks cycles), but this is an exported pure function that anything may call.
+    const imported = storeOf(
+      [folder('a', 'A', 'b'), folder('b', 'B', 'a')],
+      [preset('p', 'Cri', 'a', 'Aaah')],
+    );
+    const result = applyPresetImport(storeOf([]), imported, new Set(['p']));
+    expect(Object.values(result.presets)).toHaveLength(1);
+    expect(Object.values(result.presets)[0].body).toBe('Aaah');
+  });
+
+  it('survives a self-parenting imported folder', () => {
+    const imported = storeOf([folder('a', 'A', 'a')], [preset('p', 'Cri', 'a', 'Aaah')]);
+    const result = applyPresetImport(storeOf([]), imported, new Set(['p']));
+    expect(Object.values(result.presets)).toHaveLength(1);
+  });
+
+  it('roots a preset whose imported folder is missing entirely', () => {
+    const imported = storeOf([], [preset('p', 'Cri', 'ghost', 'Aaah')]);
+    const result = applyPresetImport(storeOf([]), imported, new Set(['p']));
+    expect(Object.values(result.presets)[0].folderId).toBeNull();
   });
 });

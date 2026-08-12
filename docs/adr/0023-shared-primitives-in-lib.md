@@ -90,5 +90,15 @@ needs, which is the failure mode this codebase has avoided so far. `src/lib/shad
 standing reminder that the rule is not "everything shared becomes one helper" — it serves the
 *vanilla* injected controls and is deliberately separate from the Svelte popover path.
 
+> **Applied again (2026-08-12).** Three more primitives crossed the "second caller" line and
+> moved here under this same rule, with no new decision required:
+> `src/lib/anchor-position.ts` (`placeAnchored` — the flip/clamp geometry `popover.ts` and
+> `highlight/toolbar.ts` had each grown their own, subtly different version of),
+> `createFormatButton` in `phpbb.ts` (the toolbar-trigger markup `bbcode-presets` and
+> `emoji-picker` both built by hand, including the `type="button"` hazard both had to remember),
+> and `runMigrations` in `store-kit.ts` (the store version loop all three data stores had
+> written three different ways). The first is pure arithmetic and is therefore unit-tested,
+> which is the point of extracting geometry out of DOM glue at all.
+
 Related: [[0017-keyboard-shortcuts-delegate-to-toolbar]], [[0016-svelte-in-content-script]],
 [[0012-feature-owned-data-stores]]

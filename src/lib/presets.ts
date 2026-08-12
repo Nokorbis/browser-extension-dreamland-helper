@@ -24,7 +24,9 @@ import {
   isRecord,
   loadStore,
   newId,
+  readInt,
   readString,
+  runMigrations,
   saveStore,
   watchStore,
 } from '@/lib/store-kit';
@@ -88,10 +90,7 @@ function readOrder(value: unknown): number {
 }
 
 /** Sort siblings by `order`, breaking ties by name so the result is stable. */
-function bySiblingOrder<T extends { order: number; name: string }>(
-  a: T,
-  b: T,
-): number {
+function bySiblingOrder<T extends { order: number; name: string }>(a: T, b: T): number {
   return a.order - b.order || a.name.localeCompare(b.name, 'fr');
 }
 
@@ -108,18 +107,12 @@ function groupBy<T>(items: T[], key: (item: T) => string | null) {
 
 /** Renumber every sibling group to a dense `0..n-1`. Mutates in place. */
 function renumber(store: PresetStore): void {
-  for (const [, siblings] of groupBy(
-    Object.values(store.folders),
-    (f) => f.parentId,
-  )) {
+  for (const [, siblings] of groupBy(Object.values(store.folders), (f) => f.parentId)) {
     siblings.sort(bySiblingOrder).forEach((folder, index) => {
       folder.order = index;
     });
   }
-  for (const [, siblings] of groupBy(
-    Object.values(store.presets),
-    (p) => p.folderId,
-  )) {
+  for (const [, siblings] of groupBy(Object.values(store.presets), (p) => p.folderId)) {
     siblings.sort(bySiblingOrder).forEach((preset, index) => {
       preset.order = index;
     });
@@ -167,12 +160,12 @@ export function normalizePresetStore(raw: unknown): PresetStore {
   }
 
   // --- migrations ---
-  let version = readOrder(raw.version);
-  let migrated = store;
-  while (version < PRESETS_SCHEMA_VERSION && MIGRATIONS[version]) {
-    migrated = MIGRATIONS[version](migrated);
-    version += 1;
-  }
+  const migrated = runMigrations(
+    store,
+    readInt(raw.version),
+    PRESETS_SCHEMA_VERSION,
+    MIGRATIONS,
+  );
   migrated.version = PRESETS_SCHEMA_VERSION;
 
   // --- dangling links → root ---
@@ -269,9 +262,7 @@ export async function savePresetStore(store: PresetStore): Promise<void> {
  * Returns an unsubscriber; wire it into the feature's cleanup. The area filter
  * and the choice of the top-level `onChanged` live in `watchStore`.
  */
-export function watchPresetStore(
-  onChange: (store: PresetStore) => void,
-): () => void {
+export function watchPresetStore(onChange: (store: PresetStore) => void): () => void {
   return watchStore(PRESETS_KEY, normalizePresetStore, onChange);
 }
 
@@ -297,14 +288,8 @@ export interface PresetTree {
  * through `normalizePresetStore`, which breaks parent cycles.
  */
 export function buildPresetTree(store: PresetStore): PresetTree {
-  const foldersByParent = groupBy(
-    Object.values(store.folders),
-    (f) => f.parentId,
-  );
-  const presetsByFolder = groupBy(
-    Object.values(store.presets),
-    (p) => p.folderId,
-  );
+  const foldersByParent = groupBy(Object.values(store.folders), (f) => f.parentId);
+  const presetsByFolder = groupBy(Object.values(store.presets), (p) => p.folderId);
 
   const childrenOf = (parentId: string | null): PresetTreeNode[] =>
     (foldersByParent.get(parentId) ?? [])
@@ -313,9 +298,7 @@ export function buildPresetTree(store: PresetStore): PresetTree {
       .map((folder) => ({
         folder,
         folders: childrenOf(folder.id),
-        presets: (presetsByFolder.get(folder.id) ?? [])
-          .slice()
-          .sort(bySiblingOrder),
+        presets: (presetsByFolder.get(folder.id) ?? []).slice().sort(bySiblingOrder),
       }));
 
   return {
@@ -406,9 +389,7 @@ export function addFolder(
   folder: { id: string; name: string; parentId?: string | null },
 ): PresetStore {
   const parentId =
-    folder.parentId != null && store.folders[folder.parentId]
-      ? folder.parentId
-      : null;
+    folder.parentId != null && store.folders[folder.parentId] ? folder.parentId : null;
   const next = clone(store);
   next.folders[folder.id] = {
     id: folder.id,
@@ -428,9 +409,7 @@ export function addPreset(
   preset: { id: string; name: string; body?: string; folderId?: string | null },
 ): PresetStore {
   const folderId =
-    preset.folderId != null && store.folders[preset.folderId]
-      ? preset.folderId
-      : null;
+    preset.folderId != null && store.folders[preset.folderId] ? preset.folderId : null;
   const next = clone(store);
   next.presets[preset.id] = {
     id: preset.id,

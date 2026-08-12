@@ -38,8 +38,7 @@ export type FilterName = (typeof FILTERS)[number];
  * mistake can still be fixed.
  */
 export type TemplateWarning =
-  | { kind: 'unknownFilter'; filter: string }
-  | { kind: 'duplicateCursor' };
+  { kind: 'unknownFilter'; filter: string } | { kind: 'duplicateCursor' };
 
 export interface RenderInput {
   /** The preset's raw body, placeholders included. */
@@ -83,8 +82,7 @@ const FILTER_FNS: Record<FilterName, (value: string) => string> = {
       .toLocaleLowerCase('fr')
       .replace(
         /(^|[\s-])(\p{L})/gu,
-        (_full, lead: string, initial: string) =>
-          lead + initial.toLocaleUpperCase('fr'),
+        (_full, lead: string, initial: string) => lead + initial.toLocaleUpperCase('fr'),
       ),
   trim: (value) => value.trim(),
 };

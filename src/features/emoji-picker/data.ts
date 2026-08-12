@@ -16,7 +16,12 @@
 import { browser } from '#imports';
 import { warn } from '@/lib/log';
 import { isRecord, readInt, readString } from '@/lib/store-kit';
-import { emptyEmojiData, type EmojiData, type EmojiGroup, type EmojiRecord } from './types';
+import {
+  emptyEmojiData,
+  type EmojiData,
+  type EmojiGroup,
+  type EmojiRecord,
+} from './types';
 
 const ASSET_PATH = 'emoji/emoji.json';
 
@@ -84,7 +89,8 @@ export function loadEmojiData(): Promise<EmojiData> {
         return emptyEmojiData();
       }
       const data = normalizeEmojiData(await response.json());
-      if (data.emoji.length === 0) warn(`emoji-picker: ${ASSET_PATH} held no usable emoji`);
+      if (data.emoji.length === 0)
+        warn(`emoji-picker: ${ASSET_PATH} held no usable emoji`);
       return data;
     } catch (err) {
       // The likeliest cause by far is a missing web_accessible_resources entry

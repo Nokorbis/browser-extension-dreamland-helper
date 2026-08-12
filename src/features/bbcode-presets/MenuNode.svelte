@@ -24,9 +24,7 @@
   /** Direct-child menu items of *this* level (never the submenu's own items). */
   function items(): HTMLButtonElement[] {
     if (list === null) return [];
-    return Array.from(
-      list.querySelectorAll<HTMLButtonElement>(':scope > li > button'),
-    );
+    return Array.from(list.querySelectorAll<HTMLButtonElement>(':scope > li > button'));
   }
 
   function moveFocus(step: number) {

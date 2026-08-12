@@ -75,10 +75,7 @@ export const KEYMAP: readonly Shortcut[] = [
  * `preventDefault()` before this returns non-null — a key we don't handle has
  * to reach the browser untouched.
  */
-export function resolveShortcut(
-  event: KeyEventLike,
-  mac: boolean,
-): string | null {
+export function resolveShortcut(event: KeyEventLike, mac: boolean): string | null {
   const row = readRow(event, mac);
   if (row === null) return null;
 

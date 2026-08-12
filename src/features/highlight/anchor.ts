@@ -82,10 +82,7 @@ function textNodesOf(content: HTMLElement): Text[] {
   return nodes;
 }
 
-function pointAt(
-  nodes: Text[],
-  target: number,
-): { node: Text; offset: number } | null {
+function pointAt(nodes: Text[], target: number): { node: Text; offset: number } | null {
   const loc = locateOffset(
     nodes.map((n) => n.data.length),
     target,
@@ -109,11 +106,7 @@ function rangeAt(nodes: Text[], start: number, end: number): Range | null {
  * Measured with a range from the start of `content` to the boundary, whose
  * `.toString().length` is exactly that offset. Null if the boundary is unusable.
  */
-function offsetOf(
-  content: HTMLElement,
-  node: Node,
-  offset: number,
-): number | null {
+function offsetOf(content: HTMLElement, node: Node, offset: number): number | null {
   try {
     const r = document.createRange();
     r.setStart(content, 0);
@@ -133,10 +126,7 @@ export function serializeSelection(
   content: HTMLElement,
   range: Range,
 ): SerializedRange | null {
-  if (
-    !content.contains(range.startContainer) ||
-    !content.contains(range.endContainer)
-  ) {
+  if (!content.contains(range.startContainer) || !content.contains(range.endContainer)) {
     return null;
   }
   const start = offsetOf(content, range.startContainer, range.startOffset);
@@ -167,7 +157,10 @@ export function resolveRange(
   if (nodes.length === 0) return null;
 
   const direct = rangeAt(nodes, start, end);
-  if (direct !== null && normalizeWhitespace(direct.toString()) === normalizeWhitespace(quote)) {
+  if (
+    direct !== null &&
+    normalizeWhitespace(direct.toString()) === normalizeWhitespace(quote)
+  ) {
     return direct;
   }
 

@@ -110,10 +110,7 @@ describe('partitionByGrid', () => {
   });
 
   it('preserves the input order of the custom colours', () => {
-    const { custom } = partitionByGrid(
-      ['#111111', '#222222', '#333333'],
-      [],
-    );
+    const { custom } = partitionByGrid(['#111111', '#222222', '#333333'], []);
     expect(custom).toEqual(['#111111', '#222222', '#333333']);
   });
 
@@ -121,5 +118,46 @@ describe('partitionByGrid', () => {
     const { inGrid, custom } = partitionByGrid(['not-a-color'], ['804000']);
     expect(inGrid).toEqual([]);
     expect(custom).toEqual([]);
+  });
+});
+
+describe('canonicalizeColor colour-syntax boundaries', () => {
+  it('reads the CSS Color 4 space-separated form', () => {
+    // Not what any engine serialises `.style.color` to today. Read anyway because the
+    // failure mode if one starts is silent: the colour just vanishes from the filter.
+    expect(canonicalizeColor('rgb(128 64 0)')).toBe('#804000');
+    expect(canonicalizeColor('rgb(128 64 0 / 50%)')).toBe('#804000');
+    expect(canonicalizeColor('rgba(0 191 0 / 0.5)')).toBe('#00bf00');
+  });
+
+  it('ignores the alpha channel rather than rejecting the colour', () => {
+    // A decision, not an oversight: the palette groups by visual hue and phpBB never
+    // authors a translucent colour. A fully transparent span still contributes its RGB.
+    expect(canonicalizeColor('rgba(0, 0, 0, 0)')).toBe('#000000');
+    expect(canonicalizeColor('rgb(255 51 0 / 0%)')).toBe('#ff3300');
+  });
+
+  it('rejects an out-of-range channel', () => {
+    expect(canonicalizeColor('rgb(300, 0, 0)')).toBeNull();
+    expect(canonicalizeColor('rgb(0 0 999)')).toBeNull();
+  });
+
+  it('rejects syntax it cannot read as an opaque RGB colour', () => {
+    for (const raw of [
+      '',
+      '   ',
+      'red',
+      'hsl(0, 100%, 50%)',
+      'rgb(1,2)',
+      '#12',
+      '#1234567',
+    ]) {
+      expect(canonicalizeColor(raw)).toBeNull();
+    }
+  });
+
+  it('is case- and whitespace-insensitive', () => {
+    expect(canonicalizeColor('  RGB( 128 , 64 , 0 )  ')).toBe('#804000');
+    expect(canonicalizeColor('  #00BF00 ')).toBe('#00bf00');
   });
 });

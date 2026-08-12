@@ -18,7 +18,12 @@
    * it the same way a write from the popup would.
    */
   import { i18n } from '#i18n';
-  import { loadSettings, saveSettings, watchSettings, type Settings } from '@/lib/storage';
+  import {
+    loadSettings,
+    saveSettings,
+    watchSettings,
+    type Settings,
+  } from '@/lib/storage';
   import {
     loadPresetStore,
     savePresetStore,
@@ -43,7 +48,9 @@
   let settings = $state<Settings | null>(null);
   let presetStore = $state<PresetStore | null>(null);
   let emojiPrefs = $state<EmojiPrefs | null>(null);
-  const ready = $derived(settings !== null && presetStore !== null && emojiPrefs !== null);
+  const ready = $derived(
+    settings !== null && presetStore !== null && emojiPrefs !== null,
+  );
 
   void loadPresetStore().then((loaded) => {
     presetStore = loaded;
@@ -94,7 +101,12 @@
     if (settings === null || presetStore === null || emojiPrefs === null) return;
     try {
       const now = new Date();
-      const bundle = buildExportBundle(settings, presetStore, emojiPrefs, now.toISOString());
+      const bundle = buildExportBundle(
+        settings,
+        presetStore,
+        emojiPrefs,
+        now.toISOString(),
+      );
       downloadJson(
         `dreamland-reborn-qol-${now.toISOString().slice(0, 10)}.json`,
         JSON.stringify(bundle, null, 2),
@@ -162,7 +174,9 @@
         // Re-read rather than folding into our watched copy: reviewing the
         // modal takes seconds, and this is the last moment before the write.
         const base = await loadPresetStore();
-        await savePresetStore(applyPresetImport(base, presets, selection.selectedPresetIds));
+        await savePresetStore(
+          applyPresetImport(base, presets, selection.selectedPresetIds),
+        );
       }
       if (settings !== null) {
         await saveSettings(settings);
@@ -217,7 +231,13 @@
     never read out — and sits in the accessibility tree at opacity 0 the rest
     of the time. Same shape as the editor's own status line.
   -->
-  <p class="status" class:visible={message !== null} class:failed role="status" aria-live="polite">
+  <p
+    class="status"
+    class:visible={message !== null}
+    class:failed
+    role="status"
+    aria-live="polite"
+  >
     {#if message !== null}{message}{/if}
   </p>
 </section>

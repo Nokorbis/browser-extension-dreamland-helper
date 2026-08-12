@@ -37,6 +37,10 @@ export function createShadowHost(): { host: HTMLElement; shadow: ShadowRoot } {
  * properties in `src/lib/palette.css`. Vanilla `.style` controls can't read
  * those CSS variables, so the subset they need is kept here as the single JS
  * source — keep the two in step when either changes.
+ *
+ * ⚠ That obligation is manual and nothing tests it: these values and the CSS ones are
+ * two hand-maintained copies of the same palette. Changing one and not the other shows
+ * up only as an injected control that no longer matches the panel beside it.
  */
 export interface Chrome {
   surface: string;

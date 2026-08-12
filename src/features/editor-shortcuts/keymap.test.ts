@@ -114,20 +114,18 @@ describe('keyboard layouts', () => {
   it('reads the letter the user pressed, not the physical key (AZERTY)', () => {
     // On AZERTY the key labelled A sits where QWERTY has Q. Matching by `code`
     // would fire the quote binding for someone asking for the letter A.
-    expect(
-      resolveShortcut(press({ key: 'a', code: 'KeyQ', ...ALT }), false),
-    ).toBeNull();
+    expect(resolveShortcut(press({ key: 'a', code: 'KeyQ', ...ALT }), false)).toBeNull();
     // …and the key labelled Q reports code KeyA, which must still be quote.
-    expect(
-      resolveShortcut(press({ key: 'q', code: 'KeyA', ...ALT }), false),
-    ).toBe('quote');
+    expect(resolveShortcut(press({ key: 'q', code: 'KeyA', ...ALT }), false)).toBe(
+      'quote',
+    );
   });
 
   it('falls back to the physical key when the modifier composed a character', () => {
     // macOS: Option can turn the event's `key` into the composed glyph.
-    expect(
-      resolveShortcut(press({ key: 'ç', code: 'KeyC', ...CTRL_OPT }), true),
-    ).toBe('code');
+    expect(resolveShortcut(press({ key: 'ç', code: 'KeyC', ...CTRL_OPT }), true)).toBe(
+      'code',
+    );
   });
 
   it('ignores keys that are not letters', () => {

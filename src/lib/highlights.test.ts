@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
 import {
-  HIGHLIGHTS_KEY,
   HIGHLIGHTS_SCHEMA_VERSION,
   emptyHighlightStore,
   normalizeHighlightStore,
@@ -86,7 +85,7 @@ describe('normalizeHighlightStore', () => {
         ok: hl({ id: 'ok', start: 2, end: 8 }),
       },
     };
-    const store = normalizeHighlightStore(raw as unknown);
+    const store = normalizeHighlightStore(raw);
     expect(Object.keys(store.highlights)).toEqual(['ok']);
   });
 
@@ -103,7 +102,7 @@ describe('normalizeHighlightStore', () => {
 
   it('truncates fractional offsets to integers', () => {
     const raw = { highlights: { h1: hl({ start: 1.9, end: 4.9 }) } };
-    const store = normalizeHighlightStore(raw as unknown);
+    const store = normalizeHighlightStore(raw);
     expect(store.highlights.h1.start).toBe(1);
     expect(store.highlights.h1.end).toBe(4);
   });
@@ -155,11 +154,7 @@ describe('mutations are pure', () => {
 });
 
 describe('deleteHighlights (the eraser)', () => {
-  const base = storeOf([
-    hl({ id: 'a' }),
-    hl({ id: 'b' }),
-    hl({ id: 'c' }),
-  ]);
+  const base = storeOf([hl({ id: 'a' }), hl({ id: 'b' }), hl({ id: 'c' })]);
 
   it('removes exactly the given ids', () => {
     const after = deleteHighlights(base, ['a', 'c']);
@@ -274,5 +269,36 @@ describe('persistence round-trips through browser.storage', () => {
     await saveHighlightStore(storeOf([hl()]));
     unwatch();
     expect(seen.at(-1)?.highlights.h1.quote).toBe('text');
+  });
+});
+
+describe('normalizeHighlightStore boundary cases', () => {
+  it('drops a record whose key is empty, rather than minting an empty id', () => {
+    // The id is taken from the object key. An empty one would collide with itself in
+    // `deleteHighlight` and in the `allHighlights` tie-break.
+    const result = normalizeHighlightStore({
+      version: HIGHLIGHTS_SCHEMA_VERSION,
+      highlights: {
+        '': { postId: '1', start: 0, end: 3, quote: 'abc', color: '#fff' },
+        ok: { postId: '1', start: 0, end: 3, quote: 'abc', color: '#fff' },
+      },
+    });
+    expect(Object.keys(result.highlights)).toEqual(['ok']);
+  });
+
+  it('drops a range that truncates to a degenerate one', () => {
+    // start 2.1 / end 2.9 both truncate to 2, so the range covers nothing.
+    const result = normalizeHighlightStore({
+      version: HIGHLIGHTS_SCHEMA_VERSION,
+      highlights: {
+        h: { postId: '1', start: 2.1, end: 2.9, quote: 'abc', color: '#fff' },
+      },
+    });
+    expect(Object.keys(result.highlights)).toEqual([]);
+  });
+
+  it('does not carry a version from a newer build through', () => {
+    const result = normalizeHighlightStore({ version: 99, highlights: {} });
+    expect(result.version).toBe(HIGHLIGHTS_SCHEMA_VERSION);
   });
 });

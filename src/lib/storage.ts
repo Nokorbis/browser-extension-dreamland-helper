@@ -10,17 +10,30 @@
  * reach `storage.local` through one code path.
  */
 import { isRecord, loadStore, saveStore, watchStore } from '@/lib/store-kit';
+import type { FeatureId } from '@/features/registry';
 
 export interface Settings {
-  /** Feature id → enabled. Missing ids fall back to DEFAULT_SETTINGS. */
+  /**
+   * Feature id → enabled. Missing ids fall back to DEFAULT_SETTINGS.
+   *
+   * Deliberately `string`-keyed and not `FeatureId`: this is also the shape read back
+   * from `storage.local` and from an imported backup file, both of which can legitimately
+   * carry an id this build has never heard of (one from a newer version, or one since
+   * removed). `DEFAULT_SETTINGS` below is the half that *is* pinned to the union.
+   */
   features: Record<string, boolean>;
 }
 
 /**
  * Defaults. Only shipped, working features default to `true`; features that are
  * still stubs default to `false` so they stay invisible until implemented.
+ *
+ * Typed `Record<FeatureId, boolean>`, which makes this exhaustive by construction: adding
+ * a feature to `ALL_FEATURES` and forgetting this line is now a compile error rather than
+ * a feature that ships permanently switched off with nothing reported anywhere. That is
+ * step 4 of CLAUDE.md's "Adding a feature" checklist, enforced.
  */
-export const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: { features: Record<FeatureId, boolean> } = {
   features: {
     'exit-guard': true,
     highlight: true,
@@ -42,7 +55,8 @@ export const SETTINGS_KEY = 'settings';
  */
 export function normalizeSettings(raw: unknown): Settings {
   const stored = isRecord(raw) ? raw : undefined;
-  const rawFeatures = stored !== undefined && isRecord(stored.features) ? stored.features : {};
+  const rawFeatures =
+    stored !== undefined && isRecord(stored.features) ? stored.features : {};
   const features: Record<string, boolean> = { ...DEFAULT_SETTINGS.features };
   for (const [id, value] of Object.entries(rawFeatures)) {
     if (typeof value === 'boolean') features[id] = value;
@@ -85,11 +99,28 @@ export function watchSettings(onChange: (settings: Settings) => void): () => voi
   return watchStore(SETTINGS_KEY, normalizeSettings, onChange);
 }
 
-export async function setFeatureEnabled(
-  id: string,
-  enabled: boolean,
-): Promise<void> {
-  const settings = await loadSettings();
-  settings.features[id] = enabled;
-  await saveSettings(settings);
+/**
+ * Serialises the read-modify-write below. A plain `let`, not exported: the queue is an
+ * implementation detail of `setFeatureEnabled`.
+ */
+let writeQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Flip one feature's flag, preserving the others.
+ *
+ * The body is a read-modify-write, and the popup can fire two of them milliseconds apart
+ * — two checkboxes clicked in a row. Run concurrently they both read the same "before"
+ * state, and whichever write lands second silently discards the first one's change. So
+ * every call queues behind the last: each read then sees the previous write's result.
+ */
+export async function setFeatureEnabled(id: string, enabled: boolean): Promise<void> {
+  const run = writeQueue.then(async () => {
+    const settings = await loadSettings();
+    settings.features[id] = enabled;
+    await saveSettings(settings);
+  });
+  // The queue swallows this link's rejection so one failed write can't poison every
+  // later one; the caller still sees it, because that's the promise we hand back.
+  writeQueue = run.catch(() => undefined);
+  return run;
 }

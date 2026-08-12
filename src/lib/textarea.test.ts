@@ -102,3 +102,54 @@ describe('wrapSelection', () => {
     expect(caretOffset).toBe('[color=#ff0000]'.length);
   });
 });
+
+describe('planInsertion maxlength edge cases', () => {
+  it('treats a non-positive or unusable maxlength as no limit', () => {
+    // `-1` is what the spec reports for an absent maxlength, `0` is what older
+    // implementations reported, and NaN is defensive. Treating any of them as a real
+    // limit would refuse every insertion.
+    for (const max of [-1, 0, NaN, -5]) {
+      expect(planInsertion(10, { start: 0, end: 0 }, 100, max)).toEqual({
+        ok: true,
+        start: 0,
+        end: 0,
+      });
+    }
+  });
+
+  it('lets an insertion that shrinks an already-full field through', () => {
+    // The replaced span comes out of the total before the new text goes in.
+    expect(planInsertion(100, { start: 0, end: 50 }, 10, 100)).toEqual({
+      ok: true,
+      start: 0,
+      end: 50,
+    });
+  });
+
+  it('refuses exactly one character over, and allows exactly at the limit', () => {
+    expect(planInsertion(90, { start: 0, end: 0 }, 10, 100).ok).toBe(true);
+    expect(planInsertion(90, { start: 0, end: 0 }, 11, 100)).toEqual({
+      ok: false,
+      projected: 101,
+    });
+  });
+});
+
+describe('wrapSelection edge cases', () => {
+  it('handles empty delimiters', () => {
+    expect(wrapSelection('', '', 'hi')).toEqual({ text: 'hi', caretOffset: 2 });
+    expect(wrapSelection('', '', '')).toEqual({ text: '', caretOffset: 0 });
+  });
+
+  it('keeps a multi-line selection intact', () => {
+    const { text, caretOffset } = wrapSelection('[quote]', '[/quote]', 'a\nb');
+    expect(text).toBe('[quote]a\nb[/quote]');
+    expect(caretOffset).toBe(text.length);
+  });
+
+  it('counts in UTF-16 code units, matching how maxlength is measured', () => {
+    // '😀' is a surrogate pair — length 2, not 1.
+    const { caretOffset } = wrapSelection('[b]', '[/b]', '😀');
+    expect(caretOffset).toBe('[b]😀[/b]'.length);
+  });
+});

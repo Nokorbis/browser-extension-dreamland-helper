@@ -75,11 +75,7 @@
   >
     {i18n.t('features.highlight.popup.clearTopic')}
   </button>
-  <button
-    type="button"
-    disabled={total === 0}
-    onclick={() => save(clearAll(store))}
-  >
+  <button type="button" disabled={total === 0} onclick={() => save(clearAll(store))}>
     {i18n.t('features.highlight.popup.clearAll')}
   </button>
 </div>

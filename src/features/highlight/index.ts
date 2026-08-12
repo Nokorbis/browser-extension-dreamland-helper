@@ -57,13 +57,15 @@ function rangesOverlap(a: Range, b: Range): boolean {
  * the feature no-ops: it doesn't offer to create highlights it couldn't show.
  * The popup's clear buttons still work — they only touch storage.
  */
-export const highlight: Feature = {
-  id: 'highlight',
+export const highlight = {
+  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
+  // built from these, and a widened `string` would make it match anything.
+  id: 'highlight' as const,
   name: i18n.t('features.highlight.name'),
   description: i18n.t('features.highlight.description'),
   implemented: true,
 
-  setup(ctx) {
+  setup() {
     if (!isHighlightApiSupported()) {
       warn('highlight: CSS Custom Highlight API unavailable — feature disabled');
       return;
@@ -100,43 +102,12 @@ export const highlight: Feature = {
     // page even though a post's `.content` offsets differ across the two.
     let paintedRanges: { id: string; postId: string; range: Range }[] = [];
 
-    // --- rendering ---------------------------------------------------------
-    const render = () => {
-      const byColor = new Map<string, Range[]>();
-      paintedRanges = [];
-      for (const [postId, list] of highlightsForPosts(store, posts.keys())) {
-        const content = posts.get(postId);
-        if (content === undefined) continue;
-        for (const h of list) {
-          const range = resolveRange(content, h.start, h.end, h.quote);
-          if (range === null) continue; // post edited / text gone — skip, keep record
-          const bucket = byColor.get(h.color);
-          if (bucket === undefined) byColor.set(h.color, [range]);
-          else bucket.push(range);
-          paintedRanges.push({ id: h.id, postId, range });
-        }
-      }
-      renderer.setRanges(byColor);
-      clearControl.update({
-        count: paintedRanges.length,
-        hasTopic: topicId !== null,
-      });
-    };
-
-    const apply = (next: HighlightStore) => {
-      store = next;
-      render();
-    };
-
-    /** Optimistic paint, then persist; report a failed write (never `.finally`). */
-    const persist = (next: HighlightStore) => {
-      apply(next);
-      void saveHighlightStore(next).catch((err) =>
-        warn('highlight: could not save', err),
-      );
-    };
-
     // --- in-page controls --------------------------------------------------
+    // Built *before* the functions that drive them. Their handlers only run later, so
+    // they can reach the hoisted `persist`/`dismiss` below, whereas `render` genuinely
+    // needs `clearControl` to exist by the time it is called. Declaring the controls
+    // after `render` worked only by accident of call order — a reorder away from a TDZ
+    // ReferenceError.
     const toolbar = createSelectionToolbar({
       onPick: (hex) => {
         if (pending === null) return;
@@ -174,11 +145,51 @@ export const highlight: Feature = {
     applyTheme(isDarkTheme());
     const unwatchTheme = watchTheme(applyTheme);
 
+    // --- rendering ---------------------------------------------------------
+    function render() {
+      const byColor = new Map<string, Range[]>();
+      paintedRanges = [];
+      for (const [postId, list] of highlightsForPosts(store, posts.keys())) {
+        const content = posts.get(postId);
+        if (content === undefined) continue;
+        for (const h of list) {
+          const range = resolveRange(content, h.start, h.end, h.quote);
+          if (range === null) continue; // post edited / text gone — skip, keep record
+          const bucket = byColor.get(h.color);
+          if (bucket === undefined) byColor.set(h.color, [range]);
+          else bucket.push(range);
+          paintedRanges.push({ id: h.id, postId, range });
+        }
+      }
+      renderer.setRanges(byColor);
+      clearControl.update({
+        count: paintedRanges.length,
+        hasTopic: topicId !== null,
+      });
+    }
+
+    function apply(next: HighlightStore) {
+      store = next;
+      render();
+    }
+
+    /** Optimistic paint, then persist; report a failed write (never `.finally`). */
+    function persist(next: HighlightStore) {
+      apply(next);
+      void saveHighlightStore(next).catch((err) =>
+        warn('highlight: could not save', err),
+      );
+    }
+
+    function dismiss() {
+      toolbar.hide();
+      pending = null;
+      window.getSelection()?.removeAllRanges();
+    }
+
     // --- selection → toolbar ----------------------------------------------
     /** The single `.content` (and its post id) a range sits wholly inside. */
-    const locate = (
-      range: Range,
-    ): { content: HTMLElement; postId: string } | null => {
+    const locate = (range: Range): { content: HTMLElement; postId: string } | null => {
       const common = range.commonAncestorContainer;
       const el =
         common.nodeType === Node.ELEMENT_NODE
@@ -190,12 +201,6 @@ export const highlight: Feature = {
       const postId = postEl === null ? null : readPostId(postEl);
       if (postId === null || !posts.has(postId)) return null;
       return { content, postId };
-    };
-
-    const dismiss = () => {
-      toolbar.hide();
-      pending = null;
-      window.getSelection()?.removeAllRanges();
     };
 
     const evaluateSelection = () => {
@@ -289,4 +294,4 @@ export const highlight: Feature = {
       clearControl.destroy();
     };
   },
-};
+} satisfies Feature;

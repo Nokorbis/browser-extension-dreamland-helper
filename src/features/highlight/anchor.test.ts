@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { locateOffset, nearestOccurrence } from './anchor';
+import { highlightRegistryName, HIGHLIGHT_COLORS } from './palette';
 
 /**
  * The pure arithmetic behind anchoring. The Range/TreeWalker glue is verified by
@@ -76,5 +77,30 @@ describe('nearestOccurrence', () => {
 
   it('returns null for an empty needle', () => {
     expect(nearestOccurrence(full, '', 0)).toBeNull();
+  });
+});
+
+describe('highlightRegistryName', () => {
+  it('is deterministic for the same colour', () => {
+    expect(highlightRegistryName('#ffe86b')).toBe(highlightRegistryName('#ffe86b'));
+  });
+
+  it('strips the hash and lowercases, so equivalent spellings share a slot', () => {
+    expect(highlightRegistryName('#FFE86B')).toBe('dlh-hl-ffe86b');
+    expect(highlightRegistryName('ffe86b')).toBe('dlh-hl-ffe86b');
+  });
+
+  it('gives different colours different slots', () => {
+    const names = HIGHLIGHT_COLORS.map((c) => highlightRegistryName(c.hex));
+    expect(new Set(names).size).toBe(HIGHLIGHT_COLORS.length);
+  });
+
+  it('yields a valid CSS custom-ident for every shipped colour', () => {
+    // The name is a `::highlight()` custom-ident *and* a `CSS.highlights` key. An
+    // invalid ident makes the whole rule fail to parse, so nothing paints — and
+    // `clear()` then can't find the entry to remove either.
+    for (const { hex } of HIGHLIGHT_COLORS) {
+      expect(highlightRegistryName(hex)).toMatch(/^[a-zA-Z][\w-]*$/);
+    }
   });
 });

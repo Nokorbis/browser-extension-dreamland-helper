@@ -13,6 +13,14 @@ defaults for a newly added feature, and duplicated shape assumptions.
 
 ## Decision
 
+> **Later scope note (see [[0012-feature-owned-data-stores]]):** "all persistence" was true when
+> this was written, when on/off flags were the only state. 0012 later gave each feature that owns
+> *data* its own `storage.local` key and typed module, and `storage.ts` itself now borrows its
+> plumbing from `src/lib/store-kit.ts`. What survives unchanged is this record's actual subject —
+> the settings map is one typed module with one set of defaults, and nothing reaches
+> `browser.storage` for it directly. 0012 explicitly leaves `storage.ts` as it is; this is an
+> amendment of scope, not a supersession.
+
 We will funnel all persistence through one typed module, `src/lib/storage.ts`, exposing a
 `Settings` type (`{ features: Record<id, boolean> }`) and `loadSettings` /
 `saveSettings` / `setFeatureEnabled`. `DEFAULT_SETTINGS` is the single source of truth for

@@ -16,9 +16,7 @@
   let { panel, onselect, ontoggle }: Props = $props();
 
   const tree = $derived(buildPresetTree(panel.store));
-  const isEmpty = $derived(
-    countPresets(panel.store) === 0 && tree.folders.length === 0,
-  );
+  const isEmpty = $derived(countPresets(panel.store) === 0 && tree.folders.length === 0);
 
   /**
    * The panel reuses the options page's `FolderTree`, which reports a click on
@@ -59,11 +57,7 @@
       writer's selection alive across the click — the same trick the toolbar
       trigger uses.
     -->
-    <!-- svelte-ignore a11y_no_static_element_interactions -->
-    <div
-      class="body"
-      onmousedowncapture={(event) => event.preventDefault()}
-    >
+    <div class="body" onmousedowncapture={(event) => event.preventDefault()}>
       {#if isEmpty}
         <p class="empty">{i18n.t('features.bbcodePresets.menu.empty')}</p>
       {:else}
@@ -89,7 +83,10 @@
     border-radius: 0.4rem;
     background: var(--dlh-surface);
     color: var(--dlh-fg);
-    font: 12.5px/1.35 system-ui, -apple-system, sans-serif;
+    font:
+      12.5px/1.35 system-ui,
+      -apple-system,
+      sans-serif;
     overflow: hidden;
   }
   aside.expanded {

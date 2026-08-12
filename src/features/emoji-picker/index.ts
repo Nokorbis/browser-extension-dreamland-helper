@@ -4,12 +4,21 @@ import type { Feature } from '../types';
 import {
   findFormatButtons,
   findMessageTextarea,
-  FORMAT_BUTTON_CLASS,
+  createFormatButton,
   isDarkTheme,
   watchTheme,
 } from '@/lib/phpbb';
-import { findChatBBCodeContainer, findChatTextarea } from '@/lib/chatbox';
-import { insertAtRange, planInsertion, readSelection, type TextRange } from '@/lib/textarea';
+import {
+  CHAT_BUTTON_CLASS,
+  findChatBBCodeContainer,
+  findChatTextarea,
+} from '@/lib/chatbox';
+import {
+  insertAtRange,
+  planInsertion,
+  readSelection,
+  type TextRange,
+} from '@/lib/textarea';
 import { ariaCombo, formatCombo, isMacPlatform, matchesCombo } from '@/lib/keys';
 import { createPopover, type Popover } from '@/lib/popover';
 import {
@@ -71,34 +80,35 @@ interface Surface {
 }
 
 /**
- * phpBB's composer toolbar: `<button class="button button-icon-only">` with a
- * FontAwesome glyph, exactly like the skin's own bold/italic buttons.
+ * phpBB's composer toolbar: a button styled like the skin's own bold/italic ones.
+ * `createFormatButton` owns the markup — including the `type="button"` rule in the ⚠
+ * above, which it now enforces rather than leaving to whoever edits this next.
  */
-function createComposerTrigger(label: string, tooltip: string, aria: string): HTMLElement {
-  const button = document.createElement('button');
-  button.type = 'button'; // MANDATORY — see the ⚠ note above
-  button.className = FORMAT_BUTTON_CLASS;
-  button.title = tooltip;
-  button.setAttribute('aria-label', label);
-  const icon = document.createElement('i');
-  icon.className = 'icon fa-face-smile fa-fw';
-  icon.setAttribute('aria-hidden', 'true');
-  button.append(icon);
-  button.setAttribute('aria-keyshortcuts', aria);
-  return button;
+function createComposerTrigger(
+  label: string,
+  tooltip: string,
+  aria: string,
+): HTMLElement {
+  // No `popup:` here — the setup loop sets `aria-haspopup`/`aria-expanded` on whichever
+  // trigger a surface produced, so both this and the chat one get it in one place.
+  return createFormatButton({
+    icon: 'fa-face-smile',
+    label,
+    tooltip,
+    keyshortcuts: aria,
+  });
 }
 
 /**
- * The chat's toolbar: `<input type="button" class="button button-secondary">`
- * with a text value. Both chat DOM shapes — the homepage shoutbox and the
- * standalone page — share `#bbCodeContainer` and this button style, so one
- * branch covers them. No FontAwesome here: the chat widget is not phpBB and
- * does not load the icon font.
+ * The chat's toolbar: `<input type="button">` with a text value. Both chat DOM
+ * shapes — the homepage shoutbox and the standalone page — share `#bbCodeContainer`
+ * and this button style, so one branch covers them. No FontAwesome here: the chat
+ * widget is not phpBB and does not load the icon font.
  */
 function createChatTrigger(label: string, tooltip: string, aria: string): HTMLElement {
   const button = document.createElement('input');
   button.type = 'button';
-  button.className = 'button button-secondary';
+  button.className = CHAT_BUTTON_CLASS;
   button.value = label;
   button.title = tooltip;
   button.setAttribute('aria-label', label);
@@ -106,8 +116,10 @@ function createChatTrigger(label: string, tooltip: string, aria: string): HTMLEl
   return button;
 }
 
-export const emojiPicker: Feature = {
-  id: 'emoji-picker',
+export const emojiPicker = {
+  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
+  // built from these, and a widened `string` would make it match anything.
+  id: 'emoji-picker' as const,
   name: i18n.t('features.emojiPicker.name'),
   description: i18n.t('features.emojiPicker.description'),
   implemented: true,
@@ -348,4 +360,4 @@ export const emojiPicker: Feature = {
       }
     };
   },
-};
+} satisfies Feature;

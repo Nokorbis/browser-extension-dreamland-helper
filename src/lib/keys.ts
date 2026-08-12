@@ -104,11 +104,7 @@ export function readLetter(event: KeyEventLike): string | null {
  * `preventDefault()` before this returns true — a key we don't handle has to
  * reach the browser untouched.
  */
-export function matchesCombo(
-  event: KeyEventLike,
-  combo: Combo,
-  mac: boolean,
-): boolean {
+export function matchesCombo(event: KeyEventLike, combo: Combo, mac: boolean): boolean {
   return readRow(event, mac) === combo.row && readLetter(event) === combo.letter;
 }
 

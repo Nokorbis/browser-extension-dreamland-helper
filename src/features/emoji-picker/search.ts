@@ -27,17 +27,19 @@ import type { EmojiRecord } from './types';
  * most likely French emoji query there is.
  */
 export function fold(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/œ/g, 'oe')
-    .replace(/æ/g, 'ae')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    // Everything that isn't a letter or digit becomes a separator, so
-    // "il y a quelqu'un ?" and "d'accord" split on the apostrophe and
-    // `hasWord` below can rely on plain spaces.
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
+  return (
+    text
+      .toLowerCase()
+      .replace(/œ/g, 'oe')
+      .replace(/æ/g, 'ae')
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      // Everything that isn't a letter or digit becomes a separator, so
+      // "il y a quelqu'un ?" and "d'accord" split on the apostrophe and
+      // `hasWord` below can rely on plain spaces.
+      .replace(/[^\p{L}\p{N}]+/gu, ' ')
+      .trim()
+  );
 }
 
 /**
@@ -120,7 +122,9 @@ export function searchEmoji(
   query: string,
   limit: number,
 ): EmojiRecord[] {
-  const terms = fold(query).split(' ').filter((term) => term !== '');
+  const terms = fold(query)
+    .split(' ')
+    .filter((term) => term !== '');
   if (terms.length === 0 || limit <= 0) return [];
 
   const scored: { record: EmojiRecord; tier: number; index: number }[] = [];
