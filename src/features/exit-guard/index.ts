@@ -2,8 +2,9 @@ import { i18n } from '#i18n';
 import type { Feature } from '../types';
 import { findMessageTextarea, findPostForm, findSubmitButton } from '@/lib/phpbb';
 import { isForumReachable } from '@/lib/reachability';
-import { error, log } from '@/lib/log';
+import { error, log, warn } from '@/lib/log';
 import { showServerDownModal } from './server-down-modal';
+import { markCurrentDraftSubmitted, setupDraftAutosave } from './drafts';
 
 /**
  * Submit button names the reachability preflight covers. phpBB's composer form
@@ -13,9 +14,14 @@ import { showServerDownModal } from './server-down-modal';
 const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
 
 /**
- * Feature #1 — Exit guard.
+ * Feature #1 — Message loss protection.
  *
- * Two layers of draft protection on the post editor:
+ * Three layers, one switch. They are one feature because they are one promise —
+ * "your text does not disappear" — and because layer 3's bookkeeping is only
+ * correct at layer 2's decision point (see `doSubmit`). Splitting them into two
+ * toggles made it possible to turn the guard off and leave autosave running with
+ * no way to ever retire a draft, silently. See
+ * docs/adr/0027-draft-autosave-and-recovery.md.
  *
  * 1. Leaving the page while the textarea holds unsaved text (back button,
  *    closing the tab, following a link) triggers the browser's native
@@ -30,6 +36,10 @@ const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
  *    Its default action keeps the user on the page (text intact); a "continue
  *    anyway" escape hatch covers a false-positive check. See
  *    docs/adr/0011-presend-server-reachability-check.md.
+ *
+ * 3. The composer is snapshotted as it is typed and offered back on the next
+ *    visit, covering what `beforeunload` cannot: a crash, a killed tab, a reflex
+ *    "Leave", an expired `form_token`. It lives in `./drafts.ts`.
  */
 export const exitGuard = {
   // `as const` so the literal survives inference: `FeatureId` in registry.ts is
@@ -114,7 +124,38 @@ export const exitGuard = {
       checking = true;
       log(`submit intercepted (submitter=${submitterName ?? 'none'}) — pinging server`);
 
-      const doSubmit = () => {
+      /**
+       * Hand the form back to the browser, having first stamped the draft as on
+       * its way out. **This is the one moment that mark is correct** — the point
+       * where a genuine, checked send is actually being fired — which is why
+       * layer 3 cannot be a feature of its own that guesses at it from outside.
+       *
+       * Only for a real post, expressed as "not preview, not save": those two
+       * come straight back to this composer. By the time we get here any *other*
+       * named submitter has already returned above, so what is left is `post` or
+       * no usable name at all — and "no usable name" spells itself two ways
+       * (`null` from `getAttribute`, `undefined` when there is no submitter, i.e.
+       * the Enter-key path). Excluding the two names that matter is immune to
+       * that distinction; testing for `'post'` and `null` was not, and silently
+       * skipped the Enter-key send.
+       *
+       * The mark is deliberately not a delete, and it is deliberately awaited.
+       * Not a delete because the reachability preflight above only proves the
+       * server answered a HEAD — an expired `form_token` still bounces, which is
+       * the exact loss layer 3 exists for, so the draft survives until a thread
+       * page confirms the post landed. Awaited because `requestSubmit` navigates,
+       * and a fire-and-forget write would race it.
+       */
+      const doSubmit = async () => {
+        if (submitterName !== 'preview' && submitterName !== 'save') {
+          try {
+            await markCurrentDraftSubmitted();
+          } catch (err) {
+            // Never block a send on draft bookkeeping. The cost of losing this
+            // write is a draft offered once more than necessary.
+            warn('exit-guard: could not mark the draft as submitted', err);
+          }
+        }
         bypass = true;
         isSubmitting = true;
         form.requestSubmit(submitter ?? findSubmitButton(form));
@@ -128,7 +169,7 @@ export const exitGuard = {
         log('server reachable =', reachable);
         if (reachable) {
           checking = false;
-          doSubmit();
+          await doSubmit();
           return;
         }
         log('server unreachable — showing modal');
@@ -142,7 +183,11 @@ export const exitGuard = {
           onContinueAnyway: () => {
             closeModal = null;
             checking = false;
-            doSubmit();
+            // The modal's handler is synchronous; `doSubmit` reports its own
+            // draft-write failure, so this only guards `requestSubmit` throwing.
+            void doSubmit().catch((err) => {
+              error('exit-guard: the message was not sent', err);
+            });
           },
         });
       } catch (err) {
@@ -168,11 +213,16 @@ export const exitGuard = {
     document.addEventListener('submit', onSubmitListener, true);
     log('exit-guard: listeners attached (beforeunload + submit)');
 
+    // Layer 3. It decides for itself whether this page has anything to do —
+    // composer, thread view, or neither — and returns nothing when it doesn't.
+    const stopDrafts = setupDraftAutosave();
+
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('submit', onSubmitListener, true);
       closeModal?.();
       closeModal = null;
+      stopDrafts?.();
     };
   },
 } satisfies Feature;

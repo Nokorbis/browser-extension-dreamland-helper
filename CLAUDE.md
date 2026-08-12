@@ -10,9 +10,17 @@ aids for the PHPBB 3.20 roleplay forum at **dreamland-reborn.net**. It is built 
 
 Features (all implemented):
 
-1. **Message loss protection** (`exit-guard`) — keep a written post from being lost: warn
-   before leaving the editor with unsaved text, and verify the forum is reachable before a
-   send (if it's down, hold the post back and offer to keep the text or send anyway). _(done)_
+1. **Message loss protection** (`exit-guard`) — keep a written post from being lost. **Three
+   mechanisms, one switch**: warn before leaving the editor with unsaved text; verify the forum
+   is reachable before a send (if it's down, hold the post back and offer to keep the text or
+   send anyway); and **autosave** the composer as it's typed, offering it back on the next
+   visit. Autosave is *not* a separate feature — its clearing is only correct at the submit
+   guard's own decision point, and two toggles made it silently breakable. ⚠ A draft is
+   **offered, never restored silently** (phpBB may have pre-filled the box). Keyed by a derived
+   composer key (`reply:<t>` / `new:<f>` / `edit:<p>`, `quote` normalising to `reply`); the
+   guard *marks* on a genuine post and the draft is retired only once a `viewtopic` page loads,
+   so a rejected post keeps its text. Code in `src/features/exit-guard/drafts.ts`; see
+   `docs/adr/0027-draft-autosave-and-recovery.md`. _(done)_
 2. **Text highlights** (`highlight`) — select a passage in a post's message body and keep it
    highlighted in a chosen colour, persisting across reloads and shared between the thread page
    and the reply composer's topic review (keyed by phpBB's numeric post id). Painted with the
@@ -75,8 +83,10 @@ purpose — see `.prettierignore` for why. Details in
 `docs/adr/0024-lint-and-format-gate.md`.
 
 `pnpm test` covers **pure logic only** — the preset template engine
-(`src/features/bbcode-presets/template.ts`), the preset, highlight and emoji-recents store
-invariants (`src/lib/presets.ts`, `src/lib/highlights.ts`, `src/lib/emoji-recents.ts`), the
+(`src/features/bbcode-presets/template.ts`), the preset, highlight, emoji-recents and draft
+store invariants (`src/lib/presets.ts`, `src/lib/highlights.ts`, `src/lib/emoji-recents.ts`,
+`src/lib/drafts.ts` — including `draftKey` mode by mode and `pruneDrafts` on both axes), the
+draft age bucketing (`src/features/exit-guard/age.ts`), the
 settings and backup layers (`src/lib/storage.ts`, `src/lib/backup.ts`), the shared store
 plumbing (`src/lib/store-kit.ts`), the insertion arithmetic (`planInsertion` /
 `wrapSelection` in `src/lib/textarea.ts`), keymap resolution and cross-feature shortcut
@@ -128,7 +138,9 @@ The flow that ties multiple files together:
   the content script reads it on boot. It holds **only** on/off flags — a feature that owns
   *data* gets its own key and module (see below).
 - **Feature-owned data** goes in its own `browser.storage.local` key with its own typed
-  module — `src/lib/presets.ts` is the reference, `src/lib/highlights.ts` the second. The
+  module — `src/lib/presets.ts` is the reference, `src/lib/highlights.ts` the second, and
+  `src/lib/drafts.ts` the third (which is also the one place a record id is **derived** rather
+  than minted with `newId`, because a composer has to recompute its own draft's key). The
   version lives *inside* the payload, the shape is flat records linked by id, every read runs a
   repair pass, and mutations are pure (`store → store`). The identical plumbing every such
   module needs — `isRecord`/`readString`/`readInt` and the `loadStore`/`saveStore`/`watchStore`

@@ -42,6 +42,23 @@ export function findSubmitButton(form: HTMLFormElement): HTMLElement | null {
 }
 
 /**
+ * The composer's subject field — `<input type="text" name="subject" id="subject">`.
+ *
+ * ⚠ Two things about it, both verified against `real_snippets/posting.html`: it
+ * carries `maxlength="124"`, and on a reply phpBB **pre-fills** it with
+ * `Re: <topic title>`. So "the writer changed the subject" is
+ * `value !== defaultValue`, exactly as it is for the message textarea, and
+ * anything writing into it must respect the length limit.
+ *
+ * Absent on surfaces that don't take one, so callers must handle `null`.
+ */
+export function findSubjectInput(): HTMLInputElement | null {
+  return document.querySelector<HTMLInputElement>(
+    'input#subject, input[name="subject"]',
+  );
+}
+
+/**
  * phpBB's BBCode button bar — the row holding B / i / u / Quote / Code above the
  * composer. prosilver's `posting_buttons.html` renders it as
  * `<div id="format-buttons" class="format-buttons">` with
@@ -288,6 +305,64 @@ export function readTopicId(): string | null {
     if (match !== null) return match[1];
   }
   return null;
+}
+
+/**
+ * Whether we are on a thread view (`viewtopic.php`).
+ *
+ * Used as a *success* signal: landing here after a submit is the point at which
+ * the post demonstrably went through, which is what lets `exit-guard` retire
+ * a draft it only marked as submitted. A bounced submit leaves you on
+ * `posting.php` or an error page instead.
+ */
+export function isTopicPage(): boolean {
+  return /\/viewtopic\.php$/.test(location.pathname);
+}
+
+/**
+ * What the composer's URL says about which document is being written.
+ *
+ * `mode` is phpBB's own (`reply`, `quote`, `post`, `edit`, and others we don't
+ * care about); the rest are the id it pairs with — `t` a topic, `f` a forum,
+ * `p` a post. Any of them may be `null`; deciding what a given combination
+ * *means* is `draftKey`'s job in `@/lib/drafts`, not this module's.
+ */
+export interface ComposerParams {
+  mode: string | null;
+  t: string | null;
+  f: string | null;
+  p: string | null;
+}
+
+function readNumericParam(params: URLSearchParams, name: string): string | null {
+  const value = params.get(name);
+  return value !== null && /^\d+$/.test(value) ? value : null;
+}
+
+/**
+ * Read the composer's mode and ids off the current URL.
+ *
+ * ⚠ **From `location.search`, never from `form.action`.** phpBB's Preview button
+ * carries `onclick="document.getElementById('postform').action += '#preview'"`
+ * (`real_snippets/posting.html`), so the form's action mutates under any code
+ * that reads it after a click. The URL doesn't move.
+ *
+ * The form itself is no help either: its only hidden inputs are
+ * `topic_cur_post_id`, `show_panel`, `creation_time` and `form_token` — the
+ * mode and the ids live *solely* in the action's query string, which is a copy
+ * of the URL we were loaded with.
+ *
+ * `t` falls back to `readTopicId()` because a `mode=quote&p=…` URL carries no
+ * topic id, while the topic-review links on that same page do.
+ */
+export function readComposerParams(): ComposerParams {
+  const params = new URLSearchParams(location.search);
+  return {
+    mode: params.get('mode'),
+    t: readNumericParam(params, 't') ?? readTopicId(),
+    f: readNumericParam(params, 'f'),
+    p: readNumericParam(params, 'p'),
+  };
 }
 
 /**

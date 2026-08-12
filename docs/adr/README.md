@@ -39,3 +39,4 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0024](0024-lint-and-format-gate.md) | A lint and format gate, scoped to what the other gates can't see | Accepted |
 | [0025](0025-feature-ids-as-a-type.md) | Feature ids are a type, not a convention | Accepted |
 | [0026](0026-prompted-preset-placeholders.md) | Prompted preset placeholders — `{PROMPT:label}` | Accepted |
+| [0027](0027-draft-autosave-and-recovery.md) | Draft autosave inside the exit guard, with recovery always offered and never applied | Accepted |

@@ -8,7 +8,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 
 | # | Feature | Status | What it does |
 |---|---------|--------|--------------|
-| 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, and checks the forum is reachable before sending. |
+| 1 | Message loss protection | ✅ Done | Keeps a written post from being lost — warns before you leave the editor with unsaved text, checks the forum is reachable before sending, and saves your message as you write it so it can be restored after a crash or a refused send. |
 | 2 | Text highlights | ✅ Done | Highlight any passage in a post and keep it marked in a chosen colour — persists across reloads and between the thread and the reply composer's topic review. |
 | 3 | BBCode presets | ✅ Done | Insert complex BBCode structures in one click, from reusable presets organised in folders — with optional fill-in-the-blank fields. |
 | 4 | Color grabber | ✅ Done | Reuse a colour already in the thread — a checkbox in the forum's colour palette filters it to the colours used in the topic review. |
@@ -20,9 +20,10 @@ a change takes effect on the forum page's next load.
 
 ### 1. Message loss protection — ✅ done
 
-Roleplay posts are long, and there are two easy ways to lose one: navigating away before
-you've submitted, or hitting "send" at the moment the forum is unreachable. This feature
-guards against both.
+Roleplay posts are long, and there are several easy ways to lose one: navigating away before
+you've submitted, hitting "send" at the moment the forum is unreachable, or simply having the
+browser die under you. This feature guards against all of them, with **three mechanisms behind
+one switch** — they are one promise, so they toggle together.
 
 **Leaving with unsaved text.** While the editor holds text you've changed but not submitted,
 it arms the browser's native **"Leave site?"** confirmation, so navigating away (back button,
@@ -37,6 +38,27 @@ held back and you get a dialog explaining your message wasn't sent and your text
 there, with the choice to keep waiting or send anyway. **Posting, previewing and saving a
 draft are all guarded** — all three navigate away, so all three lose the text the same way
 when the forum is down.
+
+**Autosave and recovery.** The two mechanisms above only work while the page is alive and you
+are the one leaving. They can do nothing about a browser crash, a tab the system kills to
+reclaim memory, a reflex click on "Leave", or the forum refusing a send — which on a 45-minute
+post it genuinely does, because phpBB's form token expires while you write.
+
+So your message is also saved as you type it, a moment after you pause. When you next open the
+same message, a small bar appears above the editor — *Brouillon récupéré (il y a 12 min)* —
+with **Restaurer**, which puts the text back, and **Ignorer**, which deletes the draft for
+good. Leaving the bar alone keeps the draft, so it is offered again next time — including when
+you abandoned the editor on purpose. It never puts the text back on its own: the forum
+sometimes pre-fills the editor itself (editing a post, one of its own saved drafts, coming back
+from a preview), and overwriting that unasked would be a way of *causing* the loss instead of
+preventing it. Restoring goes through the same undo-safe path as everything else, so one
+**Ctrl+Z** undoes it.
+
+Replying and quoting in the same thread share one draft; editing a post has its own. A draft is
+retired once the post actually goes through — which the extension confirms by seeing the thread
+load afterwards, not by assuming the send worked, so a rejected post keeps its text. The 10 most
+recent drafts are kept, for 15 days; the popup shows how many there are and can delete them all.
+See [ADR 0027](./docs/adr/0027-draft-autosave-and-recovery.md).
 
 ### 2. Text highlights — ✅ done
 
@@ -166,12 +188,11 @@ See [ADR 0021](./docs/adr/0021-json-export-import.md).
 
 ## Planned
 
-Two candidates, neither started. Each has a short design note in [`docs/design/`](./docs/design/)
-covering the approach and the questions still open — read those before starting one.
+One candidate, not started. It has a short design note in [`docs/design/`](./docs/design/)
+covering the approach and the questions still open — read it before starting.
 
 | Idea | Why | Design note |
 |---|---|---|
-| **Draft autosave & recovery** | Feature 1 warns you before you *navigate* away, but nothing survives a crash, a killed tab, or phpBB's form token expiring mid-post — the losses that actually hurt on 30–60 minute posts. | [draft-autosave](./docs/design/draft-autosave.md) |
 | **Quote a selected passage** | phpBB's quote button takes the *whole* post. Replying to one line of a 2000-word post means quoting a wall and deleting it by hand. | [quote-selection](./docs/design/quote-selection.md) |
 
 ## Architecture & decisions

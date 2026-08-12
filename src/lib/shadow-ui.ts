@@ -49,6 +49,15 @@ export interface Chrome {
   border: string;
   hover: string;
   shadow: string;
+  /**
+   * The "look before you act" family, mirroring `--dlh-warn-*`. Amber rather
+   * than red: a surface wearing it is not reporting an error, it is asking to be
+   * read before something is confirmed — the draft-recovery bar being the case
+   * it was added for.
+   */
+  warnBg: string;
+  warnFg: string;
+  warnBorder: string;
 }
 
 const LIGHT: Chrome = {
@@ -58,6 +67,9 @@ const LIGHT: Chrome = {
   border: '#b9cfe4',
   hover: '#dce9f7',
   shadow: 'rgba(20,40,70,0.22)',
+  warnBg: '#fdf6e6',
+  warnFg: '#8a5a12',
+  warnBorder: '#e6cf9a',
 };
 
 const DARK: Chrome = {
@@ -67,6 +79,9 @@ const DARK: Chrome = {
   border: '#3a4150',
   hover: '#333947',
   shadow: 'rgba(0,0,0,0.45)',
+  warnBg: '#2e2718',
+  warnFg: '#e0b273',
+  warnBorder: '#5c4a26',
 };
 
 /** The chrome palette for the forum's current theme. */

@@ -1,6 +1,8 @@
 # Design — Draft autosave & recovery
 
-Status: **Proposed**, not started. Sketch, not a contract — an ADR follows if it ships.
+Status: **Shipped.** The decisions this sketch left open are settled in
+[ADR 0027](../adr/0027-draft-autosave-and-recovery.md), which is the record to read — this note
+is kept only for the problem statement and the shape of the thinking that led there.
 
 ## Problem
 

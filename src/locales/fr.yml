@@ -71,9 +71,9 @@ features:
   exitGuard:
     name: Protection contre la perte de message
     description: >-
-      Avertit avant de quitter un éditeur contenant du texte non envoyé, et
-      vérifie que le serveur répond avant d'envoyer, de prévisualiser ou
-      d'enregistrer un brouillon.
+      Avertit avant de quitter un éditeur contenant du texte non envoyé, vérifie
+      que le serveur répond avant d'envoyer, et enregistre le message en cours
+      d'écriture pour vous le proposer à la réouverture de l'éditeur.
     serverDown:
       title: Serveur indisponible
       message: >-
@@ -81,6 +81,43 @@ features:
         et votre texte est toujours là.
       stay: Rester sur la page
       continueAnyway: Continuer quand même
+    # The recovery bar injected above the composer textarea. Its wording is an
+    # *offer*: the draft is never restored without a click, because phpBB may
+    # have pre-filled the box itself. See docs/adr/0027.
+    draft:
+      bar:
+        # {age} is an @wxt-dev/i18n named substitution, filled from one of the
+        # age.* strings below — safe, unlike the {SELECTION} trap documented above.
+        recovered: "Brouillon récupéré ({age})"
+        restore: Restaurer
+        ignore: Ignorer
+      # How old the recovered draft is, mapped from `formatAge` in age.ts.
+      # These use @wxt-dev/i18n plurals — all THREE forms are required
+      # (CLAUDE.md): two forms make French render "il y a 0 minutes".
+      age:
+        now: à l'instant
+        minutes:
+          "0": à l'instant
+          "1": il y a 1 minute
+          "n": il y a $1 minutes
+        hours:
+          "0": à l'instant
+          "1": il y a 1 heure
+          "n": il y a $1 heures
+        days:
+          "0": à l'instant
+          "1": hier
+          "n": il y a $1 jours
+    # The popup accordion panel — draft count and a bulk delete.
+    popup:
+      count:
+        "0": Aucun brouillon enregistré
+        "1": 1 brouillon enregistré
+        "n": $1 brouillons enregistrés
+      clearAll: Supprimer tous les brouillons
+      hint: >-
+        Un brouillon est proposé à la réouverture du même message. Les 10 plus
+        récents sont conservés, pendant 15 jours.
   highlight:
     name: Surlignage du texte
     description: >-

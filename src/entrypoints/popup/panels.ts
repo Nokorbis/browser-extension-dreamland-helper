@@ -1,5 +1,6 @@
 import type { Component } from 'svelte';
 import BbcodePresetsPanel from '@/features/bbcode-presets/PopupPanel.svelte';
+import ExitGuardPanel from '@/features/exit-guard/PopupPanel.svelte';
 import HighlightPanel from '@/features/highlight/PopupPanel.svelte';
 
 /**
@@ -20,6 +21,7 @@ import HighlightPanel from '@/features/highlight/PopupPanel.svelte';
  * See docs/adr/0014-popup-accordion-options-page.md.
  */
 export const POPUP_PANELS: Partial<Record<string, Component>> = {
+  'exit-guard': ExitGuardPanel,
   'bbcode-presets': BbcodePresetsPanel,
   highlight: HighlightPanel,
 };

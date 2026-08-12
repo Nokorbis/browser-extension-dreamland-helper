@@ -45,5 +45,5 @@ second, if at all.
 
 ## Effort
 
-Small — the smallest of the three, and the one that reuses the most shipped machinery. Mostly
+Small — the smallest of the remaining ideas, and the one that reuses the most shipped machinery. Mostly
 a button, a string, and `readPostAuthor`. Question 1 is the only real design decision.

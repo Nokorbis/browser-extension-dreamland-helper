@@ -58,6 +58,11 @@ appuyer sur « Envoyer » au moment où le forum ne répond plus.
   le forum répond. S'il est indisponible, l'action est retenue et une fenêtre vous explique
   que rien n'est parti et que votre texte est toujours là — libre à vous d'attendre ou de
   continuer quand même.
+• Votre message est enregistré au fil de l'écriture, dans votre navigateur. À la réouverture
+  du même message, une barre au-dessus de l'éditeur propose de le restaurer — après un
+  plantage, un onglet fermé, ou un envoi refusé par le forum. Rien n'est jamais remis en
+  place sans votre clic. Les 10 brouillons les plus récents sont conservés, pendant 15 jours,
+  et un brouillon disparaît une fois le message effectivement publié.
 
 ━━━ PRÉRÉGLAGES BBCODE ━━━
 
@@ -185,7 +190,9 @@ Dreamland Reborn QoL is a writing aid for composing forum posts on the single si
 dreamland-reborn.net (a phpBB roleplay forum). Its one purpose is to help a member write a
 post there without losing it and without retyping the same markup: it warns before leaving a
 composer that still holds unsent text and checks the forum is responding before a post is
-submitted, it inserts user-authored BBCode snippets at the cursor, it filters the forum's own
+submitted, it saves the post being written to local storage and offers to restore it if the
+browser or the submission failed, it inserts user-authored BBCode snippets at the cursor, it
+filters the forum's own
 colour palette down to the colours already used in the thread so one can be reused in the post,
 it binds keyboard shortcuts to the forum's own BBCode toolbar buttons, it offers a searchable
 panel for inserting Unicode emoji into the message being written, and it lets the member
@@ -207,9 +214,10 @@ on any other page: its host permission is limited to *://*.dreamland-reborn.net/
 ```
 Stores the user's own settings and content locally: which of the extension's features are
 enabled, the BBCode presets the user authors in the options page, the text passages the user
-has highlighted in threads, the emoji they most recently inserted, and whether the preset panel
-was left open or collapsed. This is the only way to keep a user's presets and highlights between
-page loads. Nothing is written anywhere else, and nothing is transmitted -- storage.local only,
+has highlighted in threads, the emoji they most recently inserted, the post the user is
+currently writing (so it can be offered back if the browser crashes or the forum rejects the
+submission), and whether the preset panel was left open or collapsed. This is the only way to
+keep a user's presets, highlights and unfinished posts between page loads. Nothing is written anywhere else, and nothing is transmitted -- storage.local only,
 never storage.sync. The extension's options page can export this data (settings, presets and
 recent emoji) to a JSON file the user saves to their own device, and import one back in -- a
 user-initiated local file operation, not a network transmission.

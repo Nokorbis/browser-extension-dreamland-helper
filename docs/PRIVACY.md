@@ -18,6 +18,7 @@ sur votre machine :
 | Vos préréglages BBCode et leurs dossiers | `bbcodePresets` | Ce sont vos propres textes, écrits par vous dans la page d'options |
 | Les passages que vous surlignez dans les sujets | `highlights` | Les réafficher après rechargement, sur le sujet comme dans la relecture |
 | Les emoji que vous avez insérés récemment | `emojiPicker` | Les garder à portée de clic dans le sélecteur d'emoji |
+| Le message que vous êtes en train d'écrire | `drafts` | Vous le proposer à nouveau après un plantage, un onglet fermé ou un envoi refusé. Les 10 plus récents, pendant 15 jours ; un brouillon est supprimé une fois le message publié |
 | L'état du panneau latéral (ouvert / replié) | `bbcodePresetsUi` | Retrouver l'éditeur comme vous l'aviez laissé |
 
 Ces données ne quittent jamais votre navigateur. Nous n'y avons pas accès. La synchronisation
@@ -84,6 +85,7 @@ Only in your browser's local storage (`browser.storage.local`), on your own mach
 | Your BBCode presets and their folders | `bbcodePresets` | They are your own text, authored by you in the options page |
 | The passages you highlight in threads | `highlights` | Show them again after a reload, on the thread and in the topic review |
 | The emoji you inserted recently | `emojiPicker` | Keep them one click away in the emoji picker |
+| The post you are currently writing | `drafts` | Offer it back after a crash, a closed tab or a rejected submission. The 10 most recent, for 15 days; a draft is deleted once the post goes through |
 | Side panel state (open / collapsed) | `bbcodePresetsUi` | Restore the editor as you left it |
 
 This data never leaves your browser. We have no access to it. Cross-device sync is not used
