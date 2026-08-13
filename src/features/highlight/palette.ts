@@ -1,14 +1,11 @@
 /**
- * The fixed set of highlight colours the selection toolbar offers.
+ * The fixed set the selection toolbar offers. A highlight *stores* its hex and the renderer
+ * paints any hex it is handed, so this is only what the toolbar shows, not a constraint on
+ * what can render. Each name resolves from `features.highlight.colors.<id>`, so ids must
+ * stay camelCase-safe.
  *
- * The *stored* value of a highlight is its hex (`Highlight.color`), and the
- * renderer paints any hex it's handed — so this list is only what the toolbar
- * shows, not a constraint on what can be rendered. Each colour's human name is
- * resolved from `features.highlight.colors.<id>` in the locale catalogue (used
- * for the swatch tooltip / aria-label), so `id`s must stay camelCase-safe.
- *
- * The colours are light pastels chosen to stay legible under both forum themes
- * when painted behind the forced-dark highlight text colour below.
+ * Light pastels, chosen to stay legible under both forum themes behind the forced-dark
+ * highlight text colour below.
  */
 
 export interface HighlightColor {
@@ -26,15 +23,12 @@ export const HIGHLIGHT_COLORS: HighlightColor[] = [
 ];
 
 /**
- * Text colour painted over a highlight. Forced dark so the pastel backgrounds
- * stay readable whatever colour the forum gives the post text, in either theme.
+ * Forced dark, so the pastel backgrounds stay readable whatever colour the forum gives the
+ * post text, in either theme.
  */
 export const HIGHLIGHT_TEXT_COLOR = '#1a1a1a';
 
-/**
- * The `CSS.highlights` registry name / `::highlight()` custom-ident for a hex.
- * Deterministic so the same colour always maps to the same registry slot.
- */
+/** Deterministic, so the same colour always maps to the same registry slot. */
 export function highlightRegistryName(hex: string): string {
   return `dlh-hl-${hex.replace(/[^0-9a-f]/gi, '').toLowerCase()}`;
 }

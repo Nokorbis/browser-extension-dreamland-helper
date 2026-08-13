@@ -22,9 +22,8 @@
 
   let root = $state<HTMLElement | null>(null);
 
-  // Move focus into the menu as it opens, so the keyboard can drive it straight
-  // away. The menu is opened from a button whose mousedown is preventDefault-ed,
-  // so the textarea still holds the selection we snapshotted.
+  // Focus moves in on open, so the keyboard can drive it straight away. The trigger's
+  // mousedown is preventDefault-ed, so the textarea still holds the snapshotted selection.
   $effect(() => {
     if (!menu.open) return;
     void tick().then(() => {
@@ -32,17 +31,16 @@
     });
   });
 
-  // Registered imperatively rather than as `onkeydown` on the wrapper: the
-  // wrapper is a plain container with no ARIA role of its own (the role="menu"
-  // lives on MenuNode's list), and a static element carrying a key handler is
-  // exactly what the a11y rules warn about.
+  // Imperative rather than an `onkeydown` attribute: the wrapper is a plain container
+  // with no ARIA role of its own, and a static element carrying a key handler is what
+  // the a11y rules warn about.
   $effect(() => {
     const node = root;
     if (node === null) return;
 
     const handler = (event: KeyboardEvent) => {
-      // `isolateEvents` on the shadow root stops key events reaching the
-      // document, so Escape and Tab are handled here as well as there.
+      // `isolateEvents` on the shadow root stops key events reaching the document,
+      // so Escape and Tab are handled here as well as there.
       if (event.key === 'Escape' || event.key === 'Tab') {
         event.preventDefault();
         onclose();
@@ -69,16 +67,10 @@
 
 <style>
   .menu {
-    /*
-     * Fixed, driven by the trigger's real bounding rect (written onto the shadow
-     * host as custom properties by index.ts, which re-measures on scroll and
-     * resize). Custom properties are one of the few things WXT's `all: initial`
-     * reset deliberately lets through the shadow boundary.
-     *
-     * Fixed rather than absolute because the host has no size of its own, and
-     * because a fixed menu escapes any `overflow: hidden` the skin puts on the
-     * toolbar row.
-     */
+    /* Driven by custom properties `@/lib/popover` writes onto the shadow host from the
+     * trigger's measured rect — one of the few things WXT's `all: initial` reset lets
+     * through the shadow boundary. Fixed rather than absolute because the host has no size
+     * of its own, and a fixed menu escapes any `overflow: hidden` on the toolbar row. */
     position: fixed;
     top: var(--dlh-menu-top, 0);
     left: var(--dlh-menu-left, 0);

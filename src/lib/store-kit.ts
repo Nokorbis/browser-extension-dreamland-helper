@@ -1,14 +1,12 @@
 /**
- * Shared plumbing for feature-owned data stores.
+ * Shared plumbing for feature-owned data stores (docs/adr/0012).
  *
- * `@/lib/presets` and `@/lib/highlights` each own a `browser.storage.local` key
- * and follow one idiom (docs/adr/0012-feature-owned-data-stores.md): the
- * `version` lives **inside** the payload, the shape is a flat id-keyed record, a
- * repair pass runs on every read, and mutations are pure (`store → store`). The
- * identical *plumbing* that idiom needs — the primitive field readers, the id
- * minter, and the load/save/watch calls — lives here so the two modules share it
- * instead of copying it. Each module still owns its key, its shape, its
- * `normalize`, its own explicit `toPlain…`, and its mutations.
+ * **The idiom, stated once here rather than in each store:** a store owns one
+ * `browser.storage.local` key, carries its `version` **inside** the payload, keeps a flat
+ * id-keyed record shape, runs a repair pass on every read, and mutates purely
+ * (`store → store`), returning the same reference on a no-op so callers can skip a write.
+ * A store still owns its key, its shape, its `normalize`, its explicit `toPlain…` and its
+ * mutations; only the plumbing below is shared.
  */
 import { browser } from '#imports';
 
@@ -28,12 +26,9 @@ export function readInt(value: unknown): number | null {
 }
 
 /**
- * Mint an id for a new record.
- *
- * `crypto.randomUUID()` is gated on a secure context. Extension pages always
- * qualify, and in practice only the options page ever creates records, so the
- * fallback is insurance rather than a load-bearing path. It is not
- * cryptographically strong — irrelevant for a local record id.
+ * Mint an id for a new record. `crypto.randomUUID()` is gated on a secure context, which
+ * extension pages always are, so the fallback is insurance rather than a load-bearing path
+ * — it is not cryptographically strong, which is irrelevant for a local record id.
  */
 export function newId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -45,20 +40,14 @@ export function newId(): string {
 /**
  * Step a store up to the current schema version.
  *
- * Each store used to inline this loop, and the three had drifted into three shapes.
- * `presets` and `highlights` incremented a local counter; `emoji-recents` did **not** —
- * it re-read `prefs.version` and trusted the migration to bump it, so the first migration
- * that forgot would have looped forever inside a `normalize…` that runs on every read, on
- * every page load. `presets` also read its version with a helper that accepts any finite
- * number, so a corrupt `version: -3` or `0.5` skipped every migration and still got
- * stamped as current — silently mislabelling unmigrated data.
+ * Shared rather than inlined per store because the inlined copies had drifted: one re-read
+ * `version` off the store and trusted each migration to bump it, so a migration that forgot
+ * looped forever inside a `normalize…` that runs on every read. Here the counter is local
+ * and always advances, so the loop terminates whatever a migration returns, and `from` is
+ * floored to a non-negative integer, so a corrupt `version: -3` replays from 0 instead of
+ * skipping ahead and being stamped as current.
  *
- * One implementation removes both. The counter is local and always advances, so the loop
- * terminates whatever a migration returns; `from` is floored to a non-negative integer,
- * so a corrupt version replays from 0 rather than skipping ahead.
- *
- * Exported (rather than living inside each store) so the migration paths are reachable
- * from a test with a synthetic `migrations` map — they had no possible coverage before.
+ * Exported so the migration paths are reachable from a test with a synthetic map.
  */
 export function runMigrations<T>(
   store: T,
@@ -77,7 +66,6 @@ export function runMigrations<T>(
   return migrated;
 }
 
-/** Load and repair a store from its `storage.local` key. */
 export async function loadStore<T>(
   key: string,
   normalize: (raw: unknown) => T,
@@ -87,21 +75,18 @@ export async function loadStore<T>(
 }
 
 /**
- * Persist an **already-plain** store. Callers pass the result of their own
- * `toPlain…` rebuild: a Svelte `$state` value is a `Proxy`, which is not
- * structured-cloneable, so Firefox throws `DataCloneError` on the way into
- * `storage.local` otherwise (docs/adr/0012, CLAUDE.md).
+ * Persist an **already-plain** store: callers pass the result of their own `toPlain…`,
+ * because a Svelte `$state` value is a `Proxy` and Firefox throws `DataCloneError` on the
+ * way into `storage.local`. See docs/adr/0012.
  */
 export async function saveStore<T>(key: string, plain: T): Promise<void> {
   await browser.storage.local.set({ [key]: plain });
 }
 
 /**
- * Observe a store from any context — content script, popup, options page.
- * Returns an unsubscriber; wire it into the feature's cleanup.
- *
- * Uses the top-level `browser.storage.onChanged` filtered on the area rather
- * than `browser.storage.local.onChanged`, whose support is patchy on Firefox MV2.
+ * Observe a store from any context. Returns an unsubscriber; wire it into the feature's
+ * cleanup. Uses the top-level `onChanged` filtered on the area rather than
+ * `storage.local.onChanged`, whose support is patchy on Firefox MV2.
  */
 export function watchStore<T>(
   key: string,

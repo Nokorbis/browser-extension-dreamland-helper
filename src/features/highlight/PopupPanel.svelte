@@ -15,15 +15,9 @@
   import { warn } from '@/lib/log';
 
   /**
-   * The highlight panel inside the popup accordion.
-   *
-   * Two bulk actions: clear the discussion shown in the active forum tab, and
-   * clear everything. "This discussion" reads the active tab's `t=` param — the
-   * popup can't see the page DOM, so on a post-permalink page (`?p=…`, no `t=`)
-   * the button is simply unavailable. Writes go through `saveHighlightStore`,
-   * whose `toPlainHighlightStore` strips Svelte's `$state` proxy so Firefox
-   * doesn't throw `DataCloneError` (see CLAUDE.md), and live-update every open
-   * forum tab via the store watcher.
+   * The highlight panel inside the popup accordion: clear the discussion in the active forum
+   * tab, or clear everything. "This discussion" reads the active tab's `t=` param — the
+   * popup cannot see the page DOM — so on a post-permalink page the button is unavailable.
    */
   let store = $state<HighlightStore>(emptyHighlightStore());
   let topicId = $state<string | null>(null);

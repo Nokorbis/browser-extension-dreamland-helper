@@ -32,9 +32,8 @@ import { HIGHLIGHT_COLORS } from './palette';
 import { log, warn } from '@/lib/log';
 
 /**
- * Whether two ranges in the same document overlap. A shared endpoint (one range
- * ending exactly where the other starts) does **not** count, so erasing needs a
- * real overlap. Uses `compareBoundaryPoints`: `a.end > b.start && a.start < b.end`.
+ * A shared endpoint — one range ending exactly where the other starts — does **not** count,
+ * so erasing needs a real overlap.
  */
 function rangesOverlap(a: Range, b: Range): boolean {
   return (
@@ -44,30 +43,18 @@ function rangesOverlap(a: Range, b: Range): boolean {
 }
 
 /**
- * Feature #2 — Persistent text highlights.
+ * Persistent text highlights inside a post's message body, across reloads and between
+ * viewtopic and the topic review. The selection must sit inside one post's `.content`.
  *
- * Select text in a post's message body and keep it highlighted in a chosen
- * colour, across reloads and between the thread page (viewtopic) and the reply
- * composer's topic review (posting.php). Only message content is annotatable —
- * the selection must sit inside one post's `.content`.
+ * Three moving parts: `render.ts` paints via the CSS Custom Highlight API (no DOM
+ * mutation), `anchor.ts` turns a selection into a stored `[start,end)+quote` and back, and
+ * `@/lib/highlights` is the store (docs/adr/0012). The floating row the swatches sit in is
+ * **not** ours — it is the shared `@/lib/selection-toolbar` (docs/adr/0028), to which this
+ * contributes the palette plus an eraser over something already painted.
  *
- * Three moving parts, each in its own module:
- * - `render.ts` paints via the CSS Custom Highlight API (no DOM mutation);
- * - `anchor.ts` turns a selection into a stored `[start,end)+quote` and back;
- * - `@/lib/highlights` is the feature-owned store (docs/adr/0012).
- *
- * The floating row the swatches sit in is **not** ours: it is the shared
- * `@/lib/selection-toolbar`, which owns the selection plumbing and asks every
- * registered feature what it offers for the current selection (docs/adr/0028).
- * This feature contributes the palette, plus an eraser when the selection
- * overlaps something already painted.
- *
- * Highlights are keyed by numeric post id, which phpBB encodes identically as
- * `#p<id>` and `#pr<id>` — that's what makes them shared across the two pages.
- *
- * On a browser without the Custom Highlight API (Firefox < 140 / Chrome < 105)
- * the feature no-ops: it doesn't offer to create highlights it couldn't show.
- * The popup's clear buttons still work — they only touch storage.
+ * Without the Custom Highlight API (Firefox < 140 / Chrome < 105) the feature no-ops rather
+ * than offer to create highlights it could not show. The popup's clear buttons still work,
+ * since they only touch storage.
  */
 export const highlight = {
   // `as const` so the literal survives inference: `FeatureId` in registry.ts is
@@ -95,14 +82,13 @@ export const highlight = {
     let disposed = false;
     let store: HighlightStore = emptyHighlightStore();
 
-    // Highlights currently painted on THIS page, each with its resolved DOM
-    // range — rebuilt every render. The eraser matches the selection against
-    // these, not against stored offsets, which is what lets it work from either
+    // Painted on THIS page with resolved DOM ranges, rebuilt every render. The eraser
+    // matches against these, not stored offsets, which is what lets it work from either
     // page even though a post's `.content` offsets differ across the two.
     let paintedRanges: { id: string; postId: string; range: Range }[] = [];
 
     // --- in-page control ---------------------------------------------------
-    // Built *before* `render`, which needs it to exist by the time it is called.
+    // Built *before* `render`, which needs it to exist when called.
     const clearControl = createClearControl({
       onClearTopic: () => {
         if (topicId !== null) persist(clearTopic(store, topicId));
@@ -154,18 +140,15 @@ export const highlight = {
 
     // --- what we offer the shared toolbar ----------------------------------
     /**
-     * The palette, plus an eraser when this selection overlaps a painted
-     * highlight. Returns `[]` — offering nothing — for a post we aren't
-     * watching or a selection `anchor.ts` refuses to serialize, which is the
-     * same gate the old private toolbar applied before showing itself.
+     * The palette, plus an eraser when this selection overlaps a painted highlight. `[]`
+     * offers nothing, for a post we aren't watching or a selection `anchor.ts` refuses.
      */
     const buttonsFor = (sel: PostSelection): ToolbarButton[] => {
       if (disposed || !posts.has(sel.postId)) return [];
       const serialized = serializeSelection(sel.content, sel.range);
       if (serialized === null) return [];
 
-      // Erase targets: highlights painted on this post whose range overlaps the
-      // selection here — compared as DOM ranges, so it's independent of offsets.
+      // Compared as DOM ranges, so this is independent of stored offsets.
       const eraseIds = paintedRanges
         .filter((p) => p.postId === sel.postId && rangesOverlap(p.range, sel.range))
         .map((p) => p.id);

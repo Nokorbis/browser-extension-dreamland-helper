@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Preset, PresetTreeNode } from '@/lib/presets';
-  // A component may import itself; this is what makes the tree recursive.
+  // Self-import: this is what makes the tree recursive.
   import Self from './FolderTree.svelte';
 
   interface Props {
@@ -17,11 +17,9 @@
 </script>
 
 <!--
-  The preset library rendered as a tree. Folders nest to arbitrary depth, so this
-  component renders one level and recurses for the next. It is shared between the
-  options-page editor and (later) the in-page panel — writing it once is the main
-  reason the in-page UI is Svelte rather than hand-built DOM.
-  See docs/adr/0016-svelte-in-content-script.md.
+  The preset library as a tree: one level per instance, recursing for the next. Shared
+  between the options-page editor and the in-page panel — writing it once is the main
+  reason the in-page UI is Svelte rather than hand-built DOM (docs/adr/0016).
 -->
 <ul>
   {#each folders as node (node.folder.id)}
@@ -37,10 +35,9 @@
       </button>
       {#if node.folders.length > 0 || node.presets.length > 0}
         <!--
-          The indent lives on this wrapper rather than on a `ul ul` rule: the
-          nested list is rendered by the recursive child instance, so Svelte's
-          per-component CSS analysis sees no second `ul` here and would strip
-          such a selector as unused.
+          The indent lives on this wrapper rather than a `ul ul` rule: the nested list is
+          rendered by the recursive child instance, so Svelte's per-component CSS analysis
+          sees no second `ul` here and would strip such a selector as unused.
         -->
         <div class="children">
           <Self folders={node.folders} presets={node.presets} {selectedId} {onselect} />
@@ -108,6 +105,6 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Colours come from the --dlh-* palette set by whichever surface mounts this
+  /* Colours come from the --dlh-* palette of whichever surface mounts this
      component, so the same tree works in-page and in the options page. */
 </style>

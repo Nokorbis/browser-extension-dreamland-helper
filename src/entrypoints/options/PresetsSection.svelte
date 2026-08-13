@@ -33,11 +33,9 @@
   import { error } from '@/lib/log';
 
   /**
-   * The options page's `#presets` section: the BBCode preset editor.
-   *
-   * Its own component, like `BackupSection`, so `App.svelte` is page chrome and a list
-   * of sections rather than page chrome plus one large editor. The bulk of what lives
-   * here is the save state machine in `commit` below, which is the subtle part.
+   * The options page's `#presets` section: the BBCode preset editor. Its own component so
+   * `App.svelte` stays page chrome plus a list of sections. The subtle part is the save
+   * state machine in `commit`.
    */
 
   let store = $state<PresetStore>(emptyPresetStore());
@@ -46,21 +44,18 @@
   let justSaved = $state(false);
   let saveError = $state(false);
   /**
-   * Serialized snapshot of the last payload we wrote, used to recognise the echo
-   * of our own save.
+   * Snapshot of the last payload we wrote, to recognise the echo of our own save.
    *
-   * Compared by *value* rather than tracked with an "is a write in flight" flag.
-   * A flag has to be cleared somewhere, and clearing it when the write promise
-   * resolves assumes `storage.onChanged` has already fired — an ordering neither
-   * browser specifies. Whenever the echo arrived late it was applied, reverting
-   * any keystroke typed during the round-trip and yanking the caret. Comparing
-   * values has no such window, and self-heals if an echo never arrives at all.
+   * Compared by *value* rather than tracked with an "is a write in flight" flag: a flag has
+   * to be cleared somewhere, and clearing it on the write promise assumes
+   * `storage.onChanged` has already fired, an ordering neither browser specifies. A late
+   * echo was applied, reverting keystrokes typed during the round-trip and yanking the
+   * caret. Values have no such window and self-heal if an echo never arrives.
    */
   let lastWritten: string | null = null;
   /**
-   * Bumped by every `commit`. A queued confirmation only shows if it is still
-   * the current one — see `commit` for why clearing the timer isn't enough.
-   * A plain `let`, not `$state`: nothing renders from it.
+   * Bumped by every `commit`; a queued confirmation only shows if it is still the current
+   * one — see `commit` for why clearing the timer isn't enough. A plain `let`, not `$state`.
    */
   let commitSeq = 0;
 
@@ -68,9 +63,8 @@
     store = loaded;
   });
 
-  // Another context (a forum tab, the popup) could change the library while this
-  // page is open. Anything that isn't byte-identical to our own last write is a
-  // genuine external change and wins.
+  // Another context could change the library while this page is open. Anything not
+  // byte-identical to our own last write is a genuine external change and wins.
   watchPresetStore((next) => {
     if (JSON.stringify(toPlainStore(next)) === lastWritten) return;
     store = next;
@@ -91,44 +85,36 @@
   let savedTimer: ReturnType<typeof setTimeout> | undefined;
 
   /**
-   * Apply a mutation and persist it, debounced.
+   * Apply a mutation and persist it, debounced. No Save button on purpose: a local editor
+   * with no server round-trip, so an explicit save would be pure friction.
    *
-   * There is no Save button on purpose: this is a local editor with no server
-   * round-trip, so an explicit save would be pure friction. `justSaved` drives a
-   * quiet confirmation instead.
-   *
-   * The write and the confirmation are debounced **separately**, on purpose.
-   * Typing is full of 300 ms lulls, so confirming on every write made
-   * "Enregistré" flash in on almost every keystroke. Slowing the write down to
-   * match would have widened the window in which an edit is unsaved — the wrong
-   * thing to trade for calm. So the write keeps its short debounce and the
-   * confirmation waits for the editor to actually go quiet: one per burst.
+   * The write and the confirmation are debounced **separately**. Typing is full of 300 ms
+   * lulls, so confirming on every write made "Enregistré" flash on almost every keystroke;
+   * slowing the write to match would have widened the window in which an edit is unsaved.
+   * So the write keeps its short debounce and the confirmation waits for quiet: one a burst.
    */
   function commit(next: PresetStore) {
     store = next;
     const seq = ++commitSeq;
     clearTimeout(saveTimer);
-    // A fresh edit withdraws a confirmation that hasn't appeared yet. An
-    // already-*visible* one is left alone: hiding and re-showing it would be
-    // exactly the flicker this is here to remove.
+    // A fresh edit withdraws a confirmation that hasn't appeared yet. An already-visible
+    // one is left alone: hiding and re-showing it is the flicker this exists to remove.
     clearTimeout(confirmTimer);
     saveTimer = setTimeout(() => {
-      // Recorded *before* the write, so the echo is recognised however early it
-      // lands — including synchronously from within `set()`.
+      // Recorded *before* the write, so the echo is recognised however early it lands —
+      // including synchronously from within `set()`.
       lastWritten = JSON.stringify(toPlainStore(store));
-      // Report the outcome rather than assuming it. An earlier version chained
-      // `.finally()`, which does not catch — a rejected write (Firefox refusing
-      // to clone a `$state` proxy) surfaced as "Enregistré" while nothing had
-      // been persisted. Never claim a save that has not resolved.
+      // ⚠ Report the outcome, never assume it. An earlier version chained `.finally()`,
+      // which does not catch, so a rejected write — Firefox refusing to clone a `$state`
+      // proxy — surfaced as "Enregistré" with nothing persisted.
       void savePresetStore(store).then(
         () => {
           // A fixed error stops showing at once; only the good news waits.
           saveError = false;
           confirmTimer = setTimeout(() => {
-            // Clearing the timer above does not cover this on its own: a write
-            // can resolve *after* a newer commit already cleared it, and would
-            // then queue a confirmation from stale state. That newer commit's
-            // own write is the one that gets to confirm.
+            // Clearing the timer above is not enough on its own: a write can resolve
+            // *after* a newer commit cleared it and would queue a confirmation from
+            // stale state. That newer commit's write is the one that gets to confirm.
             if (seq !== commitSeq) return;
             justSaved = true;
             clearTimeout(savedTimer);
@@ -138,8 +124,8 @@
           }, CONFIRM_IDLE_MS);
         },
         (err: unknown) => {
-          // Nothing landed in storage, so no echo is coming — drop the snapshot
-          // rather than leaving it to swallow a later external change.
+          // Nothing landed in storage, so no echo is coming — drop the snapshot rather
+          // than leave it to swallow a later external change.
           lastWritten = null;
           justSaved = false;
           // An earlier write's queued confirmation must not land on top of the
@@ -212,10 +198,7 @@
     selectedId = null;
   }
 
-  /**
-   * Flat "Folder / Subfolder" options for the move dropdown, excluding anywhere
-   * that would create a cycle when moving a folder.
-   */
+  /** Flat "Folder / Subfolder" options, excluding anywhere that would create a cycle. */
   const moveTargets = $derived.by(() => {
     const options: Array<{ id: string | null; label: string }> = [
       { id: null, label: i18n.t('features.bbcodePresets.editor.root') },
@@ -243,11 +226,7 @@
     }
   }
 
-  /**
-   * The `{PROMPT:…}` spelling shown in the help text, built through
-   * `promptToken` rather than written out — the same rule the other two tokens
-   * follow, so the grammar has one home.
-   */
+  /** Built through `promptToken` rather than written out, so the grammar has one home. */
   const promptSample = promptToken(i18n.t('features.bbcodePresets.editor.promptSampleLabel'));
 
   // --- live preview -------------------------------------------------------
@@ -257,10 +236,9 @@
       : renderPreset({
           body: selectedPreset.body,
           selection: i18n.t('features.bbcodePresets.editor.previewSample'),
-          // Prompts stand in for themselves rather than being asked here: the
-          // preview is for checking the template's shape, not exercising it.
-          // Filters still visibly apply to the stand-in, which is the point —
-          // {PROMPT:humeur|upper} shows up shouted.
+          // Prompts stand in for themselves rather than being asked: the preview checks
+          // the template's shape, not its behaviour. Filters still apply to the stand-in,
+          // which is the point — {PROMPT:humeur|upper} shows up shouted.
           answers: Object.fromEntries(
             collectPrompts(selectedPreset.body).map((label) => [
               label,
@@ -445,10 +423,9 @@
   </div>
 
   <!--
-    The message is rendered conditionally, not just faded with a class: a live
-    region only announces when its *content* changes, so text that is always
-    present is never read out — and sits in the accessibility tree at opacity 0
-    the rest of the time, out of context. Empty when idle, filled on a result.
+    Rendered conditionally rather than faded: a live region only announces when its
+    *content* changes, so text always present is never read out — and would sit in the
+    accessibility tree at opacity 0 the rest of the time, out of context.
   -->
   <p
     class="saved"
@@ -633,12 +610,8 @@
     font-weight: 600;
   }
 
-  /*
-   * Only what the shared palette does not already cover. Surfaces, borders, text,
-   * hovers and the warning amber all come from --dlh-* (see palette.css), which flips
-   * itself via .dlh-theme-auto — so this block holds just `danger`, the one semantic
-   * colour local to this editor, plus the two fields the palette does not reach.
-   */
+  /* Only what palette.css does not already cover: `danger`, the one semantic colour
+   * local to this editor, plus the two fields the palette does not reach. */
   @media (prefers-color-scheme: dark) {
     input,
     select,

@@ -1,19 +1,12 @@
 /**
- * The reply page's layout controls: two checkboxes and, once "côte à côte" is
- * on, the side the composer takes.
+ * The reply page's layout controls. A dumb view: the feature owns the store and passes
+ * callbacks in. Built with `.style` on plain DOM nodes rather than Svelte, being small and
+ * static (docs/adr/0016), and following the forum's theme through `setDark`.
  *
- * ⚠ The bar is mounted **outside `<form id="postform">`**, above it. Anything
- * with a `name` inside that form is POSTed to phpBB, and anything that is not
- * `type="button"` submits it (CLAUDE.md, `createFormatButton`); keeping the
- * whole control out of the form makes both hazards unreachable rather than
- * remembered. The inputs live in a shadow root as well, so they are not form
- * controls of anything.
- *
- * Built with `.style` on plain DOM nodes rather than Svelte — it is small and
- * static, exactly the case docs/adr/0016 keeps out of the shadow-root Svelte
- * path — and follows the forum's own theme through `setDark`, never the OS's.
- *
- * A dumb view: the feature owns the store and passes callbacks in.
+ * ⚠ The bar is mounted **outside `<form id="postform">`**, above it. Anything with a `name`
+ * inside that form is POSTed to phpBB and anything not `type="button"` submits it, so
+ * keeping the whole control out makes both hazards unreachable rather than remembered. The
+ * inputs sit in a shadow root as well, so they are not form controls of anything.
  */
 import { i18n } from '#i18n';
 import type { ComposerSide, LayoutPrefs } from '@/lib/composer-layout';
@@ -33,9 +26,7 @@ export interface LayoutControls {
   destroy(): void;
 }
 
-/**
- * Mount the bar immediately before `anchor` (the composer form).
- */
+/** Mounts the bar immediately before `anchor` (the composer form). */
 export function createLayoutControls(
   anchor: HTMLElement,
   handlers: LayoutControlHandlers,
@@ -84,8 +75,8 @@ export function createLayoutControls(
     handlers.onFullWidth,
   );
 
-  // The side picker only means anything while the columns are side by side, so
-  // it appears with them rather than sitting there inert.
+  // The side picker only means anything while the columns are side by side, so it
+  // appears with them rather than sitting there inert.
   const sideGroup = styled(
     document.createElement('span'),
     'display:none;align-items:center;gap:10px;',
@@ -98,8 +89,8 @@ export function createLayoutControls(
     const label = mkLabel();
     const input = document.createElement('input');
     input.type = 'radio';
-    // A `name` is safe here and does the grouping: these live in a shadow root
-    // outside the form, so they are not form controls of `#postform`.
+    // A `name` is safe here and does the grouping: these live in a shadow root outside
+    // the form, so they are not form controls of `#postform`.
     input.name = 'dlh-composer-side';
     input.addEventListener('change', () => {
       if (input.checked) handlers.onComposerSide(side);

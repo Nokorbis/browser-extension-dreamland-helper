@@ -3,18 +3,14 @@ import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/s
 import { isDarkTheme } from '@/lib/phpbb';
 
 /**
- * The "server unavailable" confirmation the exit guard shows when the pre-send
- * reachability check fails. This is the extension's first in-page UI, so it is
- * deliberately self-contained: a Shadow DOM host (to isolate it from phpBB's
- * CSS) styled entirely through the `.style` property — never an injected
- * `<style>` tag — so a page `style-src` CSP can't strip it. See
- * docs/adr/0011-presend-server-reachability-check.md.
+ * The "server unavailable" confirmation shown when the pre-send reachability check fails
+ * (docs/adr/0011). A Shadow DOM host styled through `.style` rather than an injected
+ * `<style>`, so a page `style-src` CSP can't strip it.
  *
- * The default / focused button is "Rester sur la page" (safe): a reflexive
- * Enter, Space, Escape or backdrop click keeps the draft. "Continuer quand
- * même" is the deliberate escape hatch for a false-positive check. This modal
- * is shared by all three guarded submits (post, preview, save-draft), so its
- * copy is deliberately action-neutral.
+ * The default and focused button is the safe one, "Rester sur la page", so a reflexive
+ * Enter, Space, Escape or backdrop click keeps the draft; "Continuer quand même" is the
+ * escape hatch for a false positive. Shared by all three guarded submits, hence
+ * action-neutral copy.
  */
 export interface ServerDownModalHandlers {
   /** User chose to stay on the page (default / safe). */
@@ -26,11 +22,9 @@ export interface ServerDownModalHandlers {
 export function showServerDownModal(handlers: ServerDownModalHandlers): () => void {
   const { host, shadow } = createShadowHost();
 
-  // Follow the *forum's* theme, like every other in-page surface. This modal used to
-  // hardcode a white card, which meant a light dialog flashing over a dark forum at the
-  // worst possible moment — the reader is about to lose a long post. Read once rather
-  // than watched: the modal is transient, and a theme switch underneath it would mean
-  // the user went looking for the toggle instead of answering the question.
+  // Follow the *forum's* theme: this used to hardcode a white card, flashing a light
+  // dialog over a dark forum at the worst possible moment. Read once rather than
+  // watched, since the modal is transient.
   const chrome = chromeFor(isDarkTheme());
 
   const backdrop = styled(
@@ -46,8 +40,8 @@ export function showServerDownModal(handlers: ServerDownModalHandlers): () => vo
       `border-radius:10px;background:${chrome.surface};color:${chrome.fg};` +
       `box-shadow:0 10px 40px ${chrome.shadow};`,
   );
-  // A real dialog for assistive tech: without these it announces as an unlabelled group
-  // and the reader gets no signal that the page behind it is inert.
+  // A real dialog for assistive tech: without these it announces as an unlabelled
+  // group, with no signal that the page behind it is inert.
   dialog.setAttribute('role', 'dialog');
   dialog.setAttribute('aria-modal', 'true');
 
@@ -69,8 +63,8 @@ export function showServerDownModal(handlers: ServerDownModalHandlers): () => vo
     'display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;',
   );
 
-  // The accent stays fixed in both themes: it is the safe, default action, and the
-  // palette's own accent already shifts for dark. White-on-accent reads either way.
+  // The accent stays fixed in both themes: white-on-accent reads either way, and the
+  // palette's own accent already shifts for dark.
   const stayButton = styled(
     document.createElement('button'),
     'cursor:pointer;padding:9px 16px;border-radius:6px;border:none;' +
@@ -111,10 +105,9 @@ export function showServerDownModal(handlers: ServerDownModalHandlers): () => vo
       return;
     }
 
-    // Keep Tab inside the dialog. Without this it walks straight out into the composer
-    // behind — a page the modal is telling the reader not to act on yet — and there is
-    // no visible way back. Only two stops, so the cycle is written out rather than
-    // computed from a focusable-element query.
+    // Keep Tab inside the dialog, or it walks out into the composer behind — a page the
+    // modal is telling the reader not to act on — with no visible way back. Only two
+    // stops, so the cycle is written out rather than computed.
     if (event.key !== 'Tab') return;
     // `document.activeElement` reports the shadow *host* for anything focused inside a
     // shadow root; the root's own `activeElement` is the one that resolves.

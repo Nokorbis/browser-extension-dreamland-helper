@@ -1,25 +1,13 @@
 /**
- * The draft store: a snapshot of what the writer has in the composer, kept so a
- * crash, a killed tab, a reflex click on "Leave" or a submit phpBB refuses can't
- * take a 45-minute roleplay post with it.
+ * The draft store: a snapshot of what the writer has in the composer, kept so a crash, a
+ * killed tab or a submit phpBB refuses can't take a 45-minute roleplay post with it.
+ * Follows the store idiom in `@/lib/store-kit` (docs/adr/0012).
  *
- * This is the third *data* a feature owns, after `@/lib/presets` and
- * `@/lib/highlights`, and it follows their idiom (docs/adr/0012-feature-owned-data-stores.md):
- * its own `browser.storage.local` key, the `version` carried **inside** the
- * payload, a **flat** id-keyed record, a repair pass on every read, and pure
- * `store → store` mutations.
- *
- * ⚠ One deliberate departure from the other two: **a draft's id is not minted**.
- * It is the composer key — `reply:3071`, `new:68`, `edit:201246` — because
- * identity here has to be *derivable*: a composer reopening on the same thread
- * must find its own draft without having been told which one it is. So there is
- * no `newId` re-export, and `draftKey` below is the whole of that contract.
- *
- * `draftKey` lives here, beside the store, rather than in the feature that uses
- * it: a store's **identity function belongs with the store**, so the rule that
- * mints a key and the repair pass that validates one cannot drift apart, and
- * `drafts.test.ts` exercises both together. It is not a leftover from when the
- * autosave feature was separate — don't move it into `exit-guard/`.
+ * ⚠ One deliberate departure: **a draft's id is not minted**, it is the composer key
+ * (`reply:3071`, `new:68`, `edit:201246`) — identity here has to be *derivable* so a
+ * composer reopening on the same thread finds its own draft. `draftKey` is the whole of
+ * that contract, and it lives here beside the repair pass that validates it so the two
+ * cannot drift apart. It is not a leftover from when autosave was a separate feature.
  */
 import { warn } from '@/lib/log';
 import type { ComposerParams } from '@/lib/phpbb';
@@ -33,17 +21,15 @@ import {
   watchStore,
 } from '@/lib/store-kit';
 
-/** Storage key. Separate from `settings`, `bbcodePresets` and `highlights` — see docs/adr/0012. */
 export const DRAFTS_KEY = 'drafts';
 
 /** Bump only alongside a migration in `MIGRATIONS`. */
 export const DRAFTS_SCHEMA_VERSION = 1;
 
 /**
- * Retention. Roleplay posts are long and `storage.local` has a quota, so the
- * store is capped on both axes: the most recent `MAX_DRAFTS`, and nothing older
- * than `MAX_DRAFT_AGE_MS`. Pruning happens on **write and on boot**, never
- * inside `normalizeDraftStore` — see the note there.
+ * Retention. Roleplay posts are long and `storage.local` has a quota, so the store is capped
+ * on both axes. Pruning happens on **write and on boot**, never inside
+ * `normalizeDraftStore` — see the note there.
  */
 export const MAX_DRAFTS = 10;
 export const MAX_DRAFT_AGE_MS = 15 * 24 * 60 * 60 * 1000; // 15 days
@@ -60,11 +46,10 @@ export interface Draft {
   /** Last capture (ms). Sort key for retention and the "il y a…" label. */
   savedAt: number;
   /**
-   * When `exit-guard` last drove a genuine post with this draft in the composer,
-   * or `0`. **Not** proof the post landed: the reachability preflight only shows
-   * the server answered a HEAD, and a stale `form_token` still bounces. The mark
-   * is consumed by `dropSubmitted` once a topic page loads, which is the real
-   * success signal.
+   * When `exit-guard` last drove a genuine post with this draft in the composer, or `0`.
+   * **Not** proof the post landed: the reachability preflight only shows the server answered
+   * a HEAD, and a stale `form_token` still bounces. Consumed by `dropSubmitted` once a topic
+   * page loads, which is the real success signal.
    */
   submittedAt: number;
 }
@@ -74,7 +59,7 @@ export interface DraftStore {
   drafts: Record<string, Draft>;
 }
 
-/** A fresh empty store. A factory, not a shared constant, so callers can't alias it. */
+/** A factory, not a shared constant, so callers can't alias it. */
 export function emptyDraftStore(): DraftStore {
   return { version: DRAFTS_SCHEMA_VERSION, drafts: {} };
 }
@@ -84,21 +69,16 @@ export function emptyDraftStore(): DraftStore {
 // ---------------------------------------------------------------------------
 
 /**
- * The draft key for a composer, or `null` when this page has no draftable
- * composer — which the feature reads as "do nothing here".
+ * The draft key for a composer, or `null` when this page has no draftable composer — which
+ * the feature reads as "do nothing here". Getting it wrong shows up as one thread's draft
+ * offered on another, hence the mode-by-mode coverage in `drafts.test.ts`.
  *
- * Pure, so the whole keying contract is testable without a browser. Getting it
- * wrong shows up as one thread's draft offered on another, which is why it is
- * exercised mode by mode in `drafts.test.ts`.
+ * `quote` normalises to `reply`: both produce a *new post in the same thread*, so a writer
+ * who starts via "Citer" and returns via "Répondre" must find the same draft. `edit` keys on
+ * the post id instead — a different document.
  *
- * `quote` normalises to `reply`: both routes produce a *new post in the same
- * thread*, so a writer who starts via "Citer" and comes back via "Répondre"
- * must find the same draft. `edit` keys on the post id instead — editing an
- * existing post is a different document from replying to its thread.
- *
- * A mode we don't recognise (phpBB's `smilies`, `delete`, …) and a mode missing
- * its id component both yield `null` rather than a partial key, because a key
- * like `reply:` would collide across every thread on the forum.
+ * An unrecognised mode, or one missing its id, yields `null` rather than a partial key like
+ * `reply:`, which would collide across every thread on the forum.
  */
 export function draftKey(params: ComposerParams): string | null {
   const { mode, t, f, p } = params;
@@ -119,10 +99,7 @@ export function draftKey(params: ComposerParams): string | null {
 // Normalization
 // ---------------------------------------------------------------------------
 
-/**
- * Version-to-version upgrades, keyed by the version being upgraded *from*.
- * Empty at v1; the plumbing exists so the first migration is a one-line change.
- */
+/** Keyed by the version being upgraded *from*. Empty at v1. */
 const MIGRATIONS: Record<number, (store: DraftStore) => DraftStore> = {};
 
 function readSavedAt(value: unknown): number {
@@ -131,19 +108,13 @@ function readSavedAt(value: unknown): number {
 }
 
 /**
- * Parse and repair whatever is in storage.
+ * Parse and repair whatever is in storage; never throws. A draft with nothing to restore is
+ * dropped rather than kept — unlike a misfiled preset it has no sensible fallback, and
+ * offering an empty draft is worse than offering none.
  *
- * Runs on **every** load and every change notification, like the other stores'
- * repair passes. A draft with nothing to restore — no key, or an empty subject
- * *and* an empty body — is dropped rather than kept: unlike a misfiled preset it
- * has no sensible fallback, and offering an empty draft would be worse than
- * offering none. It never throws.
- *
- * ⚠ Deliberately **deterministic** — no `Date.now()` here. Age-based retention
- * needs the clock, so it lives in `pruneDrafts`, which takes `now` as a
- * parameter and is called from the write path. Reading the clock inside a
- * function that runs on every storage notification would make the repair pass
- * untestable and its results depend on when you looked.
+ * ⚠ Deliberately **deterministic** — no `Date.now()` here. Age-based retention lives in
+ * `pruneDrafts`, which takes `now` as a parameter. Reading the clock in a function that runs
+ * on every storage notification would make the repair pass untestable.
  */
 export function normalizeDraftStore(raw: unknown): DraftStore {
   if (!isRecord(raw)) return emptyDraftStore();
@@ -199,15 +170,7 @@ export async function loadDraftStore(): Promise<DraftStore> {
   return loadStore(DRAFTS_KEY, normalizeDraftStore);
 }
 
-/**
- * Rebuild the store as plain objects holding only known fields.
- *
- * **This is what makes saving work on Firefox** — the popup panel holds a store
- * in Svelte `$state`, which deep-proxies it, and a `Proxy` is not
- * structured-cloneable (Firefox throws `DataCloneError` on the way into
- * `storage.local`; Chrome silently succeeds). Same rationale as
- * `toPlainHighlightStore` in `@/lib/highlights`.
- */
+/** Plain objects only: a Svelte `$state` Proxy is not cloneable and Firefox throws. */
 export function toPlainDraftStore(store: DraftStore): DraftStore {
   const drafts: Record<string, Draft> = {};
   for (const d of Object.values(store.drafts)) {
@@ -227,11 +190,7 @@ export async function saveDraftStore(store: DraftStore): Promise<void> {
   await saveStore(DRAFTS_KEY, toPlainDraftStore(store));
 }
 
-/**
- * Observe the store from any context — content script or popup. Returns an
- * unsubscriber; wire it into the feature's cleanup. The area filter and the
- * choice of the top-level `onChanged` live in `watchStore`.
- */
+/** Returns an unsubscriber; wire it into the feature's cleanup. */
 export function watchDraftStore(onChange: (store: DraftStore) => void): () => void {
   return watchStore(DRAFTS_KEY, normalizeDraftStore, onChange);
 }
@@ -240,7 +199,7 @@ export function watchDraftStore(onChange: (store: DraftStore) => void): () => vo
 // Derived views (pure)
 // ---------------------------------------------------------------------------
 
-/** Every draft, most recently saved first — retention order, and the popup's order. */
+/** Most recently saved first — retention order, and the popup's. */
 export function allDrafts(store: DraftStore): Draft[] {
   return Object.values(store.drafts).sort(
     (a, b) => b.savedAt - a.savedAt || a.id.localeCompare(b.id),
@@ -277,13 +236,9 @@ export interface PruneOptions {
 }
 
 /**
- * Apply retention: keep the `max` most recently saved drafts, then drop anything
- * saved more than `maxAgeMs` ago.
- *
- * `now` is a parameter rather than a `Date.now()` call so this stays pure and
- * unit-testable — the same reason the mutations take an id instead of minting
- * one. Returns the **same reference** when nothing was dropped, which is what
- * lets callers skip a pointless write.
+ * Keep the `max` most recently saved drafts, then drop anything older than `maxAgeMs`.
+ * `now` is a parameter so this stays pure and unit-testable. Returns the **same reference**
+ * when nothing was dropped, which lets callers skip a pointless write.
  */
 export function pruneDrafts(
   store: DraftStore,
@@ -299,10 +254,9 @@ export function pruneDrafts(
 }
 
 /**
- * Insert or replace the draft under `draft.id`, then apply retention.
- *
- * Writing always clears `submittedAt`: the writer is back in this composer
- * typing, so whatever the last submit did, this text has not been posted.
+ * Insert or replace the draft under `draft.id`, then apply retention. Always clears
+ * `submittedAt`: the writer is back in this composer typing, so whatever the last submit
+ * did, this text has not been posted.
  */
 export function putDraft(
   store: DraftStore,
@@ -335,12 +289,10 @@ export function clearAllDrafts(store: DraftStore): DraftStore {
 }
 
 /**
- * Stamp a draft as "handed to a submit we believe went out".
- *
- * Deliberately not a delete: `exit-guard` calls this the moment it re-fires the
- * form, which is *before* phpBB has accepted anything. An expired `form_token`
- * — the loss this whole feature exists for — bounces at exactly that point, and
- * a draft deleted here would be gone for good.
+ * Stamp a draft as "handed to a submit we believe went out". Deliberately not a delete:
+ * `exit-guard` calls this the moment it re-fires the form, *before* phpBB has accepted
+ * anything — and an expired `form_token`, the loss this feature exists for, bounces at
+ * exactly that point.
  */
 export function markSubmitted(store: DraftStore, key: string, now: number): DraftStore {
   const draft = store.drafts[key];
@@ -351,13 +303,13 @@ export function markSubmitted(store: DraftStore, key: string, now: number): Draf
 }
 
 /**
- * Drop every draft carrying a submit mark — called when a topic page loads,
- * which is the point at which the post demonstrably went through.
+ * Drop every draft carrying a submit mark — called when a topic page loads, the point at
+ * which the post demonstrably went through.
  *
- * It clears *all* marks, not just the current topic's: after posting a **new
- * topic** the browser lands on a `t` the `new:<f>` key never knew about, so
- * matching by topic would leave that draft behind forever. A mark only exists
- * between a submit and the next topic view, so there is nothing else to catch.
+ * It clears *all* marks, not just the current topic's: after posting a **new topic** the
+ * browser lands on a `t` the `new:<f>` key never knew about, so matching by topic would
+ * leave that draft behind forever. A mark only exists between a submit and the next topic
+ * view, so there is nothing else to catch.
  */
 export function dropSubmitted(store: DraftStore): DraftStore {
   const survivors = Object.values(store.drafts).filter((d) => d.submittedAt === 0);
@@ -370,13 +322,8 @@ export function dropSubmitted(store: DraftStore): DraftStore {
 // ---------------------------------------------------------------------------
 
 /**
- * The two whole-store operations the feature performs from a page event, each
- * packaging the load/mutate/save dance so a caller in the middle of handling a
- * submit or a page load doesn't have to spell it out.
- *
- * Both **skip the write entirely** when the pure mutation was a no-op — no draft
- * under that key, or nothing marked — so calling them speculatively costs one
- * read and nothing else.
+ * The two whole-store operations the feature performs from a page event. Both **skip the
+ * write** when the pure mutation was a no-op, so calling them speculatively costs one read.
  */
 export async function markDraftSubmitted(key: string): Promise<void> {
   const store = await loadDraftStore();

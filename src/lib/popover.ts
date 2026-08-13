@@ -1,32 +1,16 @@
 /**
- * An **anchored popover**: a Svelte surface in a shadow root that hangs off a
- * trigger button living in the page's light DOM.
+ * An **anchored popover**: a Svelte surface in a shadow root hanging off a trigger button in
+ * the page's light DOM. Shared by `bbcode-presets`' menu and `emoji-picker`'s panel; see
+ * docs/adr/0023.
  *
- * Two features want exactly this — `bbcode-presets`' toolbar menu and
- * `emoji-picker`'s panel — and before this module they each carried their own
- * copy of the same seven concerns, comments included. See
- * docs/adr/0023-shared-primitives-in-lib.md.
+ * The surface is `position: fixed` and reads its viewport coordinates from two custom
+ * properties published on the shadow *host* — measuring in JS keeps it correct whatever the
+ * skin does to the toolbar row and lets it escape an `overflow: hidden` ancestor, and custom
+ * properties are one of the few things WXT's `all: initial` host reset lets through the
+ * boundary. Dismissal, scroll-following and the async mount are handled here too.
  *
- * What is genuinely the same every time, and lives here:
- *
- *  - **Positioning.** The surface is `position: fixed` and reads its viewport
- *    coordinates from two custom properties published on the shadow *host*.
- *    Measuring the trigger in JS rather than styling from CSS keeps the surface
- *    correct whatever the skin does to the toolbar row, and lets it escape an
- *    `overflow: hidden` ancestor. Custom properties are one of the few things
- *    WXT's `all: initial` host reset deliberately lets through the boundary.
- *  - **Dismissal.** Outside click, Escape, and the distinction between the two
- *    (see `onClose` / `onDismiss` below).
- *  - **Following the page.** A fixed surface does not scroll with its anchor.
- *  - **The mount.** `createShadowRootUi` is async while `setup()` returns its
- *    cleanup synchronously, so a fast navigation can land between the two.
- *
- * What stays at the call site, because it genuinely differs: what the trigger
- * looks like, what opening means for the feature's state, `aria-expanded`, and
- * whether the surface is kept inside the viewport (`fit`).
- *
- * This module knows nothing about phpBB or about any feature — it is anchoring
- * arithmetic and event plumbing, which is why it is in `src/lib`.
+ * What stays at the call site: the trigger's appearance, what opening means for the
+ * feature's state, `aria-expanded`, and whether to keep the surface on screen (`fit`).
  */
 import {
   createShadowRootUi,
@@ -40,29 +24,21 @@ import { warn } from './log';
 const GAP = 4;
 
 /**
- * Keep the surface inside the viewport.
- *
- * Only worth paying for when the trigger can sit near an edge — the Tribune's
- * chatbox toolbar is at the very bottom of the page, where a surface opening
- * downwards would fall off entirely. Both adjustments need the rendered box, so
- * they are one option rather than two: without a `fit` the surface is simply
- * placed below and left-aligned with its trigger, and nothing is measured.
+ * Keep the surface inside the viewport. Only worth paying for when the trigger can sit near
+ * an edge — the Tribune's toolbar is at the very bottom of the page. Flip and clamp both
+ * need the rendered box, so they are one option rather than two: without a `fit` the surface
+ * is placed below and left-aligned with its trigger and nothing is measured.
  */
 export interface PopoverFit {
   /**
-   * Selects the positioned element *inside* the shadow root, e.g. `.panel`.
-   * Measured rather than assumed from its CSS `width`, which is typically in
-   * `rem` — and so depends on the forum's root font size — and can shrink
-   * further under its own `max-width`.
+   * Selects the positioned element *inside* the shadow root, e.g. `.panel`. Measured rather
+   * than read off its CSS `width`, which is typically in `rem` — so it depends on the
+   * forum's root font size — and can shrink further under its own `max-width`.
    */
   selector: string;
 }
 
-/**
- * `App` is whatever `render` hands back — Svelte's mounted-app handle at both
- * current call sites. Generic rather than `unknown` purely so `destroy` receives
- * it without a cast; nothing here inspects it.
- */
+/** `App` is whatever `render` hands back; generic only so `destroy` takes it without a cast. */
 export interface PopoverOptions<App> {
   ctx: ContentScriptContext;
   /** Shadow-host element name, e.g. `dlh-emoji-picker-chat`. Must be unique per surface. */
@@ -83,15 +59,14 @@ export interface PopoverOptions<App> {
   /** True once the feature's cleanup has run — checked across every `await`. */
   isDisposed: () => boolean;
   /**
-   * Close **without** touching focus. Used for the outside-click path: pulling
-   * focus back there would fight the click the user just made.
+   * Close **without** touching focus, for the outside-click path: pulling focus back would
+   * fight the click the user just made.
    */
   onClose: () => void;
   /**
-   * Close **and** restore focus to the writing surface. Used for Escape, and
-   * the reason this is a separate callback: the surface takes focus when it
-   * opens, so closing it without this leaves focus on a hidden node and the
-   * caret nowhere.
+   * Close **and** restore focus to the writing surface, for Escape. Separate from `onClose`
+   * because the surface takes focus when it opens, so closing without this leaves focus on a
+   * hidden node and the caret nowhere.
    */
   onDismiss: () => void;
   /** Called on click and on the trigger's own keyboard activation. */
@@ -106,17 +81,15 @@ export interface Popover {
   /** Measure the trigger and publish the surface's position. No-op before the mount lands. */
   position(): void;
   /**
-   * `position()` now, and again on the next frame — the surface's rendered size
-   * is 0 until Svelte has drawn it, which both `fit` adjustments need. Call
-   * this on open, and after anything that changes the surface's height while it
-   * is open (a surface flipped above its trigger is anchored by its bottom edge,
-   * so it drifts otherwise).
+   * `position()` now, and again on the next frame — the rendered size is 0 until Svelte has
+   * drawn the surface, which both `fit` adjustments need. Call on open, and after anything
+   * that changes the surface's height while open: one flipped above its trigger is anchored
+   * by its bottom edge, so it drifts otherwise.
    */
   positionSoon(): void;
   /**
-   * The surface's shadow root, or `null` before the mount lands. For reaching a
-   * node inside it imperatively — remember that focus checks there must use
-   * `root.activeElement`, not `document.activeElement`.
+   * `null` before the mount lands. Focus checks against it must use `root.activeElement`,
+   * not `document.activeElement`.
    */
   shadow(): ShadowRoot | null;
   /** Tear down the shadow UI. The listeners go with the `signal`. */
@@ -128,14 +101,13 @@ export function createPopover<App>(options: PopoverOptions<App>): Popover {
 
   let ui: ShadowRootContentScriptUi<App> | null = null;
 
-  // Measure, delegate the arithmetic, assign. The geometry itself lives in
-  // `@/lib/anchor-position`, shared with the highlight toolbar and unit-tested there.
+  // Measure, delegate the arithmetic to `@/lib/anchor-position`, assign.
   const position = () => {
     if (ui === null) return;
     const rect = trigger.getBoundingClientRect();
 
-    // Both read 0 until Svelte has drawn the surface, which `placeAnchored` treats as
-    // "nothing to fit yet" — `positionSoon` comes back for it on the next frame.
+    // Reads 0 until Svelte has drawn the surface; `placeAnchored` treats that as
+    // "nothing to fit yet" and `positionSoon` comes back for it on the next frame.
     const box =
       fit === undefined ? null : ui.shadow.querySelector<HTMLElement>(fit.selector);
 
@@ -167,8 +139,8 @@ export function createPopover<App>(options: PopoverOptions<App>): Popover {
     'pointerdown',
     (event) => {
       if (!isOpen()) return;
-      // event.target is retargeted to the shadow host for anything inside the
-      // shadow root, so composedPath() is the only reliable containment test.
+      // event.target is retargeted to the shadow host, so composedPath() is the
+      // only reliable containment test.
       const path = event.composedPath();
       if (path.includes(trigger)) return;
       if (ui !== null && path.includes(ui.shadowHost)) return;
@@ -177,9 +149,9 @@ export function createPopover<App>(options: PopoverOptions<App>): Popover {
     { capture: true, signal },
   );
 
-  // Only fires while focus is *outside* the shadow root — `isolateEvents` below
-  // stops key events escaping it, so the in-surface case is handled by the
-  // component calling `onclose`. Both paths must dismiss identically.
+  // Only fires while focus is *outside* the shadow root: `isolateEvents` below stops key
+  // events escaping it, so in-surface Escape arrives via the component's own `onclose`.
+  // Both paths must dismiss identically.
   document.addEventListener(
     'keydown',
     (event) => {
@@ -197,9 +169,8 @@ export function createPopover<App>(options: PopoverOptions<App>): Popover {
   document.addEventListener('scroll', reposition, { capture: true, signal });
   window.addEventListener('resize', reposition, { signal });
 
-  // createShadowRootUi is async (it fetches the built CSS) while setup() hands
-  // back its cleanup synchronously, so the `isDisposed` check after the await is
-  // what stops a fast navigation from leaking a mounted UI.
+  // createShadowRootUi is async while setup() hands back its cleanup synchronously, so
+  // the `isDisposed` check after the await stops a fast navigation leaking a mounted UI.
   void (async () => {
     try {
       const created = await createShadowRootUi<App>(options.ctx, {
@@ -217,9 +188,8 @@ export function createPopover<App>(options: PopoverOptions<App>): Popover {
 
       ui = created;
       ui.mount();
-      // The host is only a carrier for the shadow root: the surface inside is
-      // `position: fixed`, so the host itself must take up no layout space in
-      // the toolbar row.
+      // The surface inside is `position: fixed`, so its host must take up no
+      // layout space in the toolbar row.
       ui.shadowHost.style.display = 'inline-block';
       ui.shadowHost.style.width = '0';
       ui.shadowHost.style.height = '0';

@@ -19,9 +19,8 @@
   const isEmpty = $derived(countPresets(panel.store) === 0 && tree.folders.length === 0);
 
   /**
-   * The panel reuses the options page's `FolderTree`, which reports a click on
-   * either kind of row. Only presets do anything here; clicking a folder is a
-   * no-op because the tree always shows every level expanded.
+   * `FolderTree` reports a click on either kind of row. Only presets do anything here;
+   * clicking a folder is a no-op, since the tree always shows every level expanded.
    */
   function handleSelect(kind: 'folder' | 'preset', id: string) {
     if (kind !== 'preset') return;
@@ -31,9 +30,8 @@
 </script>
 
 <!--
-  A second way into the same presets, pinned beside the editor. Collapsed to a
-  slim handle by default so it costs no space until asked for; the state is
-  remembered across pages in its own storage key.
+  A second way into the same presets, pinned beside the editor. Collapsed to a slim
+  handle by default so it costs no space until asked for.
 -->
 <aside class="dlh-theme" class:dark={panel.dark} class:expanded={panel.open}>
   <button
@@ -52,10 +50,8 @@
 
   {#if panel.open}
     <!--
-      Capture mousedown for the whole tree and preventDefault it, so clicking a
-      preset never moves focus out of the textarea. That is what keeps the
-      writer's selection alive across the click — the same trick the toolbar
-      trigger uses.
+      mousedown is captured and preventDefault-ed across the whole tree, so clicking a
+      preset never moves focus out of the textarea and the writer's selection survives.
     -->
     <div class="body" onmousedowncapture={(event) => event.preventDefault()}>
       {#if isEmpty}

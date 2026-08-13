@@ -17,14 +17,10 @@
   });
 
   /**
-   * Flip a feature, optimistically, then report the outcome rather than assume it.
-   *
-   * The checkbox moves first because a storage write is fast and the alternative is a
-   * visibly laggy control. But an optimistic update that is never reconciled is just a
-   * UI that lies: a rejected write (Firefox refusing to clone a `$state` proxy is the
-   * one that bit this project before) would leave the box ticked with nothing persisted.
-   * So a failure puts the box back and says so — the same stance as the options page's
-   * `commit`, which is where that lesson was learned. See CLAUDE.md.
+   * Flip optimistically, then report the outcome rather than assume it. The checkbox moves
+   * first because the alternative is a visibly laggy control, but an optimistic update never
+   * reconciled is a UI that lies: a rejected write — Firefox refusing to clone a `$state`
+   * proxy is the one that bit this project — would leave the box ticked with nothing saved.
    */
   async function toggle(id: string, next: boolean) {
     const previous = enabled[id] ?? false;
@@ -39,10 +35,8 @@
     }
   }
 
-  // The cog is a plain link to the options page — where the preset editor and
-  // the backup section both live. Nothing that needs a native dialog can run
-  // in the popup, which closes the moment one steals focus.
-  // See docs/adr/0021-json-export-import.md.
+  // The cog is a plain link to the options page: nothing needing a native dialog can
+  // run in the popup, which closes the moment one steals focus. See docs/adr/0021.
   function openOptions() {
     void browser.runtime.openOptionsPage();
   }
@@ -68,10 +62,9 @@
       <li class:disabled={!feature.implemented}>
         {#if Panel !== undefined}
           <!--
-            A feature with settings gets a disclosure row. The checkbox sits
-            OUTSIDE the <details> on purpose: inside <summary> its click would
-            also toggle the disclosure. Separate hit-areas beat stopPropagation.
-            Native <details> also gives us keyboard support for free.
+            The checkbox sits OUTSIDE the <details> on purpose: inside <summary> its
+            click would also toggle the disclosure, and separate hit-areas beat
+            stopPropagation. Native <details> gives keyboard support for free.
           -->
           <div class="row">
             <input
@@ -117,8 +110,7 @@
   <p class="hint">{i18n.t('popup.reloadHint')}</p>
   <!--
     Rendered conditionally rather than faded with a class: a live region only announces
-    when its *content* changes, so text that is always present is never read out. Same
-    reasoning as the options page's save status.
+    when its *content* changes, so text always present is never read out.
   -->
   <p class="save-failed" role="status" aria-live="polite">
     {#if saveFailed}{i18n.t('popup.saveFailed')}{/if}

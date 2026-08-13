@@ -1,27 +1,17 @@
 /**
- * The preset placeholder engine.
- *
- * A preset body is plain BBCode with three placeholders woven in — `{SELECTION}`,
- * which stands for whatever the writer had selected, `{CURSOR}`, which marks
- * where the caret should land afterwards, and `{PROMPT:label}`, which is asked
- * for at insertion time:
+ * The preset placeholder engine. A preset body is BBCode with three placeholders woven in —
+ * `{SELECTION}`, `{CURSOR}` and `{PROMPT:label}`:
  *
  *     [b][color=#123456]{SELECTION|upper}[/color][/b], à {PROMPT:lieu}{CURSOR}
  *
- * This module turns that body, the current selection and the answers to any
- * prompts into the literal text to insert and the caret position to leave
- * behind. It is deliberately **pure** and DOM-free: the caller reads the
- * selection, asks `collectPrompts` what to put on the form, collects the
- * answers, calls `renderPreset`, and hands the result to `insertAtRange` in
- * `@/lib/textarea`. That split is what lets the whole grammar be unit-tested
- * even though prompting needs an in-page dialog, and what will let a future
- * keyboard-shortcut feature reuse this engine for plain BBCode tags.
+ * Deliberately **pure** and DOM-free: the caller reads the selection, asks `collectPrompts`
+ * what to put on the form, collects the answers, calls `renderPreset` and hands the result
+ * to `insertAtRange`. That split is what makes the grammar unit-testable even though
+ * prompting needs an in-page dialog.
  *
- * The syntax is a **frozen user-facing contract** — people type it into preset
- * bodies that are saved in their browser, so changing its meaning silently
- * rewrites their presets. Every degradation rule below is deliberate and
- * documented in docs/adr/0015-preset-placeholder-syntax.md, extended by
- * docs/adr/0026-prompted-preset-placeholders.md.
+ * ⚠ The syntax is a **frozen user-facing contract** — people type it into preset bodies
+ * saved in their browser, so changing its meaning silently rewrites their presets. Every
+ * degradation rule below is deliberate; see docs/adr/0015 and docs/adr/0026.
  */
 
 /** The selection placeholder, verbatim. Referenced from help text — never hardcode it. */
@@ -33,11 +23,7 @@ export const CURSOR_TOKEN = '{CURSOR}';
 /** What a prompt placeholder opens with, verbatim. */
 const PROMPT_PREFIX = 'PROMPT:';
 
-/**
- * Build a `{PROMPT:label}` token. The prompt placeholder takes an argument, so
- * it cannot be a constant the way the other two are — help text and the
- * options-page preview go through this rather than spelling it out.
- */
+/** Takes an argument, so it cannot be a constant like the other two. Never hardcode it. */
 export function promptToken(label: string): string {
   return `{${PROMPT_PREFIX}${label}}`;
 }
@@ -51,10 +37,9 @@ export const FILTERS = ['upper', 'lower', 'title', 'trim'] as const;
 export type FilterName = (typeof FILTERS)[number];
 
 /**
- * Something the engine chose to tolerate rather than fail on. Warnings are
- * ignored at insertion time (a typo must never leak `{SELECTION|bold}` into a
- * published post) but surfaced loudly in the options-page preview, where the
- * mistake can still be fixed.
+ * Something the engine tolerated rather than failed on. Ignored at insertion time — a typo
+ * must never leak `{SELECTION|bold}` into a published post — but surfaced loudly in the
+ * options-page preview, where it can still be fixed.
  */
 export type TemplateWarning =
   | { kind: 'unknownFilter'; filter: string }
@@ -67,10 +52,9 @@ export interface RenderInput {
   /** The text currently selected in the editor; empty string when nothing is selected. */
   selection: string;
   /**
-   * What the writer typed for each `{PROMPT:label}`, keyed by the **trimmed**
-   * label — the same strings `collectPrompts` returns. A label with no entry
-   * renders as the empty string, exactly like `{SELECTION}` with nothing
-   * selected; a *cancelled* dialog never calls this function at all.
+   * Keyed by the **trimmed** label — the same strings `collectPrompts` returns. A label with
+   * no entry renders as the empty string, like `{SELECTION}` with nothing selected; a
+   * *cancelled* dialog never calls this function at all.
    */
   answers?: Readonly<Record<string, string>>;
 }
@@ -84,18 +68,12 @@ export interface RenderResult {
   warnings: TemplateWarning[];
 }
 
-/**
- * The filter implementations.
- *
- * All casing goes through the `toLocale*Case('fr')` variants because the forum
- * is French and the plain ASCII versions mishandle some accented forms.
- */
+/** Casing goes through `toLocale*Case('fr')`: the ASCII versions mishandle accented forms. */
 const FILTER_FNS: Record<FilterName, (value: string) => string> = {
   upper: (value) => value.toLocaleUpperCase('fr'),
   lower: (value) => value.toLocaleLowerCase('fr'),
-  // Lowercase first, so the result is the same whether the source was typed
-  // quietly or SHOUTED — the filter is idempotent rather than sensitive to how
-  // the text happened to arrive.
+  // Lowercase first, so the result is the same whether the source was typed quietly
+  // or SHOUTED.
   //
   // Word boundaries are whitespace and hyphens: "jean-pierre" → "Jean-Pierre",
   // because compound names are common here. Apostrophes are deliberately NOT
@@ -116,20 +94,14 @@ const FILTER_FNS: Record<FilterName, (value: string) => string> = {
 };
 
 /**
- * The one grammar, in one place.
+ * The one grammar, in one place. Built fresh on every call: a module-level /g regex carries
+ * `lastIndex` between calls, which would make results depend on call order.
  *
- * Built fresh on every call: a module-level /g regex carries `lastIndex`
- * between calls, which would make results depend on call order.
- *
- * Group 1 is the token — `SELECTION`, `CURSOR`, or `PROMPT:` followed by a
- * label. Group 2 is `''` or `'|a|b'`.
- *
- * The label class is `[^{}|]*`, which stops of its own accord at the `|` that
- * opens the filter chain and at the closing `}`. It allows spaces and accents,
- * because these labels are French and read like questions ("Nom du
- * personnage"). It allows *zero* characters on purpose: that is what lets
- * `{PROMPT:}` be matched, so it can be reported as an authoring mistake while
- * still being emitted byte-for-byte literal.
+ * Group 1 is the token, group 2 is `''` or `'|a|b'`. The label class `[^{}|]*` stops of its
+ * own accord at the `|` opening the filter chain and at the closing `}`; it allows spaces
+ * and accents because these labels are French and read like questions, and allows *zero*
+ * characters so `{PROMPT:}` is matched, reported as an authoring mistake, and still emitted
+ * byte-for-byte literal.
  */
 function placeholderPattern(): RegExp {
   return /\{(SELECTION|CURSOR|PROMPT:[^{}|]*)((?:\|[a-z]+)*)\}/g;
@@ -141,17 +113,13 @@ function promptLabel(token: string): string | null {
 }
 
 /**
- * The distinct prompts a body asks for, in the order they appear.
+ * The distinct prompts a body asks for, in the order they appear — the caller builds its
+ * form from this and passes the answers back to `renderPreset`.
  *
- * The pure half of the prompt flow: the caller uses this to build its form,
- * then passes the answers back to `renderPreset`. Keeping it here rather than
- * making the engine ask keeps `renderPreset` DOM-free.
- *
- * Labels are trimmed and **de-duplicated**, so a body mentioning the same label
- * several times — `{PROMPT:lieu}` and `{PROMPT:lieu|upper}` — asks once and
- * fills every occurrence from that one answer. Labels that trim to nothing are
- * left out: they are an authoring mistake, reported by `renderPreset`, not a
- * question anyone can answer.
+ * Labels are trimmed and **de-duplicated**, so a body mentioning `{PROMPT:lieu}` and
+ * `{PROMPT:lieu|upper}` asks once and fills both from that one answer. Labels that trim to
+ * nothing are left out: an authoring mistake `renderPreset` reports, not a question anyone
+ * can answer.
  */
 export function collectPrompts(body: string): string[] {
   const placeholder = placeholderPattern();
@@ -182,8 +150,8 @@ function applyFilters(
     if (isFilterName(filter)) {
       result = FILTER_FNS[filter](result);
     } else {
-      // Skip the unknown filter but keep applying the rest of the chain — a
-      // typo costs you one transformation, not the whole insertion.
+      // Keep applying the rest of the chain — a typo costs one transformation,
+      // not the whole insertion.
       warnings.push({ kind: 'unknownFilter', filter });
     }
   }
@@ -191,12 +159,10 @@ function applyFilters(
 }
 
 /**
- * Render a preset body against the current selection and the prompt answers.
- *
- * Grammar: `{` NAME (`|` filter)* `}` where NAME is `SELECTION`, `CURSOR`
- * (uppercase, exact) or `PROMPT:` plus a label, and each filter is lowercase
- * ASCII. The token names are case-sensitive on purpose, so that BBCode which
- * happens to contain braces — `{color}`, `{Selection}` — is never mangled.
+ * Grammar: `{` NAME (`|` filter)* `}` where NAME is `SELECTION`, `CURSOR` (uppercase, exact)
+ * or `PROMPT:` plus a label, and each filter is lowercase ASCII. The token names are
+ * case-sensitive on purpose, so BBCode containing braces — `{color}`, `{Selection}` — is
+ * never mangled.
  *
  * Degradation rules, all deliberate:
  *
@@ -228,9 +194,8 @@ export function renderPreset({ body, selection, answers }: RenderInput): RenderR
   let caretOffset: number | null = null;
   let consumed = 0;
 
-  // Scan the BODY only, appending substitutions into `text`. Never re-scan what
-  // has been substituted, or a selection — or a prompt answer — containing the
-  // literal string "{SELECTION}" would recurse into itself.
+  // Scan the BODY only. Re-scanning a substitution would make a selection — or a prompt
+  // answer — containing the literal "{SELECTION}" recurse into itself.
   let match: RegExpExecArray | null;
   while ((match = placeholder.exec(body)) !== null) {
     text += body.slice(consumed, match.index);
@@ -242,8 +207,8 @@ export function renderPreset({ body, selection, answers }: RenderInput): RenderR
 
     if (token === 'CURSOR') {
       if (caretOffset === null) {
-        // Recorded while building, not searched for afterwards: a selection
-        // containing the literal "{CURSOR}" would defeat an indexOf().
+        // Recorded while building, not searched for afterwards: a selection containing
+        // the literal "{CURSOR}" would defeat an indexOf().
         caretOffset = text.length;
       } else {
         warnings.push({ kind: 'duplicateCursor' });
@@ -254,10 +219,9 @@ export function renderPreset({ body, selection, answers }: RenderInput): RenderR
     const label = promptLabel(token);
     if (label !== null) {
       if (label === '') {
-        // A question with no wording. Put the token back exactly as it was
-        // typed — a preset that round-tripped untouched before this feature
-        // existed must keep doing so — and report it where it can still be
-        // fixed, in the options-page preview.
+        // A question with no wording. Put the token back exactly as typed — a preset
+        // that round-tripped untouched before this feature existed must keep doing so —
+        // and report it where it can still be fixed.
         text += match[0];
         warnings.push({ kind: 'emptyPromptLabel' });
         continue;

@@ -12,16 +12,10 @@
   import { warn } from '@/lib/log';
 
   /**
-   * The draft panel inside the popup accordion.
-   *
-   * Deliberately minimal: a count and one escape hatch. Restoring a draft needs
-   * the composer it belongs to — the popup can't see the page DOM, and dropping
-   * text into a tab from here would be exactly the silent restore
-   * docs/adr/0027 rules out. So the panel only ever *deletes*.
-   *
-   * Writes go through `saveDraftStore`, whose `toPlainDraftStore` strips Svelte's
-   * `$state` proxy so Firefox doesn't throw `DataCloneError` (see CLAUDE.md), and
-   * live-update every open forum tab via the store watcher.
+   * The draft panel inside the popup accordion: a count and one escape hatch. It only ever
+   * *deletes* — restoring needs the composer a draft belongs to, and the popup cannot see
+   * the page DOM, so dropping text into a tab from here would be exactly the silent restore
+   * docs/adr/0027 rules out.
    */
   let store = $state<DraftStore>(emptyDraftStore());
 

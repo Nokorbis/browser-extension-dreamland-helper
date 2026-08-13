@@ -1,18 +1,10 @@
 /**
- * The reply page's layout preferences: where the composer sits and which way
- * the topic review reads.
+ * Where the composer sits and which way the topic review reads. A small-prefs instance of
+ * the store idiom in `@/lib/store-kit` (docs/adr/0012).
  *
- * A feature that owns *data* gets its own `storage.local` key and its own typed
- * module rather than a field in the settings blob — see
- * docs/adr/0012-feature-owned-data-stores.md. Like `@/lib/emoji-recents` this is
- * a small-prefs instance of that idiom rather than the full record store: the
- * version lives inside the payload, a repair pass runs on every read, and
- * `toPlainLayoutPrefs` rebuilds a plain object inside `saveLayoutPrefs`.
- *
- * The three flags are deliberately independent of `sideBySide`'s own effect:
- * `reverseOrder` always sorts the review oldest-first, and *additionally* moves
- * the composer below it when the columns are stacked. Storing "composer at the
- * bottom" separately would let the two disagree.
+ * The flags are deliberately independent of `sideBySide`: `reverseOrder` always sorts the
+ * review oldest-first and *additionally* moves the composer below it when the columns are
+ * stacked. Storing "composer at the bottom" separately would let the two disagree.
  */
 import { isRecord, loadStore, readInt, runMigrations, saveStore, watchStore } from './store-kit';
 
@@ -29,13 +21,12 @@ export interface LayoutPrefs {
   /** Composer beside the review instead of above or below it. */
   sideBySide: boolean;
   /**
-   * Drop the forum skin's centred fixed width, so the page — one column or two
-   * — spans the window. Independent of `sideBySide`: it widens a stacked layout
-   * just as well.
+   * Drop the skin's centred fixed width so the page spans the window. Independent of
+   * `sideBySide`: it widens a stacked layout just as well.
    */
   fullWidth: boolean;
-  /** Only meaningful while `sideBySide` is on. Kept when it is off, so
-   * re-enabling the column layout restores the side that was chosen. */
+  /** Only meaningful while `sideBySide` is on, but kept when it is off so re-enabling
+   * the column layout restores the side that was chosen. */
   composerSide: ComposerSide;
 }
 
@@ -50,11 +41,7 @@ export function emptyLayoutPrefs(): LayoutPrefs {
   };
 }
 
-/**
- * Migrations keyed by the version being upgraded *from*, mirroring
- * `@/lib/emoji-recents`. Empty at v1; `runMigrations` already runs below so
- * adding one is a single entry rather than a refactor.
- */
+/** Keyed by the version being upgraded *from*. Empty at v1. */
 const MIGRATIONS: Record<number, (prefs: LayoutPrefs) => LayoutPrefs> = {};
 
 function readBool(value: unknown, fallback: boolean): boolean {
@@ -62,10 +49,9 @@ function readBool(value: unknown, fallback: boolean): boolean {
 }
 
 /**
- * Repair whatever `storage.local` hands back. Never throws — a corrupt payload
- * costs the chosen layout, not the feature. Unlike the other stores this one
- * repairs silently: every field has a sane default and a bad one is invisible
- * to the writer, so a warning would only be noise on every page load.
+ * Never throws — a corrupt payload costs the chosen layout, not the feature. Repairs
+ * silently, unlike the other stores: every field has a sane default and a bad one is
+ * invisible to the writer, so a warning would only be noise on every page load.
  */
 export function normalizeLayoutPrefs(raw: unknown): LayoutPrefs {
   if (!isRecord(raw)) return emptyLayoutPrefs();
@@ -87,11 +73,7 @@ export function normalizeLayoutPrefs(raw: unknown): LayoutPrefs {
   return prefs;
 }
 
-/**
- * Rebuild as a plain object. Called from *inside* `saveLayoutPrefs` so the guard
- * sits at the storage boundary and not at one call site — see the `$state`
- * `DataCloneError` note in docs/adr/0012 and CLAUDE.md.
- */
+/** Plain object only: a Svelte `$state` Proxy is not cloneable and Firefox throws. */
 export function toPlainLayoutPrefs(prefs: LayoutPrefs): LayoutPrefs {
   return {
     version: prefs.version,

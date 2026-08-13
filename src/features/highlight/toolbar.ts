@@ -2,31 +2,20 @@ import { i18n } from '#i18n';
 import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
 
 /**
- * The highlight feature's own in-page control: a **clear control**, the corner
- * pill offering "clear this discussion" and "clear everything".
+ * The highlight feature's own in-page control: the corner pill offering "clear this
+ * discussion" and "clear everything". The *selection toolbar* moved to
+ * `@/lib/selection-toolbar` (docs/adr/0028); `colorLabel` stayed because it is highlight's
+ * own vocabulary, naming the swatches the feature registers.
  *
- * The *selection toolbar* used to live here too. It moved to
- * `@/lib/selection-toolbar` when a second feature wanted a button over the same
- * selection (docs/adr/0023, docs/adr/0028); the feature now registers a button
- * group with that shared bar instead of owning one. `colorLabel` stayed behind
- * because it is highlight's own vocabulary — it names the swatches the feature
- * registers.
- *
- * What remains follows the `server-down-modal` pattern rather than Svelte: a
- * Shadow DOM host with `all:initial` to fence off phpBB's CSS, styled through
- * the `.style` property (never an injected `<style>`), because it is small and
- * static — exactly the case docs/adr/0016 keeps out of the shadow-root Svelte
- * path. Theme follows the *forum's* light/dark, pushed in via `setDark` (the
- * feature reads `isDarkTheme`/`watchTheme`).
- *
- * This is a dumb view: the feature owns the store and only wires the callbacks
- * here.
+ * A dumb view — the feature owns the store and wires the callbacks. Vanilla rather than
+ * Svelte, being small and static (docs/adr/0016): a Shadow DOM host with `all:initial` to
+ * fence off phpBB's CSS, styled through `.style` and never an injected `<style>`, with the
+ * forum's theme pushed in via `setDark`.
  */
 
 /**
- * The localised name of a palette colour. A switch (not a templated key) so
- * every `i18n.t` argument is a literal the typed catalogue can check; an unknown
- * id degrades to the raw id rather than failing the build.
+ * A switch, not a templated key, so every `i18n.t` argument is a literal the typed catalogue
+ * can check; an unknown id degrades to the raw id rather than failing the build.
  */
 export function colorLabel(id: string): string {
   switch (id) {
@@ -118,9 +107,8 @@ export function createClearControl(handlers: ClearControlHandlers): ClearControl
   const toggleLabel = document.createElement('span');
   toggle.append(document.createTextNode('🖍'), toggleLabel);
 
-  // A hoisted `function`, not a `const`: `mkMenuButton` above wires this into a click
-  // handler before this point in the file. That is safe only because the handler runs
-  // later, and hoisting is what makes it safe by construction rather than by luck.
+  // ⚠ Hoisted `function`, not a `const`: `mkMenuButton` wires this into a click handler
+  // before this point. Hoisting makes that safe by construction rather than by luck.
   function collapse() {
     expanded = false;
     menu.style.display = 'none';
@@ -135,8 +123,8 @@ export function createClearControl(handlers: ClearControlHandlers): ClearControl
   collapse();
   toggle.addEventListener('click', () => (expanded ? collapse() : openMenu()));
 
-  // Collapse when clicking elsewhere. Retargeted to the host in the shadow DOM,
-  // so composedPath is the only reliable containment test.
+  // Targets inside a shadow root are retargeted to the host, so composedPath is the
+  // only reliable containment test.
   const onDocPointerDown = (event: Event) => {
     if (!expanded) return;
     if (event.composedPath().includes(host)) return;

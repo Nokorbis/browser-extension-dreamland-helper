@@ -1,23 +1,12 @@
 /**
- * The BBCode preset library: folders, presets, and the tree they form.
+ * The BBCode preset library: folders, presets, and the tree they form. Follows the store
+ * idiom in `@/lib/store-kit` (docs/adr/0012).
  *
- * This is the first *data* a feature owns, as opposed to the on/off flags in
- * `@/lib/storage`. It lives under its own `browser.storage.local` key so the two
- * never contend, and carries its `version` **inside** the payload so a copy of
- * the object is self-describing — which is what will make an Export/Import JSON
- * button a small addition later. See docs/adr/0012-feature-owned-data-stores.md.
- *
- * The shape is deliberately **flat**: two id-keyed records linked by `parentId`
- * and `folderId`, not a nested JSON tree. Moving a folder is then a single field
- * write instead of a splice-and-reinsert across two subtrees, any node can be
- * addressed by id without a path, and a broken link degrades to "orphan shown at
- * the root" rather than an unparseable blob. `buildPresetTree` derives the tree
- * for rendering.
- *
- * The mutations below are pure: they take a store and return a new one, so the
- * options page can hold a store in `$state`, apply a mutation, and persist the
- * result — and so all of it is unit-testable without a browser. Ids are minted
- * with `newId` (re-exported from `@/lib/store-kit`) and passed in by the caller.
+ * The shape is deliberately **flat** — two id-keyed records linked by `parentId` and
+ * `folderId`, not a nested tree. Moving a folder is then a single field write instead of a
+ * splice-and-reinsert across two subtrees, any node is addressable by id without a path, and
+ * a broken link degrades to "orphan shown at the root" rather than an unparseable blob.
+ * `buildPresetTree` derives the tree for rendering.
  */
 import { warn } from '@/lib/log';
 import {
@@ -34,7 +23,6 @@ import {
 // Re-export so `@/lib/presets` stays the id-minting import site callers already use.
 export { newId };
 
-/** Storage key. Separate from `settings` — see docs/adr/0012. */
 export const PRESETS_KEY = 'bbcodePresets';
 
 /** Bump only alongside a migration in `MIGRATIONS`. */
@@ -66,7 +54,7 @@ export interface PresetStore {
   presets: Record<string, Preset>;
 }
 
-/** A fresh empty store. A factory, not a shared constant, so callers can't alias it. */
+/** A factory, not a shared constant, so callers can't alias it. */
 export function emptyPresetStore(): PresetStore {
   return { version: PRESETS_SCHEMA_VERSION, folders: {}, presets: {} };
 }
@@ -75,10 +63,7 @@ export function emptyPresetStore(): PresetStore {
 // Normalization
 // ---------------------------------------------------------------------------
 
-/**
- * Version-to-version upgrades, keyed by the version being upgraded *from*.
- * Empty at v1; the plumbing exists so the first migration is a one-line change.
- */
+/** Keyed by the version being upgraded *from*. Empty at v1. */
 const MIGRATIONS: Record<number, (store: PresetStore) => PresetStore> = {};
 
 function readOptionalId(value: unknown): string | null {
@@ -120,13 +105,9 @@ function renumber(store: PresetStore): void {
 }
 
 /**
- * Parse and repair whatever is in storage.
- *
- * This runs on **every** load and every change notification, not only on a
- * version bump — it is what makes a hand-edited import, a half-applied write, or
- * a future bug survivable. Anything unrecoverable degrades to "shown at the
- * root" rather than throwing: a writer would far rather find a preset in the
- * wrong place than lose it.
+ * Parse and repair whatever is in storage. Anything unrecoverable degrades to "shown at the
+ * root" rather than throwing: a writer would far rather find a preset in the wrong place
+ * than lose it.
  */
 export function normalizePresetStore(raw: unknown): PresetStore {
   if (!isRecord(raw)) return emptyPresetStore();
@@ -216,17 +197,9 @@ export async function loadPresetStore(): Promise<PresetStore> {
 }
 
 /**
- * Rebuild the store as plain objects holding only known fields.
- *
- * **This is what makes saving work on Firefox.** Callers routinely hand us a
- * store that a UI framework has wrapped — Svelte 5's `$state` deep-proxies every
- * object it holds — and a `Proxy` is *not* structured-cloneable. Firefox clones
- * the value on its way into `storage.local` and throws `DataCloneError`, while
- * Chrome serialises by reading properties and so never notices. The result is a
- * feature that silently persists nothing on one browser only.
- *
- * Rebuilding field by field also drops anything a caller bolted onto a record,
- * so what lands in storage always matches the declared shape.
+ * Plain objects only: a Svelte `$state` Proxy is not cloneable and Firefox throws.
+ * Rebuilding field by field also drops anything a caller bolted onto a record, so what lands
+ * in storage always matches the declared shape.
  */
 export function toPlainStore(store: PresetStore): PresetStore {
   const folders: Record<string, Folder> = {};
@@ -257,11 +230,7 @@ export async function savePresetStore(store: PresetStore): Promise<void> {
   await saveStore(PRESETS_KEY, toPlainStore(store));
 }
 
-/**
- * Observe the store from any context — content script, popup, options page.
- * Returns an unsubscriber; wire it into the feature's cleanup. The area filter
- * and the choice of the top-level `onChanged` live in `watchStore`.
- */
+/** Returns an unsubscriber; wire it into the feature's cleanup. */
 export function watchPresetStore(onChange: (store: PresetStore) => void): () => void {
   return watchStore(PRESETS_KEY, normalizePresetStore, onChange);
 }
@@ -283,9 +252,8 @@ export interface PresetTree {
 }
 
 /**
- * Derive the render tree. Subfolders sort before presets at every level.
- * Safe against runaway recursion because every store that reaches here has been
- * through `normalizePresetStore`, which breaks parent cycles.
+ * Subfolders sort before presets at every level. Safe against runaway recursion because
+ * every store reaching here has been through `normalizePresetStore`, which breaks cycles.
  */
 export function buildPresetTree(store: PresetStore): PresetTree {
   const foldersByParent = groupBy(Object.values(store.folders), (f) => f.parentId);
@@ -315,11 +283,7 @@ export function countFolders(store: PresetStore): number {
   return Object.keys(store.folders).length;
 }
 
-/**
- * Root-to-leaf folder names above `folderId` (empty array at the root).
- * Safe against cycles because every store reaching here has been through
- * `normalizePresetStore`, which breaks them.
- */
+/** Root-to-leaf folder names above `folderId`; empty at the root. */
 export function folderPath(store: PresetStore, folderId: string | null): string[] {
   const names: string[] = [];
   const seen = new Set<string>();
@@ -380,9 +344,9 @@ function lastOrder(orders: number[]): number {
 }
 
 /**
- * Callers mint the id themselves (via `newId`) and pass it in, so that these
- * functions stay deterministic — and so the options page can select the record
- * it just created without the mutation having to return two things.
+ * Callers mint the id themselves (via `newId`) and pass it in, so these stay deterministic
+ * and the options page can select the record it just created without the mutation having to
+ * return two things.
  */
 export function addFolder(
   store: PresetStore,
@@ -487,13 +451,9 @@ export function deletePreset(store: PresetStore, id: string): PresetStore {
 }
 
 /**
- * Reparent and/or reposition a folder. `order` is the index it should occupy
- * among its new siblings.
- *
- * Returns the store **unchanged** when the move would create a cycle (dropping a
- * folder into its own descendant) or when either id is unknown — the caller's
- * drag simply doesn't take, which is the least surprising failure for a
- * direct-manipulation UI.
+ * `order` is the index the folder should occupy among its new siblings. Returns the store
+ * **unchanged** when the move would create a cycle or either id is unknown — the drag simply
+ * doesn't take, the least surprising failure for a direct-manipulation UI.
  */
 export function moveFolder(
   store: PresetStore,

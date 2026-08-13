@@ -19,18 +19,16 @@
   let { picker, onselect, onclose }: Props = $props();
 
   /**
-   * Search results are capped so a one-letter query can't render the whole
-   * dataset. 200 is well past what anyone scrolls through, and keeps the grid
-   * in the same size class as a category.
+   * Capped so a one-letter query can't render the whole dataset. 200 is well past what
+   * anyone scrolls, and keeps the grid in the same size class as a category.
    */
   const SEARCH_LIMIT = 200;
 
   const searching = $derived(picker.query.trim() !== '');
 
   /**
-   * The recents row, resolved from characters back to records so each cell gets
-   * its label. An emoji that has left the dataset (a version cap lowered, say)
-   * simply drops out rather than rendering a nameless cell.
+   * Resolved from characters back to records so each cell gets its label. An emoji that
+   * has left the dataset drops out rather than rendering a nameless cell.
    */
   const recentRecords = $derived.by(() => {
     if (picker.recent.length === 0) return [];
@@ -51,9 +49,9 @@
   let search = $state<HTMLInputElement | null>(null);
   let grid = $state<HTMLElement | null>(null);
 
-  // Focus the search box as the panel opens, so typing a name is the fastest
-  // path in. Safe for the selection: the trigger's mousedown is
-  // preventDefault-ed and index.ts snapshotted the range before opening.
+  // Focus the search box on open, so typing a name is the fastest path in. Safe for the
+  // selection: the trigger's mousedown is preventDefault-ed and index.ts snapshotted the
+  // range before opening.
   $effect(() => {
     if (!picker.open) return;
     void tick().then(() => search?.focus());
@@ -65,9 +63,8 @@
   }
 
   /**
-   * Arrow-key movement across the grid, which is laid out by `grid-template-
-   * columns` rather than by rows — so "one row down" is however many cells fit,
-   * measured from the DOM rather than assumed.
+   * The grid is laid out by `grid-template-columns` rather than by rows, so "one row down"
+   * is however many cells fit — measured from the DOM rather than assumed.
    */
   function columnCount(): number {
     if (grid === null) return 1;
@@ -80,14 +77,14 @@
     const index = cells.indexOf(from);
     if (index === -1) return;
     const next = cells[index + delta];
-    // Clamping rather than wrapping: an accidental extra press should stop at
-    // the edge, not jump to the far end of 1900 emoji.
+    // Clamping rather than wrapping: an extra press should stop at the edge, not jump
+    // to the far end of 1900 emoji.
     if (next !== undefined) next.focus();
   }
 
   /**
-   * From the search box, Enter takes the top result and ArrowDown steps into
-   * the grid — so a whole insertion is "Alt+I, type, Enter" without the mouse.
+   * Enter takes the top result and ArrowDown steps into the grid, so a whole insertion is
+   * "Alt+I, type, Enter" without the mouse.
    */
   function onSearchKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
@@ -104,21 +101,18 @@
   }
 
   /**
-   * The panel's keyboard handling, registered imperatively on the wrapper.
-   *
-   * Imperative rather than an `onkeydown` attribute because the wrapper is a
-   * plain container with no interactive role of its own — the cells are real
-   * `<button>`s, which is also why the grid needs no `role="grid"`/`gridcell`
-   * scaffolding: they are focusable and labelled already, and arrow keys are
-   * the only thing left to add.
+   * Registered imperatively rather than as an `onkeydown` attribute, because the wrapper is
+   * a plain container with no interactive role of its own. The cells are real `<button>`s,
+   * which is also why the grid needs no `role="grid"`/`gridcell` scaffolding: they are
+   * focusable and labelled already, and arrow keys are all that is left to add.
    */
   $effect(() => {
     const node = root;
     if (node === null) return;
 
     const handler = (event: KeyboardEvent) => {
-      // `isolateEvents` on the shadow root stops key events reaching the
-      // document, so Escape is handled here as well as there.
+      // `isolateEvents` on the shadow root stops key events reaching the document,
+      // so Escape is handled here as well as there.
       if (event.key === 'Escape') {
         event.preventDefault();
         onclose();
@@ -153,9 +147,9 @@
 </script>
 
 {#if picker.open}
-  <!-- mousedown is swallowed across the whole panel so the textarea never loses
-       focus and the snapshotted selection survives the click. The search box is
-       the one exception, below: it has to be able to take focus. -->
+  <!-- mousedown is swallowed across the whole panel, so the textarea never loses focus
+       and the snapshotted selection survives. The search box is the one exception
+       below: it has to be able to take focus. -->
   <div
     class="panel dlh-theme"
     class:dark={picker.dark}
@@ -241,13 +235,9 @@
 
 <style>
   .panel {
-    /*
-     * Fixed, driven by the trigger's real bounding rect (written onto the shadow
-     * host as custom properties by index.ts, which re-measures on scroll and
-     * resize, and flips the panel above the button when there is no room
-     * below). Custom properties are one of the few things WXT's `all: initial`
-     * reset deliberately lets through the shadow boundary.
-     */
+    /* Fixed, driven by custom properties `@/lib/popover` writes onto the shadow host from
+     * the trigger's measured rect — one of the few things WXT's `all: initial` reset lets
+     * through the shadow boundary. */
     position: fixed;
     top: var(--dlh-emoji-top, 0);
     left: var(--dlh-emoji-left, 0);
@@ -356,7 +346,7 @@
   }
 
   .scroller {
-    /* Only the active category is rendered (≤ ~400 cells), so the grid needs a
+    /* Only the active category renders (≤ ~400 cells), so the grid needs a
        scroll box but not virtualisation. */
     max-height: 14rem;
     overflow-y: auto;
@@ -369,7 +359,7 @@
     border: 0;
     border-radius: 0.25rem;
     background: transparent;
-    /* The emoji itself renders in the user's own system font — nothing is
+    /* The emoji renders in the user's own system font — nothing is
        bundled, so the font stack must reach the platform's colour emoji face. */
     font-family:
       'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Twemoji Mozilla',

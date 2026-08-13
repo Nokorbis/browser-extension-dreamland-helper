@@ -1,21 +1,15 @@
 /**
- * Painting highlights with the **CSS Custom Highlight API** — `CSS.highlights`
- * plus `::highlight()` — so nothing in phpBB's post DOM is ever mutated.
+ * Painting with the **CSS Custom Highlight API**, so nothing in phpBB's post DOM is ever
+ * mutated. One `Highlight` per distinct colour in the document registry, plus one page-level
+ * `<style>` holding a `::highlight()` rule per colour; rebuilding on a store change swaps
+ * the ranges and regenerates the rules. Teardown deletes exactly the entries we own — never
+ * `CSS.highlights.clear()`, which would wipe another script's.
  *
- * The renderer keeps one `Highlight` object per distinct colour in the document
- * registry and one page-level `<style>` holding a `::highlight()` rule per
- * colour. Rebuilding on every store change is cheap: swap the ranges in each
- * registry entry, regenerate the rules, done. Teardown deletes exactly the
- * registry entries we own (never `CSS.highlights.clear()`, which would wipe
- * another script's) and removes the `<style>`.
+ * ⚠ The `<style>` must be page-level: `::highlight()` needs its rule in a stylesheet the
+ * page's own style engine sees, so it cannot live in a shadow root. A content-script
+ * `<style>` in `document.head` is CSP-safe on this forum (docs/adr/0016).
  *
- * The `<style>` is a plain page-level element created by the content script; it
- * lives in the isolated world and is CSP-safe on this forum (docs/adr/0016).
- * `::highlight()` needs the rule in a stylesheet the page's style engine sees,
- * which a content-script-injected `<style>` in `document.head` satisfies.
- *
- * Requires Firefox 140+ / Chrome 105+; older browsers lack the API and the
- * feature no-ops (`isHighlightApiSupported`).
+ * Requires Firefox 140+ / Chrome 105+; older browsers no-op via `isHighlightApiSupported`.
  */
 import { HIGHLIGHT_COLORS, HIGHLIGHT_TEXT_COLOR, highlightRegistryName } from './palette';
 
@@ -72,8 +66,8 @@ export class HighlightRenderer {
   }
 
   /**
-   * (Re)write the `::highlight()` rules. Covers the fixed palette plus any hex
-   * currently painted (a stored colour outside the palette still renders).
+   * Covers the fixed palette plus any hex currently painted, so a stored colour outside
+   * the palette still renders.
    */
   private ensureStyle(paintedHexes: Iterable<string>): void {
     const hexes = new Set<string>(HIGHLIGHT_COLORS.map((c) => c.hex));

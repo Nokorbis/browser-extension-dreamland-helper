@@ -1,21 +1,14 @@
 /**
- * Reactive state shared between the feature's plain-TypeScript setup code and
- * the Svelte panel it mounts.
+ * Reactive state shared between the feature's plain-TypeScript setup and the Svelte panel it
+ * mounts — same seam as `menu-state.svelte.ts`, see there for why runes need their own
+ * `.svelte.ts` module and why this is one `$state` object rather than a rune per field.
  *
- * Same seam as `bbcode-presets/menu-state.svelte.ts`: the trigger buttons live
- * in the page's light DOM and are wired with ordinary DOM listeners, while the
- * panel is a Svelte component inside a shadow root. Runes only work in
- * `.svelte` / `.svelte.ts` modules, hence a file of its own rather than a few
- * `let`s in `index.ts`.
+ * One instance per surface, since each has its own trigger, open state and textarea, but
+ * they share the one dataset and recents list that `index.ts` pushes into both.
  *
- * One instance is created per surface (composer, chat), because each has its
- * own trigger, its own open state and its own textarea — but they share the one
- * dataset and the one recents list, which `index.ts` pushes into both.
- *
- * A single `$state` object rather than one rune per field behind a getter/setter pair —
- * see the note in `menu-state.svelte.ts`, including why the resulting proxy must never
- * reach `browser.storage`. It doesn't: `index.ts` keeps its own plain `prefs` object for
- * the write and pushes only the array into here.
+ * ⚠ Never hand this to `browser.storage` — `$state` deep-proxies it and a `Proxy` is not
+ * structured-cloneable. It doesn't happen: `index.ts` keeps its own plain `prefs` for the
+ * write and pushes only the array in here.
  */
 import { emptyEmojiData, type EmojiData } from './types';
 
@@ -48,9 +41,9 @@ export interface PickerState {
 }
 
 export function createPickerState(): PickerState {
-  // Assigned to a local and then returned, not returned directly: `$state` is only
-  // valid as a variable declaration's initialiser (`state_invalid_placement`). Note
-  // `pnpm check` does not catch that — `pnpm build` is what fails.
+  // ⚠ Assigned to a local, not returned directly: `$state` is only valid as a variable
+  // declaration's initialiser (`state_invalid_placement`), and `pnpm check` does not
+  // catch it — `pnpm build` is what fails.
   const state: PickerState = $state({
     data: emptyEmojiData(),
     status: 'loading',

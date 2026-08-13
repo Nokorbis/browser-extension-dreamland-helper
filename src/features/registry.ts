@@ -12,13 +12,11 @@ import { emojiPicker } from './emoji-picker';
 import { composerLayout } from './composer-layout';
 
 /**
- * The single list of all features. Registering a new feature = add its folder
- * under `src/features/`, then add it here. Both the content script (to boot
- * them) and the popup (to list them) read this array — nothing else enumerates
- * features.
+ * The single list of all features — both the content script (to boot them) and the popup (to
+ * list them) read this array, and nothing else enumerates features.
  *
- * `as const satisfies readonly Feature[]` rather than `: Feature[]`: the literal types of
- * the ids survive, which is what lets `FeatureId` below be a union instead of `string`.
+ * `as const satisfies readonly Feature[]` rather than `: Feature[]` so the ids' literal
+ * types survive, which is what lets `FeatureId` be a union instead of `string`.
  */
 export const ALL_FEATURES = [
   exitGuard,
@@ -31,18 +29,14 @@ export const ALL_FEATURES = [
 ] as const satisfies readonly Feature[];
 
 /**
- * Every shipped feature's id, as a union.
- *
- * This is what makes step 4 of CLAUDE.md's "Adding a feature" checklist — add the id to
- * `DEFAULT_SETTINGS.features` — a compile error rather than a silent failure. With `id`
- * typed as a bare `string`, forgetting it left the feature type-checking, building,
- * shipping, and never booting, with nothing reported anywhere.
+ * Every shipped feature's id, as a union. This is what makes forgetting to add an id to
+ * `DEFAULT_SETTINGS.features` a compile error: with `id` typed as a bare `string` the
+ * feature type-checked, built, shipped, and never booted, with nothing reported anywhere.
  */
 export type FeatureId = (typeof ALL_FEATURES)[number]['id'];
 
 /**
- * Start every enabled feature on the current forum page. Cleanup functions are
- * tied to the content-script context so they run on nav/HMR invalidation.
+ * Cleanups are tied to the content-script context, so they run on nav/HMR invalidation.
  * A crash in one feature is logged and never blocks the others.
  */
 export async function bootFeatures(scriptCtx: ContentScriptContext): Promise<void> {

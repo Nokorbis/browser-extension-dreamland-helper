@@ -1,15 +1,10 @@
 /**
- * How long ago a draft was saved, bucketed for display.
+ * How long ago a draft was saved, bucketed for display. Kept out of the bar for the same
+ * reason `planInsertion` is kept out of `insertAtRange`: the bucketing is the part that can
+ * be wrong in a way nobody notices ("il y a 0 minutes"), and the part a unit test can reach.
  *
- * Pure arithmetic, kept out of the bar for the same reason `planInsertion` is
- * kept out of `insertAtRange`: the bucketing is the part that can be wrong in a
- * way nobody notices ("il y a 0 minutes"), and it is the part a unit test can
- * reach. The bar turns the result into a string; this decides what the result
- * *is*.
- *
- * The `unit` is deliberately a small closed union rather than a message key, so
- * the caller can map it with a `switch` over literals the typed i18n catalogue
- * can check — the same trick `colorLabel` uses in `highlight/toolbar.ts`.
+ * `unit` is a small closed union rather than a message key, so the caller can map it with a
+ * `switch` over literals the typed i18n catalogue can check.
  */
 
 const MINUTE = 60 * 1000;
@@ -25,12 +20,9 @@ export interface Age {
 }
 
 /**
- * Bucket an elapsed duration in milliseconds.
- *
- * Rounds **down**, so a draft is never described as older than it is. A negative
- * elapsed time — a clock adjustment between the save and the read, which is
- * ordinary on a laptop that slept — reads as `'now'` rather than as some
- * enormous negative age.
+ * Rounds **down**, so a draft is never described as older than it is. A negative elapsed
+ * time — a clock adjustment between the save and the read, ordinary on a laptop that slept —
+ * reads as `'now'` rather than some enormous negative age.
  */
 export function formatAge(elapsedMs: number): Age {
   if (!Number.isFinite(elapsedMs) || elapsedMs < MINUTE) return { unit: 'now', value: 0 };

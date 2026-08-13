@@ -1,13 +1,9 @@
 /**
- * Export/import bundle: settings, the BBCode preset library and the emoji
- * picker's recents, as a single portable JSON file. Highlights are deliberately
- * out of scope — see docs/adr/0021-json-export-import.md.
+ * Export/import bundle: settings, the preset library and the emoji recents, as one portable
+ * JSON file. Highlights are deliberately out of scope — see docs/adr/0021.
  *
- * Every store in here already repairs itself on read
- * (docs/adr/0012-feature-owned-data-stores.md), so parsing an imported file
- * reuses the exact same `normalize…` functions a `storage.local` read already
- * goes through: a hand-edited or partially corrupt file is repaired rather
- * than rejected.
+ * Parsing an import reuses the same `normalize…` functions a `storage.local` read goes
+ * through, so a hand-edited or partly corrupt file is repaired rather than rejected.
  */
 import {
   addFolder,
@@ -24,14 +20,9 @@ import { normalizeSettings, type Settings } from '@/lib/storage';
 import { isRecord } from '@/lib/store-kit';
 
 /**
- * Bump only when the envelope shape changes *incompatibly*.
- *
- * `emoji` was added after v1 shipped and did not bump it: an added optional
- * field is compatible in both directions. A new build reads an old file (the
- * field is simply absent, which already means "leave that store alone"), and an
- * old build reads a new one by ignoring what it doesn't know. Bumping would
- * have made every new export unreadable by an installed older version for no
- * gain.
+ * Bump only when the envelope changes *incompatibly*. `emoji` was added after v1 and did not
+ * bump it: an added optional field reads fine in both directions, and bumping would have
+ * made every new export unreadable by an installed older version for no gain.
  */
 export const BACKUP_FORMAT_VERSION = 1;
 
@@ -67,14 +58,9 @@ export interface InvalidImportBundle {
 }
 
 /**
- * Parse an imported file's text. Never throws.
- *
- * A field that is simply *absent* from the file comes back `null` rather than
- * being coerced into an empty store — coercing would silently wipe whatever
- * the user already has. A field that is *present but malformed* is still
- * repaired through the same normalize pass a corrupt `storage.local` payload
- * would go through, so a hand-edited file degrades gracefully instead of
- * being rejected outright.
+ * Never throws. An *absent* field comes back `null` rather than an empty store, since
+ * coercing would silently wipe what the user already has; a *present but malformed* one is
+ * repaired through the usual normalize pass.
  */
 export function parseImportBundle(
   text: string,
@@ -87,9 +73,8 @@ export function parseImportBundle(
   }
   if (!isRecord(raw)) return { ok: false };
 
-  // Only reject a *newer* format we don't understand yet. A missing or older
-  // formatVersion is still worth a best-effort read — mirrors how the preset
-  // store treats a missing `version` as 0 rather than refusing to load.
+  // Only reject a *newer* format. A missing or older formatVersion is still worth
+  // a best-effort read.
   if (
     typeof raw.formatVersion === 'number' &&
     raw.formatVersion > BACKUP_FORMAT_VERSION
@@ -112,20 +97,17 @@ export function parseImportBundle(
 export type PresetImportStatus = 'new' | 'identical' | 'conflict';
 
 /**
- * The identity a preset is matched on across two stores: its folder path plus
- * its name. `JSON.stringify` of the segment array rather than a joined string,
- * so a folder or preset named with the separator can't forge another's key.
+ * A preset's identity across two stores: folder path plus name. `JSON.stringify` of the
+ * segments rather than a joined string, so a name containing the separator can't forge
+ * another's key.
  */
 function matchKey(path: string[], name: string): string {
   return JSON.stringify([...path, name]);
 }
 
 /**
- * Index a store's presets by `matchKey`.
- *
- * Two same-named siblings collapse to one entry (last wins) — nothing forbids
- * duplicate names, and path+name is the only identity available here. See the
- * duplicate-name consequence in docs/adr/0021-json-export-import.md.
+ * Two same-named siblings collapse to one entry, last wins — nothing forbids duplicate
+ * names, and path+name is the only identity available here. See docs/adr/0021.
  */
 function indexByPath(store: PresetStore): Map<string, Preset> {
   const byKey = new Map<string, Preset>();
@@ -136,8 +118,7 @@ function indexByPath(store: PresetStore): Map<string, Preset> {
 }
 
 /**
- * Classify every preset in `imported` against `current`, matched by folder
- * path + name — never by id, since an imported store mints its ids
+ * Matched by folder path + name, never by id: an imported store minted its ids
  * independently of the current one.
  */
 export function diffImportedPresets(
@@ -159,12 +140,10 @@ export function diffImportedPresets(
 }
 
 /**
- * Fold the selected imported presets into `current`, creating whatever
- * folder chain each one needs — de-duplicated by path, so a shared parent is
- * only ever created once — and overwriting an existing `identical`/`conflict`
- * match's body in place rather than duplicating it. Presets that aren't
- * selected, and folders with nothing selected under them, are left alone.
- * Pure: `store → store`.
+ * Fold the selected imported presets into `current`, creating each one's folder chain
+ * (de-duplicated by path, so a shared parent is created once) and overwriting an existing
+ * match's body in place rather than duplicating it. Unselected presets, and folders with
+ * nothing selected under them, are left alone.
  */
 export function applyPresetImport(
   current: PresetStore,
@@ -173,11 +152,9 @@ export function applyPresetImport(
 ): PresetStore {
   let next = current;
 
-  // (folder path + name) -> the current preset holding it. Built once and kept
-  // up to date incrementally: adding a preset changes no *other* preset's key,
-  // so one `set` is all a rebuild would achieve. Keeping it current is what
-  // lets a later selection in the same call land on one added moments ago
-  // instead of duplicating it.
+  // (folder path + name) -> the current preset holding it. Kept up to date incrementally so
+  // a later selection in this same call lands on one added moments ago instead of
+  // duplicating it; adding a preset changes no *other* preset's key, so one `set` suffices.
   const currentByKey = indexByPath(next);
 
   // Imported folder id -> resolved/created current folder id.
@@ -187,11 +164,9 @@ export function applyPresetImport(
     if (resolvedFolderId.has(importedFolderId)) {
       return resolvedFolderId.get(importedFolderId) ?? null;
     }
-    // Claim the id before recursing. Every store that reaches here has been
-    // through `normalizePresetStore`, which breaks parent cycles — but this is
-    // an exported pure function, and its neighbours (`folderPath`,
-    // `isDescendantFolder`) all guard defensively rather than trust that. A
-    // cycle now resolves to the root instead of overflowing the stack.
+    // Claim the id before recursing, so a cycle resolves to the root instead of
+    // overflowing the stack. `normalizePresetStore` breaks cycles, but this is an
+    // exported pure function and its neighbours guard defensively rather than trust that.
     resolvedFolderId.set(importedFolderId, null);
 
     const importedFolder =

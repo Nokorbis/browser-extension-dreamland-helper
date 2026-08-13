@@ -1,14 +1,10 @@
 /**
- * The combo that opens the emoji picker.
+ * The combo that opens the emoji picker. Its own module deliberately: `index.ts` pulls in
+ * Svelte and the forum DOM, and `src/lib/keys.test.ts` must read this constant without any
+ * of that to check it against every other shortcut the extension claims.
  *
- * Its own module, deliberately: `index.ts` pulls in Svelte and the forum DOM,
- * and `src/lib/keys.test.ts` needs to read this constant without any of that to
- * check it against every other shortcut the extension claims.
- *
- * Secondary row (Alt, or Ctrl+Option on macOS) + `i`, for *icône*. Free on both
- * counts at the time of writing: `i` is not in `RESERVED_LETTERS.secondary`, and
- * no `KEYMAP` entry in editor-shortcuts claims it. The test is what keeps that
- * true — do not move this binding without re-running it.
+ * Secondary row + `i`, for *icône* — not in `RESERVED_LETTERS.secondary` and not claimed by
+ * any `KEYMAP` entry. The test is what keeps that true; don't move this without re-running it.
  */
 import type { Combo } from '@/lib/keys';
 

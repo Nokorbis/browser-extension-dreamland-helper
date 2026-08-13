@@ -1,26 +1,15 @@
 /**
- * Anchoring a highlight to text that survives a reload and travels between the
- * thread page and the reply composer.
+ * Anchoring a highlight to text that survives a reload and travels between viewtopic and the
+ * reply composer. A highlight is a character range `[start, end)` into a post's `.content`
+ * text plus the exact `quote` it covered; `serializeSelection` produces that triple and
+ * `resolveRange` turns it back into a `Range`.
  *
- * A highlight is stored as a character range `[start, end)` into a post's
- * `.content` **text** — the concatenation of its Text nodes in document order —
- * plus the exact `quote` it covered. `serializeSelection` turns a live DOM
- * selection into that triple; `resolveRange` turns it back into a `Range` at
- * load time.
- *
- * The text is the raw concatenation of Text nodes (what `Range.toString()` and
- * `Node.textContent` give — *not* `innerText`, which invents whitespace at block
- * boundaries). phpBB renders the same stored message HTML into `.content` on both
- * viewtopic and the topic review, so those offsets line up across the two pages.
- * When they don't — a post edited between the two reads, or a whitespace quirk —
- * `resolveRange` falls back to searching for the `quote` string, so a highlight
- * degrades to "not shown" rather than "shown on the wrong words". Nothing here
- * mutates the DOM; painting is the CSS Custom Highlight API's job (`render.ts`).
- *
- * `locateOffset` is the pure arithmetic, split out and unit-tested
- * (`anchor.test.ts`), as is the re-anchor search that lives in
- * `@/lib/text-search`; the Range/TreeWalker glue around them is
- * DOM work verified by hand (the test env has no DOM — see CLAUDE.md).
+ * ⚠ The text is the raw concatenation of Text nodes — what `Range.toString()` and
+ * `textContent` give, *not* `innerText`, which invents whitespace at block boundaries.
+ * phpBB renders the same message HTML on both pages, so the offsets line up; when they don't
+ * (a post edited between the two reads, a whitespace quirk) `resolveRange` falls back to
+ * searching for the `quote`, degrading to "not shown" rather than "shown on the wrong
+ * words". Nothing here mutates the DOM — painting is `render.ts`'s job.
  */
 import { nearestOccurrence } from '@/lib/text-search';
 
@@ -36,10 +25,9 @@ function normalizeWhitespace(text: string): string {
 }
 
 /**
- * Which text node (by index) and offset within it a character offset lands on,
- * given each node's length in order. Returns null when `target` is out of range.
- * A target at a node boundary resolves to the end of the earlier node, which is
- * an equivalent range position.
+ * Which text node (by index) and offset within it a character offset lands on, given each
+ * node's length in order; null when out of range. A target at a node boundary resolves to
+ * the end of the earlier node, an equivalent range position.
  */
 export function locateOffset(
   lengths: number[],
@@ -83,7 +71,6 @@ function rangeAt(nodes: Text[], start: number, end: number): Range | null {
 }
 
 /**
- * The character offset of a DOM boundary `(node, offset)` into `content`'s text.
  * Measured with a range from the start of `content` to the boundary, whose
  * `.toString().length` is exactly that offset. Null if the boundary is unusable.
  */
@@ -99,9 +86,8 @@ function offsetOf(content: HTMLElement, node: Node, offset: number): number | nu
 }
 
 /**
- * Serialize a live selection to a `[start, end)` range + quote, relative to
- * `content`. Returns null if the selection escapes `content`, is collapsed /
- * whitespace-only, or is otherwise degenerate — the caller shows no toolbar.
+ * Null when the selection escapes `content`, is collapsed or whitespace-only, or is
+ * otherwise degenerate — the caller then shows no toolbar.
  */
 export function serializeSelection(
   content: HTMLElement,
@@ -121,12 +107,9 @@ export function serializeSelection(
 }
 
 /**
- * Rebuild a `Range` for a stored highlight inside `content`.
- *
- * Offset-first: build the range at `[start, end)` and accept it only if its text
- * still matches `quote` (whitespace-normalised). Otherwise fall back to the
- * `quote` occurrence nearest the old `start`. Returns null when neither resolves,
- * so an edited post simply stops painting that highlight.
+ * Offset-first: build the range at `[start, end)` and accept it only if its text still
+ * matches `quote` (whitespace-normalised), otherwise fall back to the occurrence nearest the
+ * old `start`. Null when neither resolves, so an edited post stops painting that highlight.
  */
 export function resolveRange(
   content: HTMLElement,

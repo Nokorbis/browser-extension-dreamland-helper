@@ -12,36 +12,22 @@ import { ariaCombo, formatCombo, isMacPlatform } from '@/lib/keys';
 import { KEYMAP, resolveShortcut, type Shortcut } from './keymap';
 
 /**
- * Feature #5 — Keyboard shortcuts for the BBCode toolbar.
+ * One consistent set of BBCode shortcuts over both writing surfaces. phpBB's own
+ * `accesskey`s fire on a different combo per browser (Alt on Chromium, Alt+Shift on Firefox,
+ * Ctrl+Option on macOS), and the forum's *custom* BBCodes carry none at all.
  *
- * phpBB's composer is mouse-first: ten of its buttons carry an `accesskey`, but
- * the combo that triggers one differs per browser (Alt on Chromium, Alt+Shift on
- * Firefox, Ctrl+Option on macOS), and the forum's *custom* BBCodes — center,
- * justify, mp3, s, spoiler — carry none at all. This feature puts one consistent
- * set of shortcuts over the whole row — and, since the forum also runs a
- * non-native chat widget (the "Tribune") with its own BBCode toolbar, over that
- * one too.
+ * Two things define how it works, both settled in docs/adr/0017:
  *
- * Two things define how it works, both settled in
- * docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md:
+ * 1. **It clicks the forum's own buttons**, never inserting text. Their inline `onclick` is
+ *    a listener on the page's node, so a dispatched click runs the page's handler even
+ *    though the content script is in an isolated world. A shortcut therefore does exactly
+ *    what clicking does — including for any BBCode a surface adds later.
+ * 2. **The listener is on the textarea**, not the document, so these overrides exist only
+ *    while composing, and `preventDefault()` happens only once a binding has matched.
  *
- * 1. **It clicks the forum's own buttons.** Nothing here inserts text. Their
- *    inline `onclick` (phpBB's `bbstyle(n)`, the chat's `insertBBCode(...)`) is
- *    a listener on the page's node, so a dispatched click runs the page's own
- *    handler even though the content script lives in an isolated world and
- *    cannot call it directly. A shortcut therefore does exactly what clicking
- *    does — including for any BBCode a surface adds later, which we never have
- *    to learn about.
- * 2. **The listener is on the textarea**, not the document, so these overrides
- *    exist only while composing. Outside the editor every key keeps its browser
- *    meaning, and inside it `preventDefault()` happens only once a binding has
- *    actually matched.
- *
- * It binds independently against every composer surface the current page has —
- * phpBB's `#message` and/or the chat's textarea — so a page with only one of
- * the two still works, and a page with neither is a silent no-op. The map and
- * the matching rules live in `./keymap.ts`, which knows nothing about either
- * surface; this file is DOM work.
+ * It binds independently against every surface the page has, so one of the two still works
+ * and neither is a silent no-op. The map and matching rules live in `./keymap.ts`, which
+ * knows nothing about either surface; this file is DOM work.
  */
 
 /** Marks a button we have already annotated, so a re-run can't double the hint. */
@@ -83,9 +69,8 @@ export const editorShortcuts = {
 
     let totalBound = 0;
     for (const target of targets) {
-      // Absence of either half is ordinary — most pages have only one of the
-      // two composer surfaces (or, for the chat's toolbar, phpBB's own
-      // `{IF S_BBCODE_ALLOWED}` equivalent: BBCode can be off for the widget).
+      // Absence of either half is ordinary: most pages have only one surface, and
+      // BBCode can be switched off for the chat widget.
       if (target.textarea === null || target.toolbar === null) continue;
       totalBound += bindTarget(
         target.textarea,
@@ -113,13 +98,10 @@ export const editorShortcuts = {
 } satisfies Feature;
 
 /**
- * Binds shortcuts to a single composer textarea, resolving each `KEYMAP` entry
- * through `findButton`. Decorates every matched button (tooltip, aria,
- * accesskey removal) exactly as before, and pushes its undo onto the shared
- * `restore` list so one feature-wide cleanup unwinds every target. Returns the
- * number of buttons bound, so a target that matched nothing contributes 0
- * without needing its own warning — that only fires once, feature-wide, when
- * every target came up empty.
+ * Resolves each `KEYMAP` entry through `findButton`, decorates the matched buttons and
+ * pushes each undo onto the shared `restore` list, so one feature-wide cleanup unwinds every
+ * target. Returns the number bound, so a target that matched nothing contributes 0 and the
+ * warning fires once, feature-wide, only when every target came up empty.
  */
 function bindTarget(
   textarea: HTMLTextAreaElement,
@@ -136,8 +118,8 @@ function bindTarget(
   for (const shortcut of KEYMAP) {
     if (!buttons.has(shortcut.bbcode)) {
       const found = findButton(shortcut.bbcode);
-      // A BBCode this surface doesn't have: leave the key alone entirely, so
-      // it keeps whatever the browser does with it.
+      // A BBCode this surface lacks: leave the key alone, so it keeps whatever
+      // the browser does with it.
       if (found === null) continue;
       buttons.set(shortcut.bbcode, found);
     }
@@ -177,9 +159,8 @@ function bindTarget(
       'aria-keyshortcuts',
       bound.map((shortcut) => ariaCombo(shortcut, mac)).join(' '),
     );
-    // Drop the accesskey we now shadow: on Chromium, Alt+L would otherwise
-    // reach both our handler *and* the native accesskey for the same button.
-    // Only buttons we bound lose theirs; the rest keep the surface's behaviour.
+    // Drop the accesskey we now shadow, or on Chromium Alt+L reaches both our handler
+    // *and* the native accesskey. Only bound buttons lose theirs.
     button.removeAttribute('accesskey');
     button.setAttribute(TRIGGER_MARKER, '');
   }
@@ -188,8 +169,8 @@ function bindTarget(
   textarea.addEventListener(
     'keydown',
     (event) => {
-      // Mid-composition (IME) these modifiers mean something else, and a held
-      // key would otherwise machine-gun the BBCode.
+      // Mid-composition (IME) these modifiers mean something else, and a held key
+      // would machine-gun the BBCode.
       if (event.isComposing || event.repeat) return;
 
       const bbcode = resolveShortcut(event, mac);
@@ -199,9 +180,8 @@ function bindTarget(
 
       // Only now: anything we don't handle must reach the browser untouched.
       event.preventDefault();
-      // The click runs the page's own inline handler in the page world. The
-      // event came from the focused textarea and we never moved focus, so the
-      // selection it reads is exactly the user's.
+      // Runs the page's own inline handler in the page world. Focus never moved, so
+      // the selection it reads is exactly the user's.
       button.click();
     },
     { signal: controller.signal },

@@ -31,11 +31,9 @@
     oncancel,
   }: Props = $props();
 
-  // The modal is mounted once per import attempt (App.svelte remounts it via
-  // an `{#if}` block for the next file), so these props never change during
-  // its lifetime — `$derived` would be needless churn for a value computed
-  // once. `untrack` says so explicitly instead of leaving it to look like an
-  // accidental one-shot read of reactive state.
+  // Mounted once per import attempt, so these props never change during its lifetime and
+  // `$derived` would be needless churn. `untrack` says so explicitly, rather than leaving
+  // it to look like an accidental one-shot read of reactive state.
   const tree = untrack(() =>
     importedPresets !== null ? buildPresetTree(importedPresets) : null,
   );
@@ -45,17 +43,14 @@
       : new Map<string, PresetImportStatus>(),
   );
 
-  // Seeded from a prop on purpose — this is independently editable local
-  // state from here on, the standard "form default" pattern.
+  // Seeded from a prop on purpose: independently editable local state from here on,
+  // the standard "form default" pattern.
   let importSettings = $state(untrack(() => settingsPresent));
-  // Unchecked by default, unlike settings: a recents list is replaced wholesale
-  // rather than merged, so bringing one in silently discards the one this
-  // browser has built up. Opting in is the only safe default.
+  // Unchecked by default, unlike settings: a recents list is replaced wholesale rather
+  // than merged, so importing one discards what this browser built up.
   let importEmoji = $state(false);
-  // New presets are safe to bring in by default; anything that would touch an
-  // existing preset (identical or conflicting) needs an explicit opt-in —
-  // same "never destroy without being asked" spirit as the confirm() guarding
-  // every delete in App.svelte.
+  // New presets are safe by default; anything touching an existing preset needs an
+  // explicit opt-in — never destroy without being asked.
   let selectedIds = $state<Set<string>>(
     new Set(
       Array.from(statuses.entries())
@@ -86,16 +81,13 @@
 </script>
 
 <!--
-  Mouse-only backdrop-dismiss. `role="presentation"` marks it as not part of
-  the a11y tree; Escape (onBackdropKeydown, bound below) and the visible
-  Annuler button already give full keyboard parity, so a keyboard handler on
-  the backdrop itself would be redundant.
+  Mouse-only backdrop-dismiss. `role="presentation"` keeps it out of the a11y tree;
+  Escape and the visible Annuler button already give keyboard parity.
 
-  The `e.target === e.currentTarget` test is what makes it dismiss on a click
-  *on the backdrop* rather than on any click that bubbles up to it. Letting it
-  bubble (even with a stopPropagation on the dialog) closed the modal whenever
-  a text selection started inside the dialog and released outside it, throwing
-  the user's choices away mid-drag.
+  ⚠ The `e.target === e.currentTarget` test is what makes it dismiss on a click *on the
+  backdrop* rather than any click bubbling up to it. Letting it bubble — even with a
+  stopPropagation on the dialog — closed the modal whenever a text selection started
+  inside and released outside, throwing the user's choices away mid-drag.
 -->
 <div
   class="backdrop"
@@ -175,7 +167,7 @@
     gap: 0.7rem;
     width: min(30rem, 100%);
     max-height: min(34rem, 100%);
-    /* Belt-and-braces alongside `.tree`'s own scroll region: if a very large
+    /* Alongside `.tree`'s own scroll region: if a very large
        preset library still overflows, the whole dialog scrolls rather than
        clipping the confirm/cancel buttons out of reach. */
     overflow-y: auto;

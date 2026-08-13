@@ -1,21 +1,15 @@
 /**
- * Reactive state shared between the feature's plain-TypeScript setup code and
- * the Svelte components it mounts.
+ * The seam between the feature's plain-TypeScript setup and the Svelte components it mounts:
+ * the trigger lives in the page's light DOM on ordinary listeners, the menu is a component
+ * in a shadow root, `setup()` writes here and the component re-renders. Runes only work in
+ * `.svelte` / `.svelte.ts` modules, hence a file of its own.
  *
- * The trigger button lives in the page's light DOM and is wired up with ordinary
- * DOM listeners, while the menu is a Svelte component inside a shadow root. This
- * object is the seam: `setup()` writes to it, the component reads from it and
- * re-renders. Runes only work in `.svelte` / `.svelte.ts` modules, which is why
- * this is its own file rather than a few `let`s in `index.ts`.
+ * One `$state` object rather than a rune per field behind accessors: `$state` deep-proxies,
+ * so plain property access is already reactive both ways.
  *
- * A single `$state` object rather than one rune per field behind a getter/setter pair:
- * `$state` deep-proxies an object, so plain property access is already reactive in both
- * directions and the accessors were pure ceremony.
- *
- * ⚠ That proxy is why this must never be handed to `browser.storage` — a `Proxy` is not
- * structured-cloneable and Firefox throws `DataCloneError` on the way in. Nothing here
- * does: `index.ts` only ever *reads* the store from `watchPresetStore` into this object.
- * See `toPlainStore` in `@/lib/presets` and the gotcha in CLAUDE.md.
+ * ⚠ That proxy is why this must never reach `browser.storage` — a `Proxy` is not
+ * structured-cloneable and Firefox throws `DataCloneError`. Nothing here does: `index.ts`
+ * only ever *reads* the store into this object.
  */
 import { emptyPresetStore, type PresetStore } from '@/lib/presets';
 
@@ -33,9 +27,9 @@ export interface MenuState {
 }
 
 export function createMenuState(): MenuState {
-  // Assigned to a local and then returned, not returned directly: `$state` is only
-  // valid as a variable declaration's initialiser (`state_invalid_placement`). Note
-  // `pnpm check` does not catch that — `pnpm build` is what fails.
+  // ⚠ Assigned to a local, not returned directly: `$state` is only valid as a variable
+  // declaration's initialiser (`state_invalid_placement`), and `pnpm check` does not
+  // catch it — `pnpm build` is what fails.
   const state: MenuState = $state({
     store: emptyPresetStore(),
     open: false,

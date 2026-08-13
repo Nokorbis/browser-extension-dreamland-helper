@@ -2,16 +2,14 @@
   import { i18n } from '#i18n';
   import type { Preset, PresetTreeNode } from '@/lib/presets';
   import type { PresetImportStatus } from '@/lib/backup';
-  // A component may import itself; this is what makes the tree recursive —
-  // same pattern as src/features/bbcode-presets/FolderTree.svelte, which this
-  // is a checkbox-and-badge sibling of rather than a reuse of (that one is
-  // built for single-select navigation, this one for multi-select review).
+  // Self-import: this is what makes the tree recursive. A checkbox-and-badge sibling of
+  // FolderTree.svelte rather than a reuse — that one is built for single-select
+  // navigation, this one for multi-select review.
   import Self from './ImportPresetTree.svelte';
 
   interface Props {
-    /** Subfolders at this level, already sorted. Purely organisational here —
-     * folders are never individually selected, only inferred from the
-     * presets picked beneath them. */
+    /** Already sorted. Organisational only — folders are inferred from the presets
+     * picked beneath them, never selected individually. */
     folders: PresetTreeNode[];
     /** Presets sitting directly at this level, already sorted. */
     presets: Preset[];
@@ -122,8 +120,8 @@
     font-size: 0.72rem;
     white-space: nowrap;
   }
-  /* Amber, like the editor's template warnings: not an error, but read it
-     before ticking the box — this preset would overwrite an existing one. */
+  /* Amber, like the editor's template warnings: not an error, but read it before
+     ticking the box — this preset would overwrite an existing one. */
   .badge.conflict {
     background: var(--dlh-warn-bg);
     color: var(--dlh-warn-fg);

@@ -1,32 +1,19 @@
 /**
- * The **shared selection toolbar** — one small floating row of buttons that
- * appears over a text selection inside a post's message body, on both viewtopic
- * and the reply composer's topic review.
+ * The **shared selection toolbar** — one floating row of buttons over a text selection
+ * inside a post's message body, on both viewtopic and the topic review. See docs/adr/0028.
  *
- * It began life inside the `highlight` feature (a row of colour swatches plus an
- * eraser) and moved here when a second feature wanted a button over the same
- * selection: under docs/adr/0023 the primitive belongs in `src/lib` rather than
- * one feature importing from another. What moved is not just the bar's markup
- * but the whole path that leads to it — the document event wiring, locating
- * which post a selection sits in, the placement maths and the theme watch —
- * because those were never highlight-specific and two copies would fight over
- * the same selection. See docs/adr/0028-shared-selection-toolbar.md.
+ * Features **register a group** rather than build a bar: `buttonsFor(selection)` is asked on
+ * every selection and returns the buttons that apply (`[]` withdraws the group). The bar
+ * shows when at least one group offers a button, and groups render in registration order —
+ * so several features share one bar instead of fighting over the same selection.
  *
- * Features **register a group** rather than build a bar: `buttonsFor(selection)`
- * is asked on every selection and returns the buttons that apply (an empty array
- * withdraws the group). The bar shows when at least one group offers a button,
- * and groups render in registration order.
+ * A singleton, created lazily on the first registration and torn down when the last group
+ * leaves, so a page with those features off carries no host and no listeners.
  *
- * This is a singleton, created lazily on the first registration and torn down
- * when the last group unregisters, so a page with both features off carries no
- * host and no listeners.
- *
- * Like `@/lib/popover.ts`, it is DOM and event glue with **no automated coverage
- * by design** — the test suite has no DOM (see CLAUDE.md). Its *geometry* is the
- * exception and does not live here: `placeAnchored` in `@/lib/anchor-position`
- * owns that as pure, unit-tested arithmetic. Editing this module means
- * re-verifying every registered group by hand — today the highlight swatches and
- * eraser — in both forum themes and both browsers.
+ * ⚠ Like `@/lib/popover.ts` this is DOM and event glue with **no automated coverage by
+ * design**: editing it means re-verifying every registered group by hand, in both forum
+ * themes and both browsers. Its geometry is the exception and lives in
+ * `@/lib/anchor-position` as pure, unit-tested arithmetic.
  */
 import { placeAnchored } from '@/lib/anchor-position';
 import { isDarkTheme, readPostId, watchTheme } from '@/lib/phpbb';
@@ -39,10 +26,7 @@ import {
   type Chrome,
 } from '@/lib/shadow-ui';
 
-/**
- * Gap between the selection and the toolbar, and its minimum margin from a
- * viewport edge — `placeAnchored` takes the one number for both.
- */
+/** Gap from the selection, and minimum margin from a viewport edge — one number for both. */
 const GAP = 6;
 
 /** A live selection that sits wholly inside one post's message body. */
@@ -59,11 +43,7 @@ export interface PostSelection {
   text: string;
 }
 
-/**
- * One button in the row. `swatch` paints a colour chip (the highlight palette),
- * `glyph` renders a character (the eraser, the quote mark); a button gives one
- * or the other.
- */
+/** A button gives either a `swatch` (a colour chip) or a `glyph` (a character), not both. */
 export interface ToolbarButton {
   /** Stable within its group — used to key the DOM node, not shown. */
   key: string;
@@ -74,9 +54,8 @@ export interface ToolbarButton {
   /** Text content for an action-style button. */
   glyph?: string;
   /**
-   * Invoked on click, with the selection the row was built for. The page
-   * selection is still alive at this point (the row cancels its own mousedown),
-   * so a handler may read it.
+   * Invoked on click with the selection the row was built for. The page selection is still
+   * alive at that point — the row cancels its own mousedown — so a handler may read it.
    */
   onSelect: (selection: PostSelection) => void;
 }
@@ -100,12 +79,9 @@ const groups: ToolbarGroup[] = [];
 let instance: ToolbarInstance | null = null;
 
 /**
- * The single `.content` a range sits wholly inside, with its post and id.
- *
- * Returns null when the selection escapes a post body — spanning two posts, or
- * landing in a signature, the composer, or page chrome. `readPostId` is what
- * makes this work on both page shapes: viewtopic puts the id on `.post`, the
- * topic review on the inner `.postbody`.
+ * The single `.content` a range sits wholly inside, with its post and id. Null when the
+ * selection escapes a post body — spanning two posts, or landing in a signature, the
+ * composer or page chrome.
  */
 function locate(range: Range): Omit<PostSelection, 'range' | 'text'> | null {
   const common = range.commonAncestorContainer;
@@ -139,8 +115,8 @@ function buildButton(
   el.title = button.label;
   el.setAttribute('aria-label', button.label);
   if (button.glyph !== undefined) el.textContent = button.glyph;
-  // preventDefault keeps the page selection alive across the click — without it
-  // the mousedown collapses the very range the handler is about to act on.
+  // preventDefault keeps the page selection alive across the click — without it the
+  // mousedown collapses the very range the handler is about to act on.
   el.addEventListener('mousedown', (event) => event.preventDefault());
   el.addEventListener('click', (event) => {
     event.preventDefault();
@@ -185,11 +161,11 @@ function createInstance(): ToolbarInstance {
   const controller = new AbortController();
   const { signal } = controller;
 
-  /** True when an event landed on our own UI — retargeted, so composedPath. */
+  /** Targets inside a shadow root are retargeted, so composedPath is the only test. */
   const onOurUi = (event: Event) => event.composedPath().includes(host);
 
-  // Evaluate after the mouseup so the selection is final; ignore clicks on our
-  // own row, which would otherwise dismiss the toolbar being clicked.
+  // After the mouseup, so the selection is final. Clicks on our own row are ignored,
+  // or they would dismiss the toolbar being clicked.
   document.addEventListener(
     'mouseup',
     (event) => {
@@ -229,11 +205,9 @@ function hide(): void {
 }
 
 /**
- * Ask every group what it offers for the current selection and show, or hide.
- *
- * The row is rebuilt on each show rather than kept and toggled: `buttonsFor` is
- * dynamic (highlight's eraser only exists over an existing highlight) and a row
- * of a handful of buttons is cheap to rebuild.
+ * Ask every group what it offers for the current selection, then show or hide. The row is
+ * rebuilt on each show rather than toggled: `buttonsFor` is dynamic — highlight's eraser
+ * only exists over an existing highlight — and a handful of buttons is cheap to rebuild.
  */
 function evaluateSelection(): void {
   if (instance === null) return;
@@ -256,8 +230,8 @@ function evaluateSelection(): void {
   bar.replaceChildren(...buttons.map((b) => buildButton(b, selection, chrome)));
   bar.style.display = 'inline-flex';
 
-  // Measure off-screen first: the row's width depends on which buttons this
-  // selection produced, so it has to be laid out before it can be placed.
+  // Measure off-screen first: the row's width depends on which buttons this selection
+  // produced, so it has to be laid out before it can be placed.
   bar.style.left = '-9999px';
   bar.style.top = '-9999px';
   const box = bar.getBoundingClientRect();
@@ -273,11 +247,7 @@ function evaluateSelection(): void {
   instance.visible = true;
 }
 
-/**
- * Register a feature's buttons and get back its unregister function. Wire that
- * into the feature's cleanup — the toolbar tears itself down when the last
- * group leaves.
- */
+/** Returns its unregister function; wire that into the feature's cleanup. */
 export function registerSelectionToolbarGroup(group: ToolbarGroup): () => void {
   groups.push(group);
   instance ??= createInstance();
@@ -294,10 +264,7 @@ export function registerSelectionToolbarGroup(group: ToolbarGroup): () => void {
   };
 }
 
-/**
- * Hide the toolbar and drop the page selection — what a handler calls once it
- * has acted, so the row doesn't linger over text the user is done with.
- */
+/** What a handler calls once it has acted, so the row doesn't linger over finished text. */
 export function dismissSelectionToolbar(): void {
   hide();
   window.getSelection()?.removeAllRanges();

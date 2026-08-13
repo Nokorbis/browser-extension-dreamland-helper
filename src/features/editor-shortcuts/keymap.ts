@@ -1,50 +1,36 @@
 /**
- * The keyboard map, and the pure logic that turns a key event into a BBCode.
+ * The keyboard map, and the pure logic turning a key event into a BBCode — the part worth
+ * unit-testing. `index.ts` keeps the listener, the tooltips and the clicks; this file never
+ * touches an element.
  *
- * Split from `index.ts` because everything here is decision-making rather than
- * DOM work, which is exactly the part worth unit-testing (see the scoping note
- * in vitest.config.ts). `index.ts` keeps the listener, the tooltips and the
- * clicks; this file never touches an element.
+ * The modifier-row machinery lives in `@/lib/keys`, shared with every feature that claims a
+ * shortcut (docs/adr/0023). What stays here is the one thing only this feature knows: which
+ * BBCode each combo drives. Those shared names are deliberately **not** re-exported — there
+ * is one import path for them.
  *
- * The modifier-row machinery this builds on — `readRow`, `readLetter`,
- * `RESERVED_LETTERS`, the combo spellings — lives in `@/lib/keys`, shared with
- * every other feature that claims a shortcut (docs/adr/0023). What stays here is
- * the one thing only this feature knows: which BBCode each combo drives, so
- * those names are **not** re-exported — import them from `@/lib/keys` like the
- * emoji picker does, and this module for `KEYMAP` and `resolveShortcut`.
- *
- * The whole design is recorded in
- * docs/adr/0017-keyboard-shortcuts-delegate-to-toolbar.md — read that before
- * changing a binding.
+ * Read docs/adr/0017 before changing a binding.
  */
 import { readLetter, readRow, type Combo, type KeyEventLike } from '@/lib/keys';
 
 export interface Shortcut extends Combo {
-  /**
-   * phpBB's `bbcode-*` class suffix — i.e. the button this drives, resolved
-   * through `findFormatButton` in `@/lib/phpbb`.
-   */
+  /** phpBB's `bbcode-*` class suffix, resolved through `findFormatButton`. */
   bbcode: string;
 }
 
 /**
- * `primary` is Ctrl, or Cmd on macOS — the row carrying the five bindings every
- * other editor has already taught people.
+ * `primary` is Ctrl, or Cmd on macOS — the row carrying the five bindings every other editor
+ * has already taught people.
  *
- * `secondary` is Alt, or Ctrl+Option on macOS (plain Option composes accented
- * characters there, so it cannot be claimed). Its letters reuse phpBB's own
- * `accesskey` letters wherever the forum has one — `q` quote, `c` code, `l`
- * list, `o` ordered list, `y` list item, `p` image, `w` link — so existing
- * muscle memory keeps working; the browser-dependent modifier is the only thing
- * that changes. The rest are new bindings for the custom BBCodes, which phpBB
- * gives no accesskey at all.
+ * `secondary` is Alt, or Ctrl+Option on macOS, since plain Option composes accented
+ * characters there. Its letters reuse phpBB's own `accesskey` letters wherever the forum has
+ * one, so existing muscle memory keeps working and only the browser-dependent modifier
+ * changes; the rest are new bindings for the custom BBCodes, which have no accesskey at all.
  *
- * Two BBCodes are reachable from both rows (code, link). That is intentional:
- * the conventional binding and the forum's historical letter both work.
+ * Code and link are reachable from both rows on purpose: the conventional binding and the
+ * forum's historical letter both work.
  *
- * Other features claim keys too — the emoji picker takes secondary `i`. Nothing
- * here needs to know that, but `src/lib/keys.test.ts` checks the whole set for
- * collisions in one place.
+ * Other features claim keys too (the emoji picker takes secondary `i`). Nothing here needs
+ * to know that, but `src/lib/keys.test.ts` checks the whole set for collisions.
  */
 export const KEYMAP: readonly Shortcut[] = [
   { bbcode: 'b', row: 'primary', letter: 'b' },
@@ -69,11 +55,9 @@ export const KEYMAP: readonly Shortcut[] = [
 ];
 
 /**
- * The BBCode this key event asks for, or `null` if it asks for nothing.
- *
- * Pure: the platform is a parameter, not a lookup. Callers must not
- * `preventDefault()` before this returns non-null — a key we don't handle has
- * to reach the browser untouched.
+ * The platform is a parameter, not a lookup, so this stays pure. Callers must not
+ * `preventDefault()` before it returns non-null — a key we don't handle must reach the
+ * browser untouched.
  */
 export function resolveShortcut(event: KeyEventLike, mac: boolean): string | null {
   const row = readRow(event, mac);

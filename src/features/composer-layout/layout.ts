@@ -1,19 +1,15 @@
 /**
- * Re-arranging the reply page: wrapping `#postform`'s two halves into columns,
- * and flipping the classes that place them.
+ * Wrapping `#postform`'s two halves into columns, and flipping the classes that place them.
  *
- * ⚠ Elements are **moved, never re-created**. The composer half holds a textarea
- * the writer may already have typed into, hidden fields phpBB's submit needs and
- * nodes its own scripts hold references to; rebuilding any of it would lose text
- * or break the post. Moving a node keeps all three. The already-executed inline
- * `<script>` inside `#topicreview` moves with it and does not re-run (a script
- * element that has run carries the "already started" flag for life).
+ * ⚠ Elements are **moved, never re-created**. The composer half holds a textarea the writer
+ * may already have typed into, hidden fields phpBB's submit needs, and nodes its scripts
+ * hold references to; rebuilding any of it would lose text or break the post. The
+ * already-executed inline `<script>` inside `#topicreview` moves with it and does not re-run
+ * — a script element that has run carries the "already started" flag for life.
  *
- * The split is positional: `h3#review` is the boundary, everything before it is
- * the composer, that heading and everything after it is the review. Reading the
- * boundary off the DOM rather than listing the composer's own ids is what makes
- * a `#preview` panel — which phpBB inserts near the top after an Aperçu — land
- * in the composer column for free. See docs/adr/0030.
+ * The split is positional, with `h3#review` as the boundary. Reading it off the DOM rather
+ * than listing the composer's own ids is what makes a `#preview` panel — which phpBB inserts
+ * near the top after an Aperçu — land in the composer column for free. See docs/adr/0030.
  */
 import type { LayoutPrefs } from '@/lib/composer-layout';
 import {
@@ -41,11 +37,7 @@ function makeColumn(part: 'composer' | 'review'): HTMLDivElement {
   return column;
 }
 
-/**
- * Wrap the form's two halves into columns and return the handle that places
- * them. `heading` must be a child of `form`, and `review` the element to reverse
- * (`#topicreview`).
- */
+/** `heading` must be a child of `form`, and `review` the element to reverse. */
 export function createReplyLayout(
   form: HTMLFormElement,
   heading: HTMLElement,
@@ -60,16 +52,15 @@ export function createReplyLayout(
   const reviewColumn = makeColumn('review');
   wrapper.append(composerColumn, reviewColumn);
 
-  // Insert the wrapper first, so the form is never empty and phpBB's scripts
-  // never see a moment without it.
+  // Wrapper first, so the form is never empty and phpBB's scripts never see a
+  // moment without it.
   form.prepend(wrapper);
   original.forEach((child, index) => {
     (index < boundary ? composerColumn : reviewColumn).append(child);
   });
 
-  // The break-out's own width, measured rather than taken from `100vw` — see
-  // `VIEWPORT_WIDTH_VAR`. Kept current while the window resizes; it costs one
-  // property write and only matters while full width is on.
+  // Measured rather than taken from `100vw` — see `VIEWPORT_WIDTH_VAR`. Kept current
+  // across resizes; one property write, and it only matters while full width is on.
   const measureViewport = () => {
     wrapper.style.setProperty(
       VIEWPORT_WIDTH_VAR,

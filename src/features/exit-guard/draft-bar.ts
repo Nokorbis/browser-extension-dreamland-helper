@@ -3,30 +3,19 @@ import { chromeFor, createShadowHost, styled, SYSTEM_FONT } from '@/lib/shadow-u
 import type { Age } from './age';
 
 /**
- * The draft-recovery bar — a strip at the top of the composer offering to put a
- * saved draft back.
- *
- * Vanilla rather than Svelte, per docs/adr/0016-svelte-in-content-script.md: it is
- * small, static and shows once, which is the case that ADR keeps out of the
- * shadow-root Svelte path. Same construction as `highlight/toolbar.ts` — a
- * Shadow DOM host fenced off with `all:initial`, everything styled through
- * `.style` (never an injected `<style>`, which a page `style-src` CSP could
- * strip), and a `paint()` closure so `setDark` can repaint in place when the
- * forum's theme switch flips.
+ * The draft-recovery bar — a strip at the top of the composer offering a saved draft back.
+ * Vanilla rather than Svelte, being small, static and shown once (docs/adr/0016), built like
+ * `highlight/toolbar.ts`.
  *
  * Two things differ from the other vanilla surfaces, both load-bearing:
  *
- * 1. **It mounts in flow, inside `#message-box`.** The others are
- *    `position:fixed` on `document.body`; this one has to occupy space above the
- *    textarea. `findMessageBox`'s doc comment explains why it must be *inside*
- *    that wrapper rather than a sibling — a block-level sibling spans the whole
- *    fieldset and runs underneath `#smiley-box`. `createShadowHost` leaves the
- *    host at `all:initial` (so, `display:inline`), so the block display is set
- *    here.
- * 2. **Its buttons live inside `<form id="postform">`.** They are `type="button"`
- *    and carry no `name` — a submit-type or named button there fires a submit
- *    that `exit-guard` reads as a genuine post and **sends the half-written
- *    message**. Same hazard `createFormatButton` exists to make unrepresentable.
+ * 1. **It mounts in flow, inside `#message-box`**, where the others are `position: fixed` on
+ *    `document.body` — it has to occupy space above the textarea. See the ⚠ on
+ *    `findMessageBox` for why *inside* rather than a sibling. `createShadowHost` leaves the
+ *    host at `all:initial`, so the block display is set here.
+ * 2. ⚠ **Its buttons live inside `<form id="postform">`**, so they are `type="button"` with
+ *    no `name`: either would fire a submit `exit-guard` reads as a genuine post and **send
+ *    the half-written message**.
  */
 
 export interface RecoveryBarHandlers {
@@ -37,10 +26,7 @@ export interface RecoveryBarHandlers {
 }
 
 export interface RecoveryBar {
-  /**
-   * Mount inside `anchor`, immediately above `before` (the textarea), and show
-   * `age`.
-   */
+  /** Mount inside `anchor`, immediately above `before` (the textarea), showing `age`. */
   show(anchor: HTMLElement, before: Node, age: Age): void;
   setDark(dark: boolean): void;
   destroy(): void;
@@ -118,10 +104,9 @@ export function createRecoveryBar(handlers: RecoveryBarHandlers): RecoveryBar {
       message.textContent = i18n.t('features.exitGuard.draft.bar.recovered', {
         age: ageLabel(age),
       });
-      // Directly above the textarea — which also puts it *below* the
-      // `bbcode-presets` panel already occupying the first-child slot, rather
-      // than pushing that panel off the top of the editor column. Appending to
-      // the anchor instead would drop the bar underneath the editor entirely.
+      // Directly above the textarea, which also puts it *below* the `bbcode-presets`
+      // panel already in the first-child slot rather than pushing that panel off the
+      // top. Appending to the anchor instead would drop the bar below the editor.
       if (before.parentNode === anchor) anchor.insertBefore(host, before);
       else anchor.prepend(host);
     },

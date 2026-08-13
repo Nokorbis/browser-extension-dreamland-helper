@@ -23,44 +23,30 @@ import Panel from './Panel.svelte';
 import PromptDialog from './PromptDialog.svelte';
 
 /**
- * Feature #3 — BBCode presets.
+ * BBCode presets: a toolbar button dropping a nested menu, and a collapsible panel beside
+ * the editor. Presets are authored on the options page and live in their own storage key
+ * (docs/adr/0012); their placeholder grammar is frozen in docs/adr/0015.
  *
- * Two ways into the same library, both inserting into phpBB's composer and
- * wrapping whatever was selected:
+ * Three structural choices worth knowing before editing:
  *
- * - a button in phpBB's BBCode toolbar that drops down a nested menu, and
- * - a collapsible panel pinned beside the editor.
+ * 1. **The trigger is plain DOM in the *page*, not a shadow root** — it carries phpBB's own
+ *    button classes so it inherits the forum skin, which a shadow root would block.
+ * 2. **Menu and panel are Svelte in shadow roots** (docs/adr/0016). Only the *menu* is an
+ *    anchored popover and goes through `@/lib/popover`; the panel is an inline block inside
+ *    `#message-box` with no positioning, dismissal or Escape, mounted by hand below.
+ * 3. **A preset carrying `{PROMPT:label}` fields puts up a form first**, from either
+ *    surface — the third popover here, and why `insert` splits into begin and perform.
+ *    See docs/adr/0026.
  *
- * Presets are authored in the extension's options page and live in their own
- * storage key (docs/adr/0012-feature-owned-data-stores.md); the placeholder
- * grammar they use is frozen in docs/adr/0015-preset-placeholder-syntax.md.
- *
- * Two structural choices worth knowing before editing this file:
- *
- * 1. **The trigger button is plain DOM in the *page*, not in a shadow root.**
- *    It carries phpBB's own `button` classes so it inherits the forum skin —
- *    inside a shadow root the skin cannot reach it and it would look foreign.
- * 2. **The menu and panel are Svelte inside shadow roots**, because both are
- *    data-driven and recursive. See docs/adr/0016-svelte-in-content-script.md.
- *    Only the *menu* is an anchored popover, so only it goes through
- *    `@/lib/popover` (shared with the emoji picker — docs/adr/0023); the panel
- *    is an inline block inside `#message-box` with no positioning, no outside-
- *    click dismissal and no Escape, and is mounted by hand below.
- * 3. **A preset carrying `{PROMPT:label}` fields is not inserted straight away**
- *    — it puts up a small form first, from either surface. That is the third
- *    popover here, and the reason `insert` is split into "begin" and "perform".
- *    See docs/adr/0026-prompted-preset-placeholders.md.
- *
- * ⚠ The button sits inside phpBB's `<form id="postform">`. It **must** stay
- * `type="button"` with no `name`: a submit button here fires a submit event that
- * the exit guard reads as a genuine post, which would send the half-written
- * message. See `src/features/exit-guard/index.ts`.
+ * ⚠ The button sits inside `<form id="postform">` and **must** stay `type="button"` with no
+ * `name`, or the exit guard reads its submit event as a genuine post and sends the
+ * half-written message. `createFormatButton` enforces that.
  */
 
 /** Marks our injected button so a re-run (phpBB's "Aperçu") doesn't double up. */
 const TRIGGER_MARKER = 'data-dlh-presets';
 
-/** Marks the prompt dialog's invisible anchor, so it is recognisable in the DOM. */
+/** Marks the prompt dialog's invisible anchor. */
 const PROMPT_ANCHOR_MARKER = 'data-dlh-preset-prompt';
 
 export const bbcodePresets = {
@@ -72,9 +58,8 @@ export const bbcodePresets = {
   implemented: true,
 
   setup(ctx) {
-    // Stage 1 of the degradation ladder: only composer pages have anything to
-    // attach to. Everything below is independently guarded so a missing piece
-    // costs one surface, never the whole feature.
+    // Stage 1 of the degradation ladder: only composer pages have anything to attach to.
+    // Everything below is guarded independently, so a missing piece costs one surface.
     if (findMessageTextarea() === null) return;
 
     const menuState = createMenuState();
@@ -96,9 +81,8 @@ export const bbcodePresets = {
     /** The preset waiting on the prompt dialog, or `null` when it isn't up. */
     let pending: Preset | null = null;
 
-    // The selection as it was when the menu or panel was last interacted with.
-    // Snapshotted on open rather than read at click time, because by then the
-    // click may have collapsed it.
+    // Snapshotted on open rather than read at click time, because by then the click
+    // may have collapsed the selection.
     let range: TextRange = { start: 0, end: 0 };
     let selection = '';
 
@@ -110,11 +94,7 @@ export const bbcodePresets = {
       selection = snapshot.text;
     };
 
-    /**
-     * Shut the menu without touching focus. Defined up here rather than inside
-     * the menu's own block because the insertion path below needs it, and the
-     * `aria-expanded` on the trigger has to move with it.
-     */
+    /** Shut the menu without touching focus, moving `aria-expanded` with it. */
     const collapseMenu = () => {
       menuState.open = false;
       trigger?.setAttribute('aria-expanded', 'false');
@@ -130,8 +110,8 @@ export const bbcodePresets = {
         selection,
         answers,
       });
-      // Warnings never block an insertion — they are surfaced where the preset
-      // can still be fixed, in the options-page preview.
+      // Warnings never block an insertion — they surface where the preset can still
+      // be fixed, in the options-page preview.
       if (warnings.length > 0) {
         log(`preset "${preset.name}" rendered with warnings`, warnings);
       }
@@ -147,17 +127,16 @@ export const bbcodePresets = {
     const cancelPrompt = () => {
       if (!promptState.open) return;
       closePrompt();
-      // The dialog held focus, so hand it back rather than leaving it on a
-      // hidden node with the caret nowhere — same reasoning as `dismissMenu`.
+      // The dialog held focus, so hand it back rather than leave it on a hidden
+      // node with the caret nowhere.
       findMessageTextarea()?.focus();
     };
 
     const confirmPrompt = () => {
       const preset = pending;
       if (preset === null) return;
-      // Copy the answers out of the reactive proxy into a plain record before
-      // handing them to the pure engine. Nothing here reaches storage, but the
-      // engine's inputs should be ordinary values all the same.
+      // Out of the reactive proxy into a plain record: nothing here reaches storage,
+      // but the pure engine's inputs should be ordinary values all the same.
       const answers = Object.fromEntries(
         promptState.labels.map((label) => [label, promptState.answers[label] ?? '']),
       );
@@ -166,32 +145,27 @@ export const bbcodePresets = {
     };
 
     /**
-     * Shared by both surfaces: insert the preset, asking for its `{PROMPT:…}`
-     * fields first if it has any.
-     *
-     * The selection snapshot survives the wait: any pointerdown outside the
-     * dialog dismisses it, so the writer cannot move the caret out from under
-     * `range` without cancelling first.
+     * Insert the preset, asking for its `{PROMPT:…}` fields first if it has any. The
+     * selection snapshot survives the wait: any pointerdown outside the dialog dismisses it,
+     * so the writer cannot move the caret out from under `range` without cancelling first.
      */
     const beginInsert = (preset: Preset) => {
       const labels = collectPrompts(preset.body);
-      // No prompt surface (no toolbar *and* no editor container) degrades to
-      // the pre-0026 behaviour — insert unfilled and let the writer edit in
-      // place — rather than opening a dialog nobody can see.
+      // With no prompt surface at all, insert unfilled and let the writer edit in place
+      // rather than open a dialog nobody can see.
       if (labels.length === 0 || promptPopover === null) {
         collapseMenu();
         performInsert(preset, {});
         return;
       }
 
-      // Deliberately `collapseMenu`, not `dismissMenu`: the latter would pull
-      // focus back to the textarea just as the dialog is about to take it.
+      // `collapseMenu`, not `dismissMenu`: the latter would pull focus back to the
+      // textarea just as the dialog is about to take it.
       collapseMenu();
       pending = preset;
       promptState.presetName = preset.name;
       promptState.labels = labels;
-      // Always blank. Remembering the last answers would need a store of its
-      // own, and a stale value is worse than an empty field (docs/adr/0026).
+      // Always blank: a stale value is worse than an empty field (docs/adr/0026).
       promptState.answers = Object.fromEntries(labels.map((label) => [label, '']));
       promptState.open = true;
       promptPopover.positionSoon();
@@ -207,8 +181,8 @@ export const bbcodePresets = {
     unwatch = watchPresetStore(applyStore);
 
     // --- theme: follow the *forum's* light/dark, not the OS preference ---
-    // Both surfaces render inside shadow roots, where CSS cannot read the host
-    // page's `html.dark` portably, so the flag is pushed in as state.
+    // CSS cannot read the host page's `html.dark` from a shadow root portably, so the
+    // flag is pushed in as state.
     const applyTheme = (dark: boolean) => {
       if (disposed) return;
       menuState.dark = dark;
@@ -221,8 +195,8 @@ export const bbcodePresets = {
     // ------------------------------------------------------------------
     // Surface 1 — the toolbar button and its nested menu
     // ------------------------------------------------------------------
-    // Stage 2: the toolbar sits behind {IF S_BBCODE_ALLOWED} and a custom skin
-    // may not have it. Skip just this surface; the panel below still mounts.
+    // Stage 2: the toolbar sits behind {IF S_BBCODE_ALLOWED} and a custom skin may not
+    // have it. Skip just this surface; the panel below still mounts.
     const formatButtons = findFormatButtons();
     const alreadyInjected = formatButtons?.querySelector(`[${TRIGGER_MARKER}]`) != null;
 
@@ -232,19 +206,14 @@ export const bbcodePresets = {
       log('bbcode-presets: trigger already present, skipping');
     } else {
       const label = i18n.t('features.bbcodePresets.trigger.title');
-      // `createFormatButton` owns the markup, including the `type="button"` rule in the
-      // ⚠ above — which it enforces structurally rather than leaving it to be remembered.
       const button = createFormatButton({ icon: 'fa-magic', label, popup: 'menu' });
       button.setAttribute(TRIGGER_MARKER, '');
       formatButtons.append(button);
       trigger = button;
 
-      // Dismissing with the keyboard has to hand focus *back* to the composer:
-      // the menu grabs focus on open (see Menu.svelte), so closing it without
-      // this leaves focus on a removed node and the caret nowhere.
-      // Deliberately not the same function as collapseMenu — the outside-click
-      // handler uses that one, and pulling focus back there would fight the
-      // click the user just made.
+      // Keyboard dismissal must hand focus *back*: the menu grabs it on open, so closing
+      // without this leaves focus on a removed node. Kept separate from `collapseMenu`,
+      // which the outside-click path uses — pulling focus there would fight the click.
       const dismissMenu = () => {
         collapseMenu();
         findMessageTextarea()?.focus();
@@ -257,12 +226,8 @@ export const bbcodePresets = {
         menuPopover?.position();
       };
 
-      // Anchoring, dismissal and the shadow-root mount are all shared with the
-      // emoji picker's panel — see `@/lib/popover` and docs/adr/0023. No `fit`
-      // here: the composer toolbar is near the top of the page, so this menu has
-      // never needed to flip above its trigger or clamp its left edge, and
-      // turning fitting on would change long-settled behaviour for no reported
-      // problem.
+      // No `fit`: the composer toolbar is near the top of the page, so this menu has
+      // never needed to flip or clamp.
       menuPopover = createPopover({
         ctx: ctx.scriptCtx,
         name: 'dlh-bbcode-presets',
@@ -279,8 +244,8 @@ export const bbcodePresets = {
             props: {
               menu: menuState,
               onselect: beginInsert,
-              // Escape/Tab from inside the menu — must restore focus, since
-              // this is the path that actually runs for a keyboard user.
+              // Escape/Tab from inside the menu — the path a keyboard user actually
+              // takes, so it must restore focus.
               onclose: dismissMenu,
             },
           }),
@@ -294,8 +259,8 @@ export const bbcodePresets = {
     // ------------------------------------------------------------------
     // Surface 2 — the collapsible panel beside the editor
     // ------------------------------------------------------------------
-    // Stage 3: anchor to the message box, falling back to the textarea's own
-    // parent inside findMessageBox(). Only if there is nothing at all do we skip.
+    // Stage 3: anchor to the message box; `findMessageBox` already falls back to the
+    // textarea's parent, so only nothing at all skips this surface.
     const messageBox = findMessageBox();
     if (messageBox === null) {
       warn('bbcode-presets: no editor container found — panel skipped');
@@ -310,20 +275,17 @@ export const bbcodePresets = {
             name: 'dlh-bbcode-presets-panel',
             position: 'inline',
             anchor: messageBox,
-            // INSIDE #message-box, above the textarea — not as a sibling before
-            // it. prosilver floats #smiley-box to the right and lets
-            // #message-box take the remaining column, so a sibling block would
-            // span the whole fieldset and slide under the emoticon list. As the
-            // first child it simply inherits the textarea's own content box, at
-            // whatever width the skin gives it.
+            // INSIDE #message-box, not a sibling before it: prosilver floats
+            // #smiley-box right, so a sibling block would span the fieldset and slide
+            // under the emoticon list. See the ⚠ on `findMessageBox`.
             append: 'first',
             onMount: (container) =>
               mount(Panel, {
                 target: container,
                 props: {
                   panel: panelState,
-                  // Reading the selection at click time is safe here: the
-                  // panel's own mousedown handler prevents the focus loss.
+                  // Safe to read the selection at click time here: the panel's own
+                  // mousedown handler prevents the focus loss.
                   onselect: (preset: Preset) => {
                     snapshotSelection();
                     beginInsert(preset);
@@ -343,11 +305,9 @@ export const bbcodePresets = {
           panelUi = created;
           panelUi.mount();
 
-          // Neutralise the shadow host's own box. WXT leaves it unstyled for
-          // `position: 'inline'`, and an unknown custom element defaults to
-          // `display: inline` — an inline host wrapping block content generates
-          // anonymous block boxes that ignore the parent's content box. As a
-          // plain block inside #message-box it lines up with the textarea.
+          // Neutralise the shadow host's box. WXT leaves it unstyled for
+          // `position: 'inline'`, and an unknown element defaults to `display: inline`,
+          // whose anonymous block boxes ignore the parent's content box.
           const host = panelUi.shadowHost.style;
           host.display = 'block';
           host.boxSizing = 'border-box';
@@ -366,24 +326,17 @@ export const bbcodePresets = {
     // ------------------------------------------------------------------
     // Surface 3 — the prompt dialog, for presets carrying {PROMPT:…} fields
     // ------------------------------------------------------------------
-    // Unlike the other two this one is never opened by a click, which is what
-    // makes its anchoring unusual. `createPopover` wants a persistent light-DOM
-    // element: it inserts the shadow host after it, re-measures it on scroll and
-    // resize, and allowlists it in the outside-click test. Three candidates,
-    // two of them wrong:
+    // This one is never opened by a click, which makes its anchoring unusual:
+    // `createPopover` needs a persistent light-DOM element to insert after, re-measure and
+    // allowlist in the outside-click test, and all three obvious candidates fail. The
+    // clicked *menu item* is transient and in another shadow root; the *toolbar button*
+    // already belongs to the menu, so one click would fire both popovers' `onToggle`; and
+    // `#message-box` contains the textarea, so clicking into the message would count as
+    // "inside" and leave the dialog open over a caret that has moved.
     //
-    //  - the *menu item* that was clicked (what the design note first sketched)
-    //    is transient and lives in another shadow root — it is gone by the time
-    //    the dialog is up;
-    //  - the *toolbar button* already belongs to the menu, so a single click
-    //    would fire both popovers' `onToggle`;
-    //  - `#message-box` contains the textarea, so `composedPath()` would treat
-    //    clicking into the message as "inside", leaving the dialog open over a
-    //    caret that has since moved.
-    //
-    // So the anchor is an element of our own: an empty, zero-size span nobody
-    // can click, parked where the dialog should appear. `onToggle` is a no-op
-    // because nothing can activate it. See docs/adr/0026.
+    // So the anchor is ours: an empty zero-size span nobody can click, parked where the
+    // dialog should appear. `onToggle` is a no-op because nothing can activate it.
+    // See docs/adr/0026.
     if (trigger !== null || messageBox !== null) {
       const anchor = document.createElement('span');
       anchor.setAttribute(PROMPT_ANCHOR_MARKER, '');
@@ -392,8 +345,8 @@ export const bbcodePresets = {
       anchor.style.width = '0';
       anchor.style.height = '0';
 
-      // Under the toolbar button when there is one, so the dialog opens where
-      // the menu just was; otherwise at the top of the editor container.
+      // Under the toolbar button when there is one, so the dialog opens where the menu
+      // just was; otherwise at the top of the editor container.
       if (trigger !== null) trigger.after(anchor);
       else messageBox?.prepend(anchor);
       promptAnchor = anchor;
@@ -403,13 +356,13 @@ export const bbcodePresets = {
         name: 'dlh-bbcode-presets-prompt',
         trigger: anchor,
         prefix: 'prompt',
-        // `fit` on, unlike the menu: a form is as tall as it has fields, and
-        // the panel-only anchor can sit well down the page.
+        // `fit` on, unlike the menu: a form is as tall as it has fields, and the
+        // panel-only anchor can sit well down the page.
         fit: { selector: '.prompt' },
         isOpen: () => promptState.open,
         isDisposed: () => disposed,
-        // Outside click: close, insert nothing, and leave focus where the click
-        // put it. Escape comes through `onDismiss` and hands focus back.
+        // Outside click closes, inserts nothing and leaves focus where the click put
+        // it; Escape arrives through `onDismiss` and hands focus back.
         onClose: closePrompt,
         onDismiss: cancelPrompt,
         onToggle: () => {},

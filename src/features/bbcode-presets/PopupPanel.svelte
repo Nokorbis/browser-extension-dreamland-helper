@@ -11,12 +11,9 @@
   } from '@/lib/presets';
 
   /**
-   * The BBCode presets panel inside the popup accordion.
-   *
-   * Read-only on purpose: the popup is ~23rem wide and closes on any outside
-   * click, which would put half-typed BBCode at risk. It shows what the library
-   * contains and hands off to the options page for real editing.
-   * See docs/adr/0014-popup-accordion-options-page.md.
+   * The BBCode presets panel inside the popup accordion. Read-only on purpose: the popup is
+   * ~23rem wide and closes on any outside click, which would put half-typed BBCode at risk,
+   * so real editing happens on the options page. See docs/adr/0014.
    */
   let store = $state<PresetStore>(emptyPresetStore());
 
@@ -28,8 +25,8 @@
   });
 
   function openOptions() {
-    // Available in extension pages (not content scripts) on MV2 and MV3, in both
-    // browsers — so no background worker is needed to reach the options page.
+    // Available in extension pages on MV2 and MV3 in both browsers, so no background
+    // worker is needed to reach the options page.
     void browser.runtime.openOptionsPage();
   }
 </script>

@@ -1,18 +1,13 @@
 import type { ContentScriptContext } from '#imports';
 
-/**
- * Everything a feature is handed when it starts. Right now just the WXT
- * content-script context (page lifecycle, `ctx.onInvalidated`, safe timers,
- * etc.); grow this as features need more shared services.
- */
+/** Everything a feature is handed at startup. Grow it as features need shared services. */
 export interface FeatureContext {
   scriptCtx: ContentScriptContext;
 }
 
 /**
- * A self-contained writing aid. Each feature lives in its own folder under
- * `src/features/` and is registered in `registry.ts`. The content script boots
- * every enabled feature on a forum page; the popup lists them for toggling.
+ * A self-contained writing aid: its own folder under `src/features/`, registered in
+ * `registry.ts`. The content script boots the enabled ones; the popup lists them.
  */
 export interface Feature {
   /** Stable id — used as the settings key. Never rename once shipped. */
@@ -24,8 +19,8 @@ export interface Feature {
   /** False while the feature is still a stub (hidden/disabled by default). */
   implemented: boolean;
   /**
-   * Start the feature on the current page. Return an optional cleanup function;
-   * it runs when the content-script context is invalidated (SPA nav / HMR).
+   * Returns an optional cleanup, which runs when the content-script context is
+   * invalidated (SPA nav / HMR).
    */
   setup(ctx: FeatureContext): void | (() => void);
 }

@@ -1,13 +1,10 @@
 /**
- * A tiny kit for the extension's **vanilla** in-page controls — the ones built
- * straight from DOM nodes and styled through the `.style` property rather than
- * with Svelte (docs/adr/0016 keeps small, static UI out of the shadow-root Svelte
- * path). `exit-guard`'s server-down modal and the `highlight` toolbar/clear
- * control share this, so the shadow-host boilerplate, the max z-index, the font
- * stack, and the themed chrome palette live in one place.
+ * A kit for the extension's **vanilla** in-page controls — built from DOM nodes and styled
+ * through `.style` rather than with Svelte (docs/adr/0016 keeps small, static UI out of the
+ * shadow-root Svelte path).
  *
- * Everything here styles through `.style` / `attachShadow` and never injects a
- * `<style>` tag, so a page `style-src` CSP can't strip it (docs/adr/0011).
+ * Everything here styles through `.style` / `attachShadow` and never injects a `<style>`
+ * tag, so a page `style-src` CSP can't strip it (docs/adr/0011).
  */
 
 /** The maximum 32-bit z-index, so an overlay sits above any forum chrome. */
@@ -33,14 +30,12 @@ export function createShadowHost(): { host: HTMLElement; shadow: ShadowRoot } {
 }
 
 /**
- * The chrome palette for an injected control, mirroring the `--dlh-*` custom
- * properties in `src/lib/palette.css`. Vanilla `.style` controls can't read
- * those CSS variables, so the subset they need is kept here as the single JS
- * source — keep the two in step when either changes.
+ * Mirrors the `--dlh-*` custom properties in `src/lib/palette.css`, which vanilla `.style`
+ * controls cannot read.
  *
- * ⚠ That obligation is manual and nothing tests it: these values and the CSS ones are
- * two hand-maintained copies of the same palette. Changing one and not the other shows
- * up only as an injected control that no longer matches the panel beside it.
+ * ⚠ Two hand-maintained copies of one palette, and nothing tests that they agree: changing
+ * one and not the other shows up only as an injected control that no longer matches the
+ * panel beside it.
  */
 export interface Chrome {
   surface: string;
@@ -50,10 +45,9 @@ export interface Chrome {
   hover: string;
   shadow: string;
   /**
-   * The "look before you act" family, mirroring `--dlh-warn-*`. Amber rather
-   * than red: a surface wearing it is not reporting an error, it is asking to be
-   * read before something is confirmed — the draft-recovery bar being the case
-   * it was added for.
+   * The "look before you act" family, mirroring `--dlh-warn-*`. Amber rather than red: a
+   * surface wearing it is not reporting an error, it is asking to be read before something
+   * is confirmed — the draft-recovery bar being the case it was added for.
    */
   warnBg: string;
   warnFg: string;

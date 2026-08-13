@@ -1,20 +1,16 @@
 <script lang="ts">
   /**
-   * Export and import of settings, the BBCode preset library and the emoji
-   * picker's recents as one JSON file.
-   * See docs/adr/0021-json-export-import.md. Highlights are out of scope.
+   * Export and import of settings, the preset library and the emoji recents as one JSON
+   * file; highlights are out of scope. See docs/adr/0021.
    *
-   * Both halves live here, on the options page, rather than in the popup. The
-   * action popup closes the instant it loses focus, and a native
-   * `<input type="file">` dialog is exactly the kind of window that takes it —
-   * so anything waiting inside the popup for a `change` event never gets it.
-   * Export alone *could* have stayed there (a download opens no dialog), but
-   * splitting one feature across two surfaces was worse than the second click
-   * it costs to get here; the popup's cog is now a plain link to this page.
+   * ⚠ Both halves live here rather than in the popup, which closes the instant it loses
+   * focus — and a native `<input type="file">` dialog is exactly the kind of window that
+   * takes it, so anything waiting inside the popup for a `change` event never gets it.
+   * Export alone could have stayed there, but splitting one feature across two surfaces was
+   * worse than the extra click.
    *
-   * This section owns its own copies of every store and persists them itself.
-   * The preset editor in the section above is not consulted: it watches
-   * `storage.local` for changes from any context, so a write from here reaches
+   * This section owns its own copies of every store and persists them itself. The preset
+   * editor above is not consulted: it watches `storage.local`, so a write from here reaches
    * it the same way a write from the popup would.
    */
   import { i18n } from '#i18n';
@@ -41,10 +37,8 @@
   import { error } from '@/lib/log';
   import ImportModal from './ImportModal.svelte';
 
-  // Every store, loaded on mount and kept live. Staying subscribed matters:
-  // this page is long-lived and the preset editor sitting right above can
-  // change the library at any moment, so a one-shot snapshot taken at mount
-  // would export a stale one.
+  // Kept live, not snapshotted: this page is long-lived and the preset editor above can
+  // change the library at any moment, so a mount-time snapshot would export a stale one.
   let settings = $state<Settings | null>(null);
   let presetStore = $state<PresetStore | null>(null);
   let emojiPrefs = $state<EmojiPrefs | null>(null);
@@ -87,9 +81,9 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    // Attached and revoked a tick late on purpose: Firefox has historically
-    // wanted the anchor in the document, and revoking synchronously after
-    // click() can cancel the download before it starts.
+    // Attached and revoked a tick late on purpose: Firefox has historically wanted the
+    // anchor in the document, and revoking synchronously after click() can cancel the
+    // download before it starts.
     document.body.append(a);
     a.click();
     a.remove();
@@ -159,8 +153,7 @@
     pendingImport = null;
     if (importing === null) return;
 
-    // What the user actually asked for, narrowed once so the writes below read
-    // straight through.
+    // Narrowed once, so the writes below read straight through.
     const presets = selection.selectedPresetIds.size > 0 ? importing.presets : null;
     const settings = selection.importSettings ? importing.settings : null;
     const emoji = selection.importEmoji ? importing.emoji : null;
@@ -171,8 +164,8 @@
 
     try {
       if (presets !== null) {
-        // Re-read rather than folding into our watched copy: reviewing the
-        // modal takes seconds, and this is the last moment before the write.
+        // Re-read rather than fold into our watched copy: reviewing the modal takes
+        // seconds, and this is the last moment before the write.
         const base = await loadPresetStore();
         await savePresetStore(
           applyPresetImport(base, presets, selection.selectedPresetIds),
@@ -182,21 +175,20 @@
         await saveSettings(settings);
       }
       if (emoji !== null) {
-        // Wholesale replacement, not a merge: a recents list is an ordering,
-        // and interleaving two of them would produce an order neither device
-        // ever had.
+        // Wholesale replacement, not a merge: a recents list is an ordering, and
+        // interleaving two would produce an order neither device ever had.
         await saveEmojiPrefs(emoji);
       }
     } catch (err) {
-      // Every write is awaited, so a result is only ever announced for
-      // something that resolved — never "Import terminé" over a pending write.
+      // Every write is awaited, so a result is only announced for something that
+      // resolved — never "Import terminé" over a pending write.
       report(i18n.t('options.backup.importFailed'), true);
       error('failed to import backup', err);
       return;
     }
 
-    // Imported feature flags land in storage, but `bootFeatures` reads them
-    // once at content-script boot — same caveat the popup's own hint carries.
+    // Imported feature flags land in storage, but `bootFeatures` reads them once at
+    // boot — the same caveat the popup's own hint carries.
     report(
       settings !== null
         ? i18n.t('options.backup.importDoneWithSettings')
@@ -226,10 +218,9 @@
   </div>
 
   <!--
-    Rendered conditionally rather than merely faded: a live region only
-    announces when its *content* changes, so text that is always present is
-    never read out — and sits in the accessibility tree at opacity 0 the rest
-    of the time. Same shape as the editor's own status line.
+    Rendered conditionally rather than faded: a live region only announces when its
+    *content* changes, so text always present is never read out — and would sit in the
+    accessibility tree at opacity 0 the rest of the time.
   -->
   <p
     class="status"
@@ -288,7 +279,7 @@
     cursor: default;
   }
 
-  /* Kept off-screen rather than `display: none`, so `.click()` still opens the
+  /* Off-screen rather than `display: none`, so `.click()` still opens the
      picker in every browser. */
   .visually-hidden {
     position: absolute;

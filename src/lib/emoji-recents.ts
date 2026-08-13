@@ -1,18 +1,10 @@
 /**
- * The emoji picker's own data: which emoji this writer reached for last.
+ * Which emoji this writer reached for last. The smallest instance of the store idiom in
+ * `@/lib/store-kit` (docs/adr/0012).
  *
- * A feature that owns *data* gets its own `storage.local` key and its own typed
- * module rather than a field in the settings blob — see
- * docs/adr/0012-feature-owned-data-stores.md. This is the smallest instance of
- * that idiom (`@/lib/presets` is the full one): the version lives inside the
- * payload, a repair pass runs on every read, `toPlainEmojiPrefs` rebuilds a
- * plain object inside `saveEmojiPrefs`, and `pushRecent` is a pure
- * `prefs → prefs` mutation.
- *
- * Only the *characters* are stored, never labels or ids: the dataset can be
- * regenerated, re-translated or version-capped underneath a saved list without
- * invalidating it, and an emoji that later leaves the dataset simply stops
- * being offered.
+ * Only the *characters* are stored, never labels or ids: the dataset can be regenerated,
+ * re-translated or version-capped underneath a saved list without invalidating it, and an
+ * emoji that later leaves the dataset simply stops being offered.
  */
 import {
   isRecord,
@@ -28,9 +20,8 @@ export const EMOJI_KEY = 'emojiPicker';
 export const EMOJI_SCHEMA_VERSION = 1;
 
 /**
- * How many recents to keep. Deliberately larger than the row the panel shows
- * (RECENT_SHOWN): the tail is what a returning writer's list is rebuilt from
- * after a few one-off insertions push their staples out of view.
+ * Deliberately larger than `RECENT_SHOWN`: the tail is what a returning writer's list is
+ * rebuilt from after a few one-off insertions push their staples out of view.
  */
 export const RECENT_LIMIT = 24;
 
@@ -48,17 +39,10 @@ export function emptyEmojiPrefs(): EmojiPrefs {
   return { version: EMOJI_SCHEMA_VERSION, recent: [] };
 }
 
-/**
- * Migrations keyed by the version being upgraded *from*, mirroring
- * `@/lib/presets`. Empty at v1; the loop below already exists so adding one is
- * a single entry rather than a refactor.
- */
+/** Keyed by the version being upgraded *from*. Empty at v1. */
 const MIGRATIONS: Record<number, (prefs: EmojiPrefs) => EmojiPrefs> = {};
 
-/**
- * Repair whatever `storage.local` (or an imported backup file) hands back.
- * Never throws — a corrupt payload costs the recents list, not the feature.
- */
+/** Never throws — a corrupt payload costs the recents list, not the feature. */
 export function normalizeEmojiPrefs(raw: unknown): EmojiPrefs {
   if (!isRecord(raw)) return emptyEmojiPrefs();
 
@@ -71,9 +55,8 @@ export function normalizeEmojiPrefs(raw: unknown): EmojiPrefs {
     repairs.push('recent was not an array');
   }
   for (const entry of rawRecent) {
-    // A non-string, an empty string, or a repeat: all three would show up as a
-    // blank or duplicated cell in the grid, so drop them here rather than
-    // making the component defensive.
+    // A non-string, an empty string or a repeat would each show up as a blank or
+    // duplicated cell, so drop them here rather than making the component defensive.
     if (typeof entry !== 'string' || entry === '' || seen.has(entry)) {
       repairs.push(`dropped an unusable recent entry`);
       continue;
@@ -100,21 +83,16 @@ export function normalizeEmojiPrefs(raw: unknown): EmojiPrefs {
 }
 
 /**
- * Rebuild as a plain object. Called from *inside* `saveEmojiPrefs` so the guard
- * sits at the storage boundary and not at one call site: a Svelte `$state`
- * value is a `Proxy`, which Firefox refuses to structured-clone into
- * `storage.local` while Chrome accepts it — a bug that shows up on one browser
- * only (CLAUDE.md).
+ * Plain object only: a Svelte `$state` Proxy is not cloneable and Firefox throws. Called
+ * from *inside* `saveEmojiPrefs`, so the guard sits at the boundary rather than a call site.
  */
 export function toPlainEmojiPrefs(prefs: EmojiPrefs): EmojiPrefs {
   return { version: prefs.version, recent: [...prefs.recent] };
 }
 
 /**
- * Record a use. Pure: `prefs → prefs`.
- *
- * Most-recent-first, deduped (re-using an emoji moves it to the front rather
- * than adding a second cell), capped at `limit`.
+ * Most-recent-first, deduped (re-using an emoji moves it to the front rather than adding a
+ * second cell), capped at `limit`.
  */
 export function pushRecent(
   prefs: EmojiPrefs,

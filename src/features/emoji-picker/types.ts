@@ -1,11 +1,8 @@
 /**
- * The shape of `public/emoji/emoji.json`, as produced by `scripts/gen-emoji.mjs`
- * and repaired by `data.ts`.
- *
- * Field names are one or two characters because the file is downloaded at
- * runtime and the keys repeat ~1900 times — `"c"`/`"g"`/`"k"` save roughly a
- * fifth of the payload over spelled-out names. Everything reading them goes
- * through this file, so the terseness stops here.
+ * The shape of `public/emoji/emoji.json`, produced by `scripts/gen-emoji.mjs` and repaired
+ * by `data.ts`. Field names are one or two characters because the file is downloaded at
+ * runtime and the keys repeat ~1900 times, saving roughly a fifth of the payload; everything
+ * reading them goes through this file, so the terseness stops here.
  */
 
 /** One CLDR category, in display order. */

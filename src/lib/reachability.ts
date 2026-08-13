@@ -1,10 +1,7 @@
 /**
- * Network reachability preflight for the forum.
- *
- * The exit guard uses this to confirm the server actually responds *before* a
- * post submission navigates away — a down forum, or a broken intermediate
- * gateway, otherwise swallows the POST and loses the draft. See
- * docs/adr/0011-presend-server-reachability-check.md.
+ * Reachability preflight: the exit guard confirms the server responds *before* a submission
+ * navigates away, since a down forum or a broken gateway otherwise swallows the POST and
+ * loses the draft. See docs/adr/0011.
  */
 import { log } from '@/lib/log';
 
@@ -12,26 +9,17 @@ import { log } from '@/lib/log';
 const DEFAULT_TIMEOUT_MS = 5000;
 
 /**
- * Ping the forum and report whether it looks reachable.
+ * ⚠ Probe the URL the POST actually targets (the form's `action`), not the homepage: a
+ * caching proxy can serve a stale `200` for `/` while the origin handling the POST is down —
+ * the exact case this guards against.
  *
- * Callers should probe the URL the POST actually targets (the composer form's
- * `action`, i.e. `posting.php`) rather than the homepage: a caching proxy/CDN
- * can serve a stale `200` for `/` while the origin that handles the POST is
- * down — the very "intermediate gateway" case this guards against. We also
- * cache-bust the request so no cache layer can answer it. The verdict is
- * deliberately lenient:
+ * The verdict is deliberately lenient: status < 500 is reachable, a throw/timeout/5xx is
+ * not. Odd-but-alive statuses (405 to HEAD, an auth 403) count as reachable, and the "send
+ * anyway" escape hatch covers the rare false positive, so it is better to under- than
+ * over-block.
  *
- * - reachable   → a response came back with status < 500
- * - unreachable → the request threw, timed out, or returned 5xx (the
- *   "gateway down" case)
- *
- * Odd-but-alive statuses (a 405 to HEAD, an auth 403) count as reachable; the
- * exit guard's "send anyway" escape hatch covers the rare false positive, so it
- * is better to under- than over-block.
- *
- * Note: this runs in the content script's own network context, which is *not*
- * affected by DevTools "Offline" throttling — validate the down-path with a
- * real outage (OS Wi-Fi off) instead.
+ * ⚠ Runs in the content script's own network context, which DevTools "Offline" throttling
+ * does *not* affect — validate the down-path with a real outage instead.
  */
 export async function isForumReachable(
   probeUrl: string = `${location.origin}/`,

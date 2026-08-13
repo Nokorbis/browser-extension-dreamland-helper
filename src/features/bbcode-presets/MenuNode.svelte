@@ -30,9 +30,8 @@
   function moveFocus(step: number) {
     const buttons = items();
     if (buttons.length === 0) return;
-    // `document.activeElement` is retargeted to the shadow *host* for anything
-    // inside the root, so it would never match one of these buttons. Ask the
-    // containing root — the ShadowRoot here — for its own active element.
+    // `document.activeElement` reports the shadow *host*, so it would never match one
+    // of these buttons — ask the containing root for its own active element.
     const root = list?.getRootNode() as ShadowRoot | Document | undefined;
     const active = root?.activeElement ?? null;
     const current = buttons.findIndex((button) => button === active);
@@ -66,8 +65,8 @@
   }
 
   function onKeydown(event: KeyboardEvent) {
-    // Each level handles only the keys it owns and stops there, so a keypress
-    // deep in the tree isn't also processed by every ancestor level.
+    // Each level handles only the keys it owns and stops, so a keypress deep in the
+    // tree isn't also processed by every ancestor level.
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
@@ -90,15 +89,13 @@
   }
 
   /**
-   * Flip a submenu to the left when it would otherwise run off the viewport.
-   * Measured after layout rather than guessed, because how much room there is
-   * depends on where the forum puts the toolbar.
+   * Flip a submenu left when it would run off the viewport. Measured after layout rather
+   * than guessed, since how much room there is depends on where the forum puts the toolbar.
    */
   function keepOnScreen(node: HTMLElement) {
-    // Runs once per flyout: the element is created fresh each time a folder
-    // opens, so there is nothing to keep in sync afterwards.
-    // getBoundingClientRect() forces layout, so the measurement is accurate
-    // even though the node was only just inserted.
+    // Once per flyout: the element is created fresh each time a folder opens, so there
+    // is nothing to keep in sync. getBoundingClientRect() forces layout, so the
+    // measurement is accurate even though the node was only just inserted.
     if (node.getBoundingClientRect().right > window.innerWidth - 8) {
       node.classList.add('flip');
     }
@@ -107,10 +104,10 @@
 
 <ul role="menu" bind:this={list} onkeydown={onKeydown}>
   {#each folders as node (node.folder.id)}
-    <!-- role="none" so the role="menu" list owns the buttons directly: an <li>
-         carrying its implicit listitem role between the two breaks the required
-         menu → menuitem relationship. The element stays an <li> for the
-         `:scope > li > button` queries above and for markup validity. -->
+    <!-- role="none" so the role="menu" list owns the buttons directly: an <li>'s
+         implicit listitem role between the two breaks the required menu/menuitem
+         relationship. It stays an <li> for the `:scope > li > button` queries above
+         and for markup validity. -->
     <li role="none" class="folder" data-folder={node.folder.id}>
       <button
         type="button"

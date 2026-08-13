@@ -1,21 +1,13 @@
 /**
- * The persistent text-highlight store: passages a writer has marked inside a
- * post's message body, kept across reloads and shared between the thread page
- * (viewtopic) and the reply composer's topic review (posting.php).
+ * Passages a writer has marked inside a post's message body, kept across reloads and shared
+ * between viewtopic and the reply composer's topic review. Follows the store idiom in
+ * `@/lib/store-kit` (docs/adr/0012).
  *
- * This is the second *data* a feature owns, after `@/lib/presets`, and it
- * follows that module's idiom deliberately (docs/adr/0012-feature-owned-data-stores.md):
- * its own `browser.storage.local` key, the `version` carried **inside** the
- * payload, a **flat** id-keyed record, a repair pass on every read, and pure
- * `store → store` mutations. Copy that shape rather than inventing a second one.
- *
- * A highlight is anchored by **numeric post id** plus a character range into the
- * post's `.content` text. The post id is what phpBB encodes identically in
- * `#p<id>` (viewtopic) and `#pr<id>` (topic review), so a highlight follows its
- * post between the two pages for free. `quote` is the highlighted text, kept for
- * validation and re-anchoring when the offsets don't line up (see
- * `src/features/highlight/anchor.ts`). `topicId` lets the popup clear a whole
- * discussion without reading the page.
+ * A highlight is anchored by **numeric post id** plus a character range into the post's
+ * `.content` text — phpBB encodes that id identically in `#p<id>` and `#pr<id>`, so a
+ * highlight follows its post between the two pages for free. `quote` is the highlighted
+ * text, kept for validation and re-anchoring when the offsets don't line up (see
+ * `src/features/highlight/anchor.ts`).
  */
 import { warn } from '@/lib/log';
 import {
@@ -29,7 +21,6 @@ import {
   watchStore,
 } from '@/lib/store-kit';
 
-/** Storage key. Separate from `settings` and `bbcodePresets` — see docs/adr/0012. */
 export const HIGHLIGHTS_KEY = 'highlights';
 
 /** Bump only alongside a migration in `MIGRATIONS`. */
@@ -58,7 +49,7 @@ export interface HighlightStore {
   highlights: Record<string, Highlight>;
 }
 
-/** A fresh empty store. A factory, not a shared constant, so callers can't alias it. */
+/** A factory, not a shared constant, so callers can't alias it. */
 export function emptyHighlightStore(): HighlightStore {
   return { version: HIGHLIGHTS_SCHEMA_VERSION, highlights: {} };
 }
@@ -70,10 +61,7 @@ export { newId };
 // Normalization
 // ---------------------------------------------------------------------------
 
-/**
- * Version-to-version upgrades, keyed by the version being upgraded *from*.
- * Empty at v1; the plumbing exists so the first migration is a one-line change.
- */
+/** Keyed by the version being upgraded *from*. Empty at v1. */
 const MIGRATIONS: Record<number, (store: HighlightStore) => HighlightStore> = {};
 
 function readCreatedAt(value: unknown): number {
@@ -82,13 +70,9 @@ function readCreatedAt(value: unknown): number {
 }
 
 /**
- * Parse and repair whatever is in storage.
- *
- * Runs on **every** load and every change notification, like the preset store's
- * repair pass. A highlight that can't be anchored — no post id, no quote, or a
- * degenerate range — is *dropped* rather than kept, because unlike a misfiled
- * preset an un-anchorable highlight has nowhere sensible to fall back to and
- * would only paint nothing (or the wrong text). It never throws.
+ * Parse and repair whatever is in storage; never throws. A highlight that can't be anchored
+ * — no post id, no quote, or a degenerate range — is *dropped*: unlike a misfiled preset it
+ * has nowhere to fall back to and would paint nothing, or the wrong text.
  */
 export function normalizeHighlightStore(raw: unknown): HighlightStore {
   if (!isRecord(raw)) return emptyHighlightStore();
@@ -98,9 +82,8 @@ export function normalizeHighlightStore(raw: unknown): HighlightStore {
 
   if (isRecord(raw.highlights)) {
     for (const [id, value] of Object.entries(raw.highlights)) {
-      // The id comes from the object key and is otherwise never checked. An empty one
-      // would collide with itself in `deleteHighlight` and in `allHighlights`'
-      // `localeCompare` tie-break, so it is dropped like any other unusable record.
+      // An empty id would collide with itself in `deleteHighlight` and in
+      // `allHighlights`' tie-break, so drop it like any other unusable record.
       if (id === '' || !isRecord(value)) {
         dropped += 1;
         continue;
@@ -158,15 +141,7 @@ export async function loadHighlightStore(): Promise<HighlightStore> {
   return loadStore(HIGHLIGHTS_KEY, normalizeHighlightStore);
 }
 
-/**
- * Rebuild the store as plain objects holding only known fields.
- *
- * **This is what makes saving work on Firefox** — the popup panel holds a store
- * in Svelte `$state`, which deep-proxies it, and a `Proxy` is not
- * structured-cloneable (Firefox throws `DataCloneError` on the way into
- * `storage.local`; Chrome silently succeeds). Same rationale as
- * `toPlainStore` in `@/lib/presets`.
- */
+/** Plain objects only: a Svelte `$state` Proxy is not cloneable and Firefox throws. */
 export function toPlainHighlightStore(store: HighlightStore): HighlightStore {
   const highlights: Record<string, Highlight> = {};
   for (const h of Object.values(store.highlights)) {
@@ -188,11 +163,7 @@ export async function saveHighlightStore(store: HighlightStore): Promise<void> {
   await saveStore(HIGHLIGHTS_KEY, toPlainHighlightStore(store));
 }
 
-/**
- * Observe the store from any context — content script or popup. Returns an
- * unsubscriber; wire it into the feature's cleanup. The area filter and the
- * choice of the top-level `onChanged` live in `watchStore`.
- */
+/** Returns an unsubscriber; wire it into the feature's cleanup. */
 export function watchHighlightStore(
   onChange: (store: HighlightStore) => void,
 ): () => void {
@@ -203,7 +174,7 @@ export function watchHighlightStore(
 // Derived views (pure)
 // ---------------------------------------------------------------------------
 
-/** Every highlight, oldest first — the order they should paint in. */
+/** Oldest first — the order they paint in. */
 export function allHighlights(store: HighlightStore): Highlight[] {
   return Object.values(store.highlights).sort(
     (a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id),
@@ -243,11 +214,7 @@ function clone(store: HighlightStore): HighlightStore {
   return { version: store.version, highlights: { ...store.highlights } };
 }
 
-/**
- * Callers mint the id themselves (via `newId`) and pass it in, so this stays
- * deterministic and testable without a browser — the same contract as the
- * preset mutations.
- */
+/** Callers mint the id (via `newId`) and pass it in, so this stays deterministic. */
 export function addHighlight(
   store: HighlightStore,
   highlight: {
@@ -284,14 +251,9 @@ export function deleteHighlight(store: HighlightStore, id: string): HighlightSto
 }
 
 /**
- * Drop a set of highlights by id — the eraser.
- *
- * The feature decides *which* ids: those whose painted range on the **current
- * page** overlaps the selection. That comparison happens against the resolved
- * DOM ranges, not stored offsets, so erasing works from either page even though
- * a post's `.content` offsets can differ between viewtopic and the topic review
- * (the "Dernier message de la page précédente" prefix, whitespace). Keeping this
- * a plain id delete is what makes that possible.
+ * The eraser. The feature picks the ids by comparing the selection against *resolved DOM
+ * ranges*, not stored offsets, since a post's `.content` offsets can differ between
+ * viewtopic and the topic review. Keeping this a plain id delete is what allows that.
  */
 export function deleteHighlights(
   store: HighlightStore,

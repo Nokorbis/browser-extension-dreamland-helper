@@ -2,23 +2,15 @@
   import { i18n } from '#i18n';
   import PresetsSection from './PresetsSection.svelte';
   import BackupSection from './BackupSection.svelte';
-  // Global (unscoped) — the --dlh-* variables every section reads. This is an
-  // extension page, so the theme follows the OS preference (see below), unlike
-  // the in-page surfaces which follow the forum's own theme.
+  // Global (unscoped) — the --dlh-* variables every section reads. An extension page,
+  // so the theme follows the OS preference, unlike the in-page surfaces.
   import '@/lib/palette.css';
 
   /**
-   * The extension's options page: one page, one section per area of settings.
-   *
-   * This component is deliberately only the page chrome — heading, intro, the nav
-   * between sections — and a list of the sections themselves. Each section is its own
-   * component owning its own markup, state and styles (`PresetsSection` is the BBCode
-   * preset editor, `BackupSection` the export/import of everything). Adding an area
-   * means adding a component, a nav entry and one line below; nothing else here grows.
-   *
-   * The popup's cog opens this page, so a section added here needs no other entry point.
-   * See docs/adr/0014-popup-accordion-options-page.md and
-   * docs/adr/0021-json-export-import.md.
+   * The options page: one section per area of settings. This component is only the page
+   * chrome — heading, intro, nav — plus a list of sections, each its own component owning
+   * its markup, state and styles. Adding an area means a component, a nav entry and one line
+   * below; nothing else here grows. See docs/adr/0014.
    */
 </script>
 
@@ -93,10 +85,7 @@
     scroll-margin-top: 1rem;
   }
 
-  /*
-   * Only what the shared palette does not already cover — see palette.css, which flips
-   * itself via .dlh-theme-auto. Section-local dark rules live in each section.
-   */
+  /* Only what palette.css does not already cover; it flips itself via .dlh-theme-auto. */
   @media (prefers-color-scheme: dark) {
     :global(body) {
       color: var(--dlh-fg);

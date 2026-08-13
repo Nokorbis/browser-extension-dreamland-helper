@@ -10,14 +10,9 @@ export function setOrRemove(el: HTMLElement, name: string, value: string | null)
 }
 
 /**
- * Whether a BBCode name is safe to interpolate into a CSS selector.
- *
- * Both toolbar lookups — phpBB's `.bbcode-<name>` class and the chat's
- * `[onclick*="insertBBCode('<name>')"]` — build a selector out of a name that ultimately
- * comes from a keymap table. A name outside this alphabet would make `querySelector`
- * throw a `SyntaxError` and take the whole feature down, so both check first. The check
- * lives here rather than in either DOM module because it is neither forum nor chat
- * knowledge: it is a fact about selector syntax.
+ * Both toolbar lookups build a CSS selector out of a BBCode name from a keymap table. A name
+ * outside this alphabet would make `querySelector` throw a `SyntaxError` and take the whole
+ * feature down, so both check first.
  */
 export function isSafeBBCodeName(bbcode: string): boolean {
   return /^[a-z0-9-]+$/.test(bbcode);

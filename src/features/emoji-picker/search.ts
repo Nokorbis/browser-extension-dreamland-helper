@@ -1,30 +1,20 @@
 /**
- * Finding an emoji by name.
+ * Finding an emoji by name. Pure and DOM-free, which is what makes it the part of this
+ * feature worth unit-testing.
  *
- * Pure and DOM-free, which is what makes it the part of this feature worth
- * unit-testing (see the scoping note in vitest.config.ts): the panel, the
- * grid and the insertion are glue verified by hand, but "does typing *coeur*
- * find ❤️" is arithmetic.
- *
- * Two properties drive the design:
- *
- *  - **Bilingual.** The forum is French but many of its writers know emoji by
- *    their English names, so a query is matched against both labels and against
- *    the merged keyword blob — see the dataset shape in `types.ts`.
- *  - **Accent- and punctuation-blind.** Nobody types `œ` or `à` into a search
- *    box in a hurry, so both sides are folded before comparing.
+ * **Bilingual**, because the forum is French but many writers know emoji by their English
+ * names, so a query is matched against both labels and the merged keyword blob. And
+ * **accent- and punctuation-blind**, since nobody types `œ` or `à` into a search box in a
+ * hurry, so both sides are folded before comparing.
  */
 import type { EmojiRecord } from './types';
 
 /**
- * Normalize text for comparison: lowercase, accents removed, ligatures spelled
- * out, punctuation flattened to spaces.
+ * Lowercase, accents removed, ligatures spelled out, punctuation flattened to spaces.
  *
- * NFD decomposes `é` into `e` + a combining mark that `\p{M}` then strips, but
- * it leaves `œ` and `æ` alone — Unicode treats them as letters in their own
- * right rather than ligatures — so those two are spelled out by hand. Without
- * that, searching "coeur" would never find "cœur rouge", which is the single
- * most likely French emoji query there is.
+ * NFD decomposes `é` into `e` plus a combining mark `\p{M}` strips, but leaves `œ` and `æ`
+ * alone — Unicode treats them as letters in their own right — so those two are spelled out
+ * by hand. Without it, "coeur" would never find "cœur rouge".
  */
 export function fold(text: string): string {
   return (
@@ -34,20 +24,17 @@ export function fold(text: string): string {
       .replace(/æ/g, 'ae')
       .normalize('NFD')
       .replace(/\p{M}/gu, '')
-      // Everything that isn't a letter or digit becomes a separator, so
-      // "il y a quelqu'un ?" and "d'accord" split on the apostrophe and
-      // `hasWord` below can rely on plain spaces.
+      // Everything that isn't a letter or digit becomes a separator, so "d'accord"
+      // splits on the apostrophe and `hasWord` below can rely on plain spaces.
       .replace(/[^\p{L}\p{N}]+/gu, ' ')
       .trim()
   );
 }
 
 /**
- * Match tiers, best first. The value is the sort key — lower wins.
- *
- * Plain constants rather than an `enum`: WXT builds through esbuild with
- * `isolatedModules`, where a `const enum` cannot be inlined and silently
- * degrades into a runtime object.
+ * Match tiers, best first; the value is the sort key. Plain constants rather than an `enum`:
+ * WXT builds through esbuild with `isolatedModules`, where a `const enum` cannot be inlined
+ * and silently degrades into a runtime object.
  */
 const TIER = {
   exactLabel: 0,
@@ -65,13 +52,9 @@ function hasWord(haystack: string, term: string): boolean {
 }
 
 /**
- * The folded form of a record's searchable text.
- *
- * Cached by record identity: the dataset is loaded once and searched on every
- * keystroke, so folding ~1900 records × 3 fields per keypress would be the only
- * expensive thing this feature does. The cache is a `WeakMap`, so it costs
- * nothing once the dataset is dropped, and it is invisible to callers — the
- * function stays pure from the outside.
+ * Cached by record identity: folding ~1900 records × 3 fields on every keystroke would be
+ * the only expensive thing this feature does. A `WeakMap`, so it costs nothing once the
+ * dataset is dropped and the function stays pure from the outside.
  */
 interface Folded {
   labels: string[];
@@ -107,15 +90,12 @@ function scoreTerm(folded: Folded, term: string): number {
 }
 
 /**
- * The emoji matching `query`, best first, at most `limit` of them.
+ * Best first, at most `limit`. A multi-word query is an **AND**: every term must match, and
+ * the record is ranked by its *worst* term, so "chat noir" beats a record that nails "chat"
+ * but only brushes "noir" in a keyword. Ties keep the dataset's CLDR order.
  *
- * A multi-word query is an **AND**: every term must match something, and the
- * record is ranked by its *worst* term, so "chat noir" beats a record that
- * nails "chat" but only brushes "noir" in a keyword. Ties keep the dataset's
- * own CLDR order, which is the order every other picker presents.
- *
- * An empty or whitespace-only query returns nothing — the caller shows a
- * category instead, rather than pretending the whole set is a result.
+ * An empty query returns nothing — the caller shows a category instead, rather than
+ * pretending the whole set is a result.
  */
 export function searchEmoji(
   all: readonly EmojiRecord[],

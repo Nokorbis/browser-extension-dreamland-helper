@@ -20,10 +20,9 @@
   let root = $state<HTMLElement | null>(null);
 
   /**
-   * Focus the first field as the dialog opens, so a one-field preset is
-   * "click, type, Enter". Safe for the writer's selection: index.ts snapshotted
-   * the range before opening, and the menu item that opened this had its
-   * mousedown preventDefault-ed.
+   * Focus the first field on open, so a one-field preset is "click, type, Enter". Safe for
+   * the selection: index.ts snapshotted the range before opening, and the menu item that
+   * opened this had its mousedown preventDefault-ed.
    */
   $effect(() => {
     if (!prompt.open) return;
@@ -38,28 +37,26 @@
   }
 
   /**
-   * Keyboard handling, registered imperatively on the wrapper — the wrapper is
-   * a plain container with no interactive role of its own, and a static element
-   * carrying a key handler is exactly what the a11y rules warn about.
+   * Imperative rather than an `onkeydown` attribute: the wrapper is a plain container with
+   * no interactive role, and a static element carrying a key handler is what a11y rules
+   * warn about.
    */
   $effect(() => {
     const node = root;
     if (node === null) return;
 
     const handler = (event: KeyboardEvent) => {
-      // `isolateEvents` on the shadow root stops key events reaching the
-      // document, so Escape is handled here as well as there.
+      // `isolateEvents` on the shadow root stops key events reaching the document,
+      // so Escape is handled here as well as there.
       if (event.key === 'Escape') {
         event.preventDefault();
         oncancel();
         return;
       }
 
-      // Tab cycles *within* the dialog rather than dismissing it, which is
-      // where this parts company with the presets menu: a menu has one thing to
-      // do and Tab means "I'm done", while a form has fields to move between.
-      // Wrapping also keeps focus off the textarea, whose caret the snapshotted
-      // range still describes.
+      // Tab cycles *within* the dialog rather than dismissing it — where this parts
+      // company with the presets menu, since a form has fields to move between. Wrapping
+      // also keeps focus off the textarea, whose caret the snapshotted range describes.
       if (event.key === 'Tab') {
         const cells = focusables();
         if (cells.length === 0) return;
@@ -85,9 +82,9 @@
 </script>
 
 {#if prompt.open}
-  <!-- mousedown is swallowed across the whole dialog so the textarea never
-       loses focus and the snapshotted selection survives. The fields are the
-       exception, below: they have to be able to take focus when clicked. -->
+  <!-- mousedown is swallowed across the whole dialog, so the textarea never loses focus
+       and the snapshotted selection survives. The fields are the exception below: they
+       have to take focus when clicked. -->
   <div
     class="prompt dlh-theme"
     class:dark={prompt.dark}

@@ -1,56 +1,39 @@
 /**
- * Helpers for reading the phpBB 3.20 DOM.
- *
- * Everything the extension knows about the forum's markup lives here, so that
- * when phpBB's HTML changes (or we support another skin) there is exactly one
- * place to update. Features should never hard-code selectors themselves.
+ * Everything the extension knows about phpBB 3.20's markup. Features must not query the
+ * forum DOM themselves — when the skin changes, this is the one file to update.
  */
 
 import { isSafeBBCodeName } from './dom';
 
-/** Origins the extension runs on. Single source of truth for the manifest match. */
+/** Origins the extension runs on. The manifest's content-script match reuses this. */
 export const FORUM_MATCHES = ['*://*.dreamland-reborn.net/*'];
 
-/**
- * The post/reply editor textarea on posting.php pages.
- * phpBB 3.x renders it as `<textarea name="message" id="message">`.
- */
 export function findMessageTextarea(): HTMLTextAreaElement | null {
   return document.querySelector<HTMLTextAreaElement>(
     'textarea#message, textarea[name="message"]',
   );
 }
 
-/**
- * The composer `<form>` that owns the message textarea. phpBB renders it as
- * `<form id="postform" method="post" action="./posting.php?...">`, but we reach
- * it through the textarea's own `form` property so we depend on neither the id
- * nor the skin.
- */
+/** Reached through the textarea's `form`, so it depends on neither `#postform` nor the skin. */
 export function findPostForm(): HTMLFormElement | null {
   return findMessageTextarea()?.form ?? null;
 }
 
 /**
- * The real "submit the post" button inside the composer form. phpBB names it
- * `post` (`<input type="submit" name="post">`); the Preview, Save-draft and
- * Cancel buttons carry other `name`s. Used as the submitter when re-submitting
- * the form programmatically, so phpBB still receives the `post` field.
+ * The real "submit the post" button — phpBB names it `post`, while Preview, Save-draft and
+ * Cancel carry other `name`s. Used as the submitter when re-firing the form programmatically,
+ * so phpBB still receives the `post` field.
  */
 export function findSubmitButton(form: HTMLFormElement): HTMLElement | null {
   return form.querySelector<HTMLElement>('input[name="post"], button[name="post"]');
 }
 
 /**
- * The composer's subject field — `<input type="text" name="subject" id="subject">`.
- *
- * ⚠ Two things about it, both verified against `real_snippets/posting.html`: it
- * carries `maxlength="124"`, and on a reply phpBB **pre-fills** it with
- * `Re: <topic title>`. So "the writer changed the subject" is
- * `value !== defaultValue`, exactly as it is for the message textarea, and
- * anything writing into it must respect the length limit.
- *
- * Absent on surfaces that don't take one, so callers must handle `null`.
+ * The composer's subject field. Two things about it, verified against
+ * `real_snippets/posting.html`: it carries `maxlength="124"`, and on a reply phpBB
+ * **pre-fills** it with `Re: <topic title>` — so "the writer changed the subject" is
+ * `value !== defaultValue`, as it is for the message textarea. Absent on surfaces that
+ * take none, so handle `null`.
  */
 export function findSubjectInput(): HTMLInputElement | null {
   return document.querySelector<HTMLInputElement>(
@@ -59,41 +42,23 @@ export function findSubjectInput(): HTMLInputElement | null {
 }
 
 /**
- * phpBB's BBCode button bar — the row holding B / i / u / Quote / Code above the
- * composer. prosilver's `posting_buttons.html` renders it as
- * `<div id="format-buttons" class="format-buttons">` with
- * `<button class="button button-icon-only bbcode-*">` children, identically in
- * 3.2.x and 3.3.x.
- *
- * The whole block sits behind `{IF S_BBCODE_ALLOWED}`, so it is legitimately
- * absent when BBCode is disabled for a forum — and a custom skin may drop it
- * altogether. **Callers must handle `null`** and degrade rather than throw.
- *
- * Verified against the live forum: `<div id="format-buttons" class="format-buttons">`,
- * whose children are the stock `bbcode-b/i/u/quote/code/list/img/url/color`
- * buttons, a `select.bbcode-size`, and several admin-added custom BBCodes
- * carrying `button-secondary` instead. We append after all of them.
+ * phpBB's BBCode button bar. Legitimately absent when BBCode is disabled for a forum
+ * (the whole block sits behind `{IF S_BBCODE_ALLOWED}`), so callers must handle `null`
+ * and degrade rather than throw. We append after all of its children.
  */
 export function findFormatButtons(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#format-buttons, .format-buttons');
 }
 
 /**
- * A single button in that toolbar, addressed by the BBCode it inserts.
+ * A single toolbar button, addressed by the BBCode it inserts.
  *
- * phpBB derives each button's class from the BBCode tag name — `bbcode-b`,
- * `bbcode-quote`, `bbcode-img` for the stock set, and the *same* rule for
- * admin-added custom BBCodes, which is why `bbcode-spoiler` and `bbcode-mp3`
- * exist on this forum and are addressable without knowing anything else about
- * them. Non-alphanumerics become `-`, so the ordered-list button (`list=`) is
- * `bbcode-list-`.
+ * phpBB derives each button's class from the tag name (`bbcode-b`, `bbcode-quote`), and by
+ * the *same* rule for admin-added custom BBCodes — which is why `bbcode-spoiler` is
+ * addressable for free. Non-alphanumerics become `-`, so the ordered-list button (`list=`)
+ * is `bbcode-list-`; hence `[class~=…]`, since `.bbcode-list` would not match it anyway.
  *
- * Matched with `[class~=…]` rather than `.bbcode-…` for two reasons: class
- * selectors match whole tokens, so `.bbcode-list` would not find `bbcode-list-`
- * anyway, and a CSS identifier ending in a hyphen is a needless edge case.
- *
- * Returns `null` when the toolbar is absent *or* when this forum has no such
- * BBCode — both are ordinary, and callers should degrade rather than throw.
+ * `null` when the toolbar is absent *or* this forum has no such BBCode — both ordinary.
  */
 export function findFormatButton(bbcode: string): HTMLElement | null {
   // The names are literals from callers' own tables, but an invalid one would
@@ -107,18 +72,10 @@ export function findFormatButton(bbcode: string): HTMLElement | null {
 }
 
 /**
- * phpBB's own toolbar-button classes. An injected button carries these so it
- * inherits the forum skin instead of looking like a foreign object — which is
- * also why the trigger button is *not* rendered inside a shadow root, where the
- * skin's styles cannot reach it. See docs/adr/0016-svelte-in-content-script.md.
- *
- * Mirrors the live forum's Bold button exactly:
- *   <button type="button" class="button button-icon-only bbcode-b" …>
- *     <i class="icon fa-bold fa-fw" aria-hidden="true"></i>
- *   </button>
- * so our own `<i class="icon fa-… fa-fw">` child inherits the same FontAwesome
- * sizing. We deliberately omit their `name` and `accesskey` — see the ⚠ note on
- * `createFormatButton` below.
+ * phpBB's own toolbar-button classes, so an injected button inherits the forum skin — which
+ * is also why such a trigger is *not* rendered inside a shadow root, where the skin's styles
+ * cannot reach it. See docs/adr/0016-svelte-in-content-script.md. Mirrors the live Bold
+ * button, so our `<i class="icon fa-… fa-fw">` child inherits its FontAwesome sizing.
  */
 export const FORMAT_BUTTON_CLASS = 'button button-icon-only';
 
@@ -137,15 +94,13 @@ export interface FormatButtonOptions {
 }
 
 /**
- * Build a button styled as one of phpBB's own toolbar buttons.
+ * Build a button styled as one of phpBB's own.
  *
  * ⚠ **This is why the helper exists.** The composer toolbar lives inside
- * `<form id="postform">`. A button there that is not `type="button"`, or that carries a
- * `name`, is a *submit* button: clicking it fires a submit event which the exit guard
- * reads as a genuine post, and **the half-written message is sent**. Both features that
- * inject a trigger carried their own copy of that warning, and nothing enforced it. Here
- * the type is set and the name is never accepted, so the hazard is unrepresentable rather
- * than remembered. See `src/features/exit-guard/index.ts`.
+ * `<form id="postform">`, where a button that is not `type="button"` — or that carries a
+ * `name` — is a *submit*: the exit guard reads the resulting event as a genuine post and
+ * **the half-written message is sent**. Here the type is set and the name is never
+ * accepted, so the hazard is unrepresentable rather than remembered.
  */
 export function createFormatButton(opts: FormatButtonOptions): HTMLButtonElement {
   const button = document.createElement('button');
@@ -169,16 +124,12 @@ export function createFormatButton(opts: FormatButtonOptions): HTMLButtonElement
 }
 
 /**
- * The `<div id="message-box">` wrapping the composer textarea — the anchor for
- * any UI that wants to sit beside the editor. Falls back to the textarea's own
- * parent so a skin that renamed the wrapper still gives us something usable.
+ * The wrapper around the composer textarea — the anchor for editor-adjacent UI. Falls back
+ * to the textarea's parent so a skin that renamed it still gives us something usable.
  *
- * ⚠ Mount editor-adjacent UI **inside** this element, not as a sibling before
- * it. Its siblings in the fieldset are `#format-buttons` and a right-floated
- * `#smiley-box`; a block-level sibling therefore spans the whole fieldset and
- * runs underneath the emoticon list. Anything inside `#message-box` instead
- * inherits the same column the textarea occupies, whatever width the skin
- * chose.
+ * ⚠ Mount **inside** this element, not as a sibling before it: its siblings are
+ * `#format-buttons` and a right-floated `#smiley-box`, so a block-level sibling spans the
+ * whole fieldset and runs underneath the emoticon list.
  */
 export function findMessageBox(): HTMLElement | null {
   return (
@@ -189,29 +140,21 @@ export function findMessageBox(): HTMLElement | null {
 }
 
 /**
- * Whether the forum is currently showing its dark theme.
- *
- * The skin marks it with a `dark` class on `<html>`, toggled without a reload.
- * This is forum knowledge, so it lives here rather than in the feature.
- *
- * In-page UI must key off **this**, not `@media (prefers-color-scheme: dark)`:
- * that media query reports the *operating system's* preference, which says
- * nothing about which theme the forum is showing. (Extension pages — popup,
- * options — are the opposite case and should keep using the media query.)
+ * Whether the forum is showing its dark theme — a `dark` class on `<html>`, toggled without
+ * a reload. In-page UI must key off this, **not** `@media (prefers-color-scheme: dark)`,
+ * which reports the OS preference and says nothing about the forum's theme. (Extension
+ * pages — popup, options — are the opposite case.)
  */
 export function isDarkTheme(): boolean {
   return document.documentElement.classList.contains('dark');
 }
 
 /**
- * Observe theme changes and report the new state. Returns an unsubscriber.
+ * Observe theme changes. Returns an unsubscriber.
  *
- * A `MutationObserver` rather than a one-shot read because the forum's theme
- * switch mutates the class in place — a UI that only sampled at boot would be
- * left inverted until the next page load.
- *
- * CSS alone cannot do this from inside a shadow root: `:host-context()` would
- * express it, but Firefox does not support it. Hence the JS detour.
+ * An observer rather than a one-shot read because the theme switch mutates the class in
+ * place. CSS cannot express this from inside a shadow root portably — `:host-context()` is
+ * unsupported in Firefox — hence the JS detour.
  */
 export function watchTheme(onChange: (dark: boolean) => void): () => void {
   let last = isDarkTheme();
@@ -230,24 +173,18 @@ export function watchTheme(onChange: (dark: boolean) => void): () => void {
 }
 
 /**
- * The topic review (`<div id="topicreview">`) shown below the composer on a
- * reply page — the last posts of the thread, rendered. Absent on a new topic and
- * when the "Relecture du sujet" block is disabled. The colour-grab feature reads
- * its inline colour spans; see `readReviewColorUsages`.
+ * The topic review shown below the composer on a reply page. Absent on a new topic and when
+ * the "Relecture du sujet" block is disabled.
  */
 export function findTopicReview(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#topicreview');
 }
 
 /**
- * The topic review's own heading — `<h3 id="review" class="review">`, carrying
- * the "Relecture du sujet" title and phpBB's Agrandir/Réduire link.
- *
- * It is a **sibling** of `#topicreview` inside `<form id="postform">`, not its
- * parent, which is why anything re-arranging the reply page has to move the two
- * together. It is also the boundary between the two halves of that form: every
- * child before it belongs to the composer, this one and everything after it to
- * the review. See `docs/adr/0030-reply-page-layout-rearrangement.md`.
+ * The topic review's heading. It is a **sibling** of `#topicreview` inside `#postform`, not
+ * its parent, so anything re-arranging the reply page has to move the two together. It is
+ * also the boundary between the form's two halves: children before it belong to the
+ * composer, it and everything after to the review. See docs/adr/0030.
  */
 export function findReviewHeading(): HTMLElement | null {
   return document.querySelector<HTMLElement>('h3#review');
@@ -279,11 +216,9 @@ export function readPostId(post: HTMLElement): string | null {
 }
 
 /**
- * Every post's message body on the page, paired with its numeric post id —
- * across both viewtopic and the topic review (`.post` matches both). The body is
- * `.content`, the same element `readReviewColorUsages` reads. Posts without a
- * resolvable id (e.g. a live `#preview` block) or without a `.content` are
- * skipped. The highlight feature anchors ranges inside these `.content` elements.
+ * Every post's message body, paired with its numeric post id, across both viewtopic and the
+ * topic review. Posts without a resolvable id (a live `#preview`) or without a `.content`
+ * are skipped.
  */
 export function findPostContentElements(): {
   postId: string;
@@ -301,12 +236,9 @@ export function findPostContentElements(): {
 }
 
 /**
- * The current topic id, or null when it can't be determined.
- *
- * Usually the `t=` query param (`viewtopic.php?t=…`, `posting.php?mode=reply&t=…`).
- * Post-permalink pages (`viewtopic.php?p=…#p…`) omit it, so fall back to the
- * `&t=<id>` phpBB puts on its reply/quote and pagination links. Used to scope a
- * "clear this discussion" without reading the whole page.
+ * The current topic id, or null. Usually the `t=` query param; post-permalink pages
+ * (`viewtopic.php?p=…`) omit it, so fall back to the `&t=<id>` phpBB puts on its
+ * reply/quote and pagination links.
  */
 export function readTopicId(): string | null {
   const fromUrl = new URLSearchParams(location.search).get('t');
@@ -322,24 +254,18 @@ export function readTopicId(): string | null {
 }
 
 /**
- * Whether we are on a thread view (`viewtopic.php`).
- *
- * Used as a *success* signal: landing here after a submit is the point at which
- * the post demonstrably went through, which is what lets `exit-guard` retire
- * a draft it only marked as submitted. A bounced submit leaves you on
- * `posting.php` or an error page instead.
+ * Used as a *success* signal: landing here after a submit is the point at which the post
+ * demonstrably went through, which is what lets `exit-guard` retire a draft it only marked.
+ * A bounced submit leaves you on `posting.php` or an error page instead.
  */
 export function isTopicPage(): boolean {
   return /\/viewtopic\.php$/.test(location.pathname);
 }
 
 /**
- * What the composer's URL says about which document is being written.
- *
- * `mode` is phpBB's own (`reply`, `quote`, `post`, `edit`, and others we don't
- * care about); the rest are the id it pairs with — `t` a topic, `f` a forum,
- * `p` a post. Any of them may be `null`; deciding what a given combination
- * *means* is `draftKey`'s job in `@/lib/drafts`, not this module's.
+ * What the composer's URL says about which document is being written. `mode` is phpBB's own;
+ * the rest are the id it pairs with. Any may be `null`; deciding what a combination *means*
+ * is `draftKey`'s job in `@/lib/drafts`.
  */
 export interface ComposerParams {
   mode: string | null;
@@ -354,20 +280,13 @@ function readNumericParam(params: URLSearchParams, name: string): string | null 
 }
 
 /**
- * Read the composer's mode and ids off the current URL.
+ * ⚠ Read from `location.search`, **never** from `form.action`: phpBB's Preview button
+ * appends `#preview` to the action on click, so it mutates under any code that reads it
+ * afterwards. The form's hidden inputs are no help either — the mode and ids live solely in
+ * that query string.
  *
- * ⚠ **From `location.search`, never from `form.action`.** phpBB's Preview button
- * carries `onclick="document.getElementById('postform').action += '#preview'"`
- * (`real_snippets/posting.html`), so the form's action mutates under any code
- * that reads it after a click. The URL doesn't move.
- *
- * The form itself is no help either: its only hidden inputs are
- * `topic_cur_post_id`, `show_panel`, `creation_time` and `form_token` — the
- * mode and the ids live *solely* in the action's query string, which is a copy
- * of the URL we were loaded with.
- *
- * `t` falls back to `readTopicId()` because a `mode=quote&p=…` URL carries no
- * topic id, while the topic-review links on that same page do.
+ * `t` falls back to `readTopicId()` because a `mode=quote&p=…` URL carries no topic id,
+ * while the topic-review links on that same page do.
  */
 export function readComposerParams(): ComposerParams {
   const params = new URLSearchParams(location.search);
@@ -380,15 +299,12 @@ export function readComposerParams(): ComposerParams {
 }
 
 /**
- * phpBB's font-colour palette (`<div id="colour_palette">`), toggled open by the
- * `bbcode-color` toolbar button. It is `display:none` until opened.
+ * phpBB's font-colour palette, `display:none` until the `bbcode-color` button opens it.
  *
- * ⚠ Its inner grid is **generated by phpBB's own JS** (`registerPalette` in
- * core.js) on DOM-ready: the server-rendered `<table>` inside
- * `#color_palette_placeholder` is replaced wholesale, and each swatch's click is
- * bound per-anchor. Anything that decorates the grid must therefore survive (and
- * re-run after) that regeneration — watch the placeholder, don't assume the
- * table read at boot is the final one.
+ * ⚠ Its inner grid is **generated by phpBB's own JS** (`registerPalette`) on DOM-ready: the
+ * server-rendered table is replaced wholesale and each swatch's click bound per-anchor.
+ * Anything decorating the grid must survive and re-run after that — watch the placeholder,
+ * don't assume the table read at boot is the final one.
  */
 export function findColourPalette(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#colour_palette');
@@ -417,15 +333,12 @@ export function findColourPaletteBody(): HTMLElement | null {
 }
 
 /**
- * Every inline colour used in the topic review, each paired with the author of
- * the post it appears in. Returns raw `span.style.color` strings (browser-
- * serialised `rgb(…)`) so the colour maths — canonicalising and grouping — stays
- * out of this forum-DOM module; see `canonicalizeColor` / `aggregateUsage`.
+ * Every inline colour used in the topic review, paired with the author of the post it
+ * appears in. Returns raw `span.style.color` strings so the colour maths stays out of this
+ * module; see `canonicalizeColor` / `aggregateUsage`.
  *
- * A colour is attributed to the containing post's author whether they authored
- * or quoted it: telling the two apart isn't reliable (colours get reproduced
- * with or without `[quote]`, sometimes from an earlier page), so the feature
- * instead lists everyone and orders by usage.
+ * A colour is attributed to the containing post's author whether they authored or quoted it:
+ * telling the two apart isn't reliable, so the feature lists everyone and orders by usage.
  */
 export function readReviewColorUsages(): { rawColor: string; author: string }[] {
   const review = findTopicReview();
@@ -447,11 +360,9 @@ export function readReviewColorUsages(): { rawColor: string; author: string }[] 
 }
 
 /**
- * The display name of a post's author. phpBB renders it as
- * `<p class="author">… <a class="username-coloured">Name</a></p>`; members with
- * no group colour get a plain `.username`, so fall back to it and then to any
- * author link. `.author` sits inside `.postbody`, so this works from the `.post`
- * container on both viewtopic and the topic review.
+ * Members with no group colour get a plain `.username` instead of `.username-coloured`,
+ * hence the fallback chain. `.author` sits inside `.postbody`, so this works from the
+ * `.post` container on both viewtopic and the topic review.
  */
 export function readPostAuthorName(post: HTMLElement): string | null {
   const link =

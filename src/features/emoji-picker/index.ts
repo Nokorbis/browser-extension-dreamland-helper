@@ -37,34 +37,22 @@ import type { EmojiRecord } from './types';
 import Picker from './Picker.svelte';
 
 /**
- * Feature #6 — Unicode emoji picker.
+ * A Unicode emoji picker for both writing surfaces, from a toolbar button or Alt+I. Distinct
+ * from the *image* emoticon sets both already ship (`#smiley-box`, `#emoticonsContainer`).
  *
- * Both writing surfaces already ship an *image* emoticon set — phpBB's
- * `#smiley-box` in the composer, AJAX Chat's `#emoticonsContainer` in the
- * Tribune — and neither offers plain Unicode emoji. This adds one, reachable
- * from a toolbar button or from Alt+I, on whichever of the two surfaces the
- * page happens to have.
+ * Three structural choices worth knowing before editing:
  *
- * Three structural choices worth knowing before editing this file:
+ * 1. **Surfaces are enumerated, not detected** — one entry per surface, each skipped when
+ *    its selectors don't resolve. There is no URL check anywhere.
+ * 2. **The triggers are plain DOM in the *page***, each carrying its own toolbar's classes
+ *    so it inherits the skin, which a shadow root would block.
+ * 3. **The panel is Svelte in a shadow root** (docs/adr/0016) rendering a dataset fetched
+ *    lazily rather than bundled (docs/adr/0022). Anchoring, dismissal and the mount belong
+ *    to `@/lib/popover`, shared with the presets menu (docs/adr/0023).
  *
- * 1. **Surfaces are enumerated, not detected.** Like editor-shortcuts, this
- *    builds one entry per surface and skips whichever selectors don't resolve.
- *    There is no URL check anywhere — the composer, the homepage shoutbox and
- *    the standalone `/chat/` page all fall out of "does this element exist".
- * 2. **The trigger buttons are plain DOM in the *page*.** Each carries its own
- *    toolbar's classes so it inherits the forum skin; inside a shadow root the
- *    skin could not reach them and they would look pasted on.
- * 3. **The panel is Svelte inside a shadow root**, because it is data-driven —
- *    see docs/adr/0016-svelte-in-content-script.md. The dataset it renders is
- *    fetched lazily rather than bundled (docs/adr/0022-lazy-loaded-data-assets.md).
- *    Anchoring it to the trigger, dismissing it and mounting the shadow root are
- *    not this feature's business: `@/lib/popover` owns all three, shared with
- *    the presets menu (docs/adr/0023-shared-primitives-in-lib.md).
- *
- * ⚠ The composer's button sits inside phpBB's `<form id="postform">`. It **must**
- * stay `type="button"` with no `name`: a submit button there fires a submit
- * event that the exit guard reads as a genuine post, which would send the
- * half-written message. See `src/features/exit-guard/index.ts`.
+ * ⚠ The composer's button sits inside `<form id="postform">` and **must** stay
+ * `type="button"` with no `name`, or the exit guard reads its submit event as a genuine post
+ * and sends the half-written message. `createFormatButton` enforces that.
  */
 
 /** Marks our injected buttons so a re-run (phpBB's "Aperçu") doesn't double up. */
@@ -79,18 +67,13 @@ interface Surface {
   createTrigger: (label: string, tooltip: string, aria: string) => HTMLElement;
 }
 
-/**
- * phpBB's composer toolbar: a button styled like the skin's own bold/italic ones.
- * `createFormatButton` owns the markup — including the `type="button"` rule in the ⚠
- * above, which it now enforces rather than leaving to whoever edits this next.
- */
 function createComposerTrigger(
   label: string,
   tooltip: string,
   aria: string,
 ): HTMLElement {
-  // No `popup:` here — the setup loop sets `aria-haspopup`/`aria-expanded` on whichever
-  // trigger a surface produced, so both this and the chat one get it in one place.
+  // No `popup:` — the setup loop sets `aria-haspopup`/`aria-expanded` on whichever
+  // trigger a surface produced, so this and the chat one get it in one place.
   return createFormatButton({
     icon: 'fa-face-smile',
     label,
@@ -100,10 +83,8 @@ function createComposerTrigger(
 }
 
 /**
- * The chat's toolbar: `<input type="button">` with a text value. Both chat DOM
- * shapes — the homepage shoutbox and the standalone page — share `#bbCodeContainer`
- * and this button style, so one branch covers them. No FontAwesome here: the chat
- * widget is not phpBB and does not load the icon font.
+ * Both chat DOM shapes share `#bbCodeContainer` and this button style, so one branch covers
+ * them. No FontAwesome: the chat widget is not phpBB and does not load the icon font.
  */
 function createChatTrigger(label: string, tooltip: string, aria: string): HTMLElement {
   const button = document.createElement('input');
@@ -149,8 +130,7 @@ export const emojiPicker = {
     }
 
     if (surfaces.length === 0) {
-      // Ordinary on viewtopic, the board index and everywhere else — most pages
-      // have no writing surface at all.
+      // Ordinary: most pages have no writing surface at all.
       return;
     }
 
@@ -189,9 +169,8 @@ export const emojiPicker = {
     void loadEmojiPrefs().then(applyRecent);
     unwatchPrefs = watchEmojiPrefs(applyRecent);
 
-    // The dataset is ~250 kB and lives outside the bundle, so this is a real
-    // network-ish round trip on first use; the panel renders its loading line
-    // until it lands.
+    // ~250 kB outside the bundle, so a real round trip on first use; the panel renders
+    // its loading line until it lands.
     void loadEmojiData().then((data) => {
       if (disposed) return;
       for (const entry of mountedSurfaces) {
@@ -222,9 +201,8 @@ export const emojiPicker = {
       const entry: Mounted = { surface, state, trigger, popover: null };
       mountedSurfaces.push(entry);
 
-      // The selection as it was when the panel was opened. Snapshotted then
-      // rather than read at click time, because by then the click may have
-      // collapsed it — and because the search box takes focus on open.
+      // Snapshotted on open rather than read at click time: by then the click may have
+      // collapsed the selection, and the search box has taken focus.
       let range: TextRange = { start: 0, end: 0 };
 
       const close = () => {
@@ -232,11 +210,9 @@ export const emojiPicker = {
         trigger.setAttribute('aria-expanded', 'false');
       };
 
-      // Dismissing with the keyboard has to hand focus *back* to the textarea:
-      // the panel's search box grabs focus on open, so closing without this
-      // leaves focus on a hidden node and the caret nowhere. Deliberately not
-      // the same function as `close` — the outside-click handler uses that one,
-      // and pulling focus back there would fight the click just made.
+      // Keyboard dismissal must hand focus *back*: the search box grabs it on open, so
+      // closing without this leaves focus on a hidden node. Kept separate from `close`,
+      // which the outside-click path uses — pulling focus there would fight the click.
       const dismiss = () => {
         close();
         surface.textarea.focus();
@@ -253,15 +229,13 @@ export const emojiPicker = {
 
       const toggle = () => (state.open ? dismiss() : open());
 
-      /** The panel's search box. It lives inside the shadow root. */
       const searchBox = () =>
         entry.popover?.shadow()?.querySelector<HTMLInputElement>('.search') ?? null;
 
-      /** Write the emoji into this surface's textarea and remember it. */
       const insert = (record: EmojiRecord) => {
-        // The chat caps messages at 1040 characters, and `insertAtRange` would
-        // refuse the write with nothing but a console warning. Ask first so the
-        // panel can say why nothing happened.
+        // The chat caps messages at 1040 characters, and `insertAtRange` would refuse
+        // the write with only a console warning. Ask first, so the panel can say why
+        // nothing happened.
         const plan = planInsertion(
           surface.textarea.value.length,
           range,
@@ -276,38 +250,30 @@ export const emojiPicker = {
 
         insertAtRange(surface.textarea, range, record.c, record.c.length);
 
-        // The panel stays open on purpose — picking several emoji in a row is
-        // the common case, and only Escape or a click outside closes it. Two
-        // things have to be put back before the next pick:
-        //
-        //  - the range, which the insertion just moved. Read it back off the
-        //    textarea rather than computing it, so this stays correct whatever
-        //    clamping `insertAtRange` applied. Without it every emoji after the
-        //    first would overwrite the one before.
-        //  - focus, which `insertAtRange` has to hand to the textarea to run
-        //    `execCommand`. Without this the "type a name, press Enter" flow
-        //    would type the *next* search into the message itself.
+        // ⚠ The panel stays open on purpose — picking several emoji in a row is the
+        // common case — so two things must be put back before the next pick. The range,
+        // read back off the textarea rather than computed so it survives whatever
+        // clamping `insertAtRange` applied; without it every emoji after the first
+        // overwrites the one before. And focus, which `insertAtRange` took to run
+        // `execCommand`; without it the next search is typed into the message.
         range = readSelection(surface.textarea);
         searchBox()?.focus();
 
-        // Optimistic locally, then persisted: `watchEmojiPrefs` echoes the write
-        // back to every surface, but the panel that was just used should not
-        // wait for a storage round trip to show the new recent.
+        // Optimistic locally, then persisted: `watchEmojiPrefs` echoes the write back to
+        // every surface, but this panel shouldn't wait for a round trip to show it.
         applyRecent(pushRecent(prefs, record.c));
         void saveEmojiPrefs(prefs).catch((err) => {
           warn('emoji-picker: could not save the recents list', err);
         });
 
-        // The first insertion makes the "Récents" row appear, changing the
-        // panel's height — and a panel flipped above its trigger is anchored by
-        // its bottom edge, so it would drift without a re-measure.
+        // The first insertion makes the "Récents" row appear, changing the panel's
+        // height — and one flipped above its trigger is anchored by its bottom edge,
+        // so it would drift without a re-measure.
         entry.popover?.positionSoon();
       };
 
-      // The shortcut listens on the textarea, not the document: it must only
-      // answer while someone is actually writing. Same stance as
-      // editor-shortcuts, with which this shares `@/lib/keys` — including the
-      // `RESERVED_LETTERS` that make `i` safe to claim.
+      // On the textarea, not the document: the shortcut must only answer while someone
+      // is actually writing.
       surface.textarea.addEventListener(
         'keydown',
         (event) => {
@@ -319,10 +285,8 @@ export const emojiPicker = {
         { signal },
       );
 
-      // Anchoring, dismissal and the shadow-root mount are all shared with the
-      // presets menu — see `@/lib/popover` and docs/adr/0023. `fit` is on here
-      // and off there: the chat toolbar sits at the bottom of the page, so this
-      // panel has to be able to flip above its trigger.
+      // `fit` on, unlike the presets menu: the chat toolbar sits at the bottom of the
+      // page, so this panel has to be able to flip above its trigger.
       entry.popover = createPopover({
         ctx: ctx.scriptCtx,
         name: `dlh-emoji-picker-${surface.id}`,
