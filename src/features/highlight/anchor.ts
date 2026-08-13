@@ -17,10 +17,12 @@
  * degrades to "not shown" rather than "shown on the wrong words". Nothing here
  * mutates the DOM; painting is the CSS Custom Highlight API's job (`render.ts`).
  *
- * `locateOffset` and `nearestOccurrence` are the pure arithmetic, split out and
- * unit-tested (`anchor.test.ts`); the Range/TreeWalker glue around them is
+ * `locateOffset` is the pure arithmetic, split out and unit-tested
+ * (`anchor.test.ts`), as is the re-anchor search now that `quote-selection`
+ * shares it (`@/lib/text-search`); the Range/TreeWalker glue around them is
  * DOM work verified by hand (the test env has no DOM — see CLAUDE.md).
  */
+import { nearestOccurrence } from '@/lib/text-search';
 
 export interface SerializedRange {
   start: number;
@@ -50,27 +52,6 @@ export function locateOffset(
     acc += lengths[i];
   }
   return null;
-}
-
-/**
- * The index of the occurrence of `quote` in `full` nearest to `hint`, or null if
- * absent. Ties prefer the earlier occurrence. Used as the re-anchor fallback: if
- * the same text moved (earlier text was added/removed), the nearest match to the
- * old offset is almost always the intended one.
- */
-export function nearestOccurrence(
-  full: string,
-  quote: string,
-  hint: number,
-): number | null {
-  if (quote === '') return null;
-  let best: number | null = null;
-  let i = full.indexOf(quote);
-  while (i !== -1) {
-    if (best === null || Math.abs(i - hint) < Math.abs(best - hint)) best = i;
-    i = full.indexOf(quote, i + 1);
-  }
-  return best;
 }
 
 function textNodesOf(content: HTMLElement): Text[] {

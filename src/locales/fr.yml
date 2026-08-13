@@ -152,6 +152,27 @@ features:
       clearTopic: Effacer ce sujet
       clearAll: Tout effacer
       noThread: Ouvrez un sujet du forum pour en effacer les surlignages.
+  quoteSelection:
+    name: Citation d'un passage
+    description: >-
+      Cite uniquement le passage sélectionné dans la relecture du sujet, au lieu
+      du message entier, en conservant sa mise en forme.
+    # The button added to the shared selection toolbar (src/lib/selection-toolbar.ts).
+    toolbar:
+      quote: Citer ce passage
+  composerLayout:
+    name: Disposition de la réponse
+    description: >-
+      Réorganise la page de réponse : éditeur en bas ou à côté des messages, et
+      relecture du sujet du plus ancien au plus récent.
+    # The bar injected above <form id="postform"> on the reply page.
+    controls:
+      reverseOrder: Ordre inversé
+      sideBySide: Côte à côte
+      fullWidth: Pleine largeur
+      editorSide: "Éditeur :"
+      left: à gauche
+      right: à droite
   bbcodePresets:
     name: Préréglages BBCode
     description: Insère des structures BBCode complexes en un clic.

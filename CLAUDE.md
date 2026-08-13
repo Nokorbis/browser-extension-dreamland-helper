@@ -48,6 +48,28 @@ Features (all implemented):
    forum's own image emoticons, which are left alone. Search is bilingual (fr + en) and
    accent-blind; recents persist. The ~1900-emoji table is a `public/` asset fetched on first
    open rather than bundled — see `docs/adr/0022-lazy-loaded-data-assets.md`. _(done)_
+7. **Quote a selected passage** (`quote-selection`) — quote one line instead of a thousand-word
+   post. A button on the **shared selection toolbar** (`src/lib/selection-toolbar.ts`, see the
+   architecture note below): select a passage in the reply page's topic review and it lands at the
+   composer's caret as `[quote="Nom" post_id=… time=… user_id=…]`, the same extended form phpBB's
+   own button emits, so it renders with the "a écrit" header *and* the backlink. Those attributes
+   are read off the review's own `addquote(…)` handler. ⚠ A selection gives *rendered* text, so the
+   passage's BBCode is **recovered** from the hidden `div#message_<postId>` the review carries —
+   best-effort: when rendered text and source can't be aligned (a smiley, an `[img]`), it silently
+   falls back to quoting plain text rather than emitting a wrong slice. Reply page only; `viewtopic`
+   has no composer. See `docs/adr/0029-quote-a-selected-passage.md`. _(done)_
+8. **Reply page layout** (`composer-layout`) — write next to what you are answering. Three
+   checkboxes in a bar above `<form id="postform">`: *ordre inversé* (composer below the review,
+   posts oldest-first), *côte à côte* (composer beside the review, on a chosen side) and *pleine
+   largeur* (the wrapper breaks out of the skin's centred column with symmetric negative margins
+   against a *measured* viewport width — never `100vw`, which counts the scrollbar), with the
+   choice persisted in its own store (`src/lib/composer-layout.ts`). The page is **re-wrapped,
+   never re-rendered**: the form's children are *moved* into two column divs, split at
+   `h3#review`, so the textarea keeps its text and phpBB's scripts keep their references. The post
+   order flips in **CSS** (`flex-direction: column-reverse` on `#topicreview`), so `highlight` and
+   `quote-selection` never see a mutation. ⚠ The controls sit **outside** the form — a named or
+   non-`button` control inside it would be POSTed or would submit. Reply pages only.
+   See `docs/adr/0030-reply-page-layout-rearrangement.md`. _(done)_
 
 ## Commands
 
@@ -91,10 +113,15 @@ settings and backup layers (`src/lib/storage.ts`, `src/lib/backup.ts`), the shar
 plumbing (`src/lib/store-kit.ts`), the insertion arithmetic (`planInsertion` /
 `wrapSelection` in `src/lib/textarea.ts`), keymap resolution and cross-feature shortcut
 collisions (`src/features/editor-shortcuts/keymap.ts`, `src/lib/keys.ts`), highlight
-anchoring (`src/features/highlight/anchor.ts`), emoji search and dataset repair
+anchoring (`src/features/highlight/anchor.ts`) and the re-anchor search it shares with
+quoting (`src/lib/text-search.ts`), emoji search and dataset repair
 (`src/features/emoji-picker/search.ts`, `src/features/emoji-picker/data.ts`), popover
-placement (`src/lib/anchor-position.ts`), and the colour-grab palette filter
-(`src/features/color-grab/palette-filter.ts`). That scoping is deliberate — everything else is
+placement (`src/lib/anchor-position.ts`), the colour-grab palette filter
+(`src/features/color-grab/palette-filter.ts`), and the quote block plus its BBCode recovery
+(`src/features/quote-selection/bbcode.ts`, `src/features/quote-selection/source.ts` — where the
+*null* cases are load-bearing: they pin the "give up rather than guess" half of the contract),
+and the reply-layout prefs (`src/lib/composer-layout.ts`).
+That scoping is deliberate — everything else is
 DOM/browser glue that is cheaper to verify by hand against a real forum page. Don't backfill
 tests for it; do keep new pure logic covered. `pnpm check`, `pnpm lint` and `pnpm test` are
 all CI gates.
@@ -168,6 +195,15 @@ The flow that ties multiple files together:
   `CLAIMED` list, which is the one place collisions across features are checked. Which BBCode a
   combo drives stays private to `editor-shortcuts/keymap.ts`, which deliberately does **not**
   re-export the shared names — there is one import path for them.
+- `src/lib/selection-toolbar.ts` owns the **selection toolbar**: the one floating row that appears
+  over a selection inside a post's `.content`. It is a **singleton with registration** — a feature
+  calls `registerSelectionToolbarGroup({ id, buttonsFor })` and the module asks every group what it
+  offers for the current selection, so `highlight` (swatches + eraser) and `quote-selection` (the
+  quote button) share one bar instead of fighting over one selection. It owns the document event
+  wiring, locating the post, placement and the theme watch; a feature owns only what its buttons
+  mean. Created on the first registration, torn down by the last unregister. **No automated
+  coverage by design**, exactly like `popover.ts` — editing it means re-verifying *both* features by
+  hand, in both themes and both browsers. See `docs/adr/0028-shared-selection-toolbar.md`.
 - `src/lib/popover.ts` (`createPopover`) owns the **anchored popover**: a Svelte surface in a
   shadow root, `position: fixed` against a trigger button in the page, dismissed on outside click
   or Escape, re-measured on scroll/resize, mounted through the async `createShadowRootUi` dance
@@ -180,7 +216,7 @@ The flow that ties multiple files together:
   *geometry* is a different matter and does not live here: `src/lib/anchor-position.ts`
   (`placeAnchored`) owns where a floating surface goes — preferred side, flip when it would
   leave the viewport, horizontal clamp — as pure arithmetic on plain numbers, shared with
-  `highlight/toolbar.ts` and unit-tested. Callers measure, call it, and assign; that is the
+  `selection-toolbar.ts` and unit-tested. Callers measure, call it, and assign; that is the
   same split as `planInsertion` / `insertAtRange`.
 - **Bulk feature data ships as a `public/` asset, not in the bundle.** Content scripts build as
   a single IIFE, so an imported data table is parsed on every forum page whether or not it is

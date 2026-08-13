@@ -40,3 +40,6 @@ section of [`../../CLAUDE.md`](../../CLAUDE.md) for when a change warrants an AD
 | [0025](0025-feature-ids-as-a-type.md) | Feature ids are a type, not a convention | Accepted |
 | [0026](0026-prompted-preset-placeholders.md) | Prompted preset placeholders — `{PROMPT:label}` | Accepted |
 | [0027](0027-draft-autosave-and-recovery.md) | Draft autosave inside the exit guard, with recovery always offered and never applied | Accepted |
+| [0028](0028-shared-selection-toolbar.md) | One shared selection toolbar, features register buttons into it | Accepted |
+| [0029](0029-quote-a-selected-passage.md) | Quote a selected passage, recovering its BBCode when possible | Accepted |
+| [0030](0030-reply-page-layout-rearrangement.md) | The reply page is re-arranged by wrapping, never by re-rendering | Accepted |

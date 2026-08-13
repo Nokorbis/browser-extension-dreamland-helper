@@ -9,6 +9,8 @@ import { bbcodePresets } from './bbcode-presets';
 import { colorGrab } from './color-grab';
 import { editorShortcuts } from './editor-shortcuts';
 import { emojiPicker } from './emoji-picker';
+import { quoteSelection } from './quote-selection';
+import { composerLayout } from './composer-layout';
 
 /**
  * The single list of all features. Registering a new feature = add its folder
@@ -26,6 +28,8 @@ export const ALL_FEATURES = [
   emojiPicker,
   colorGrab,
   highlight,
+  quoteSelection,
+  composerLayout,
 ] as const satisfies readonly Feature[];
 
 /**

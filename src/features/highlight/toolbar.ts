@@ -1,33 +1,25 @@
 import { i18n } from '#i18n';
 import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
-import { placeAnchored } from '@/lib/anchor-position';
-import { HIGHLIGHT_COLORS } from './palette';
 
 /**
- * Gap between the selection and the toolbar, and its minimum margin from a viewport
- * edge. Was two separate magic numbers (8 and 6) before the placement maths moved to
- * `@/lib/anchor-position`, which takes one.
- */
-const GAP = 6;
-
-/**
- * The two vanilla in-page controls for the highlight feature:
+ * The highlight feature's own in-page control: a **clear control**, the corner
+ * pill offering "clear this discussion" and "clear everything".
  *
- * - a **selection toolbar** — a small row of colour swatches (plus an eraser
- *   when the selection overlaps an existing highlight) that floats above a
- *   selection inside a post, and
- * - a **clear control** — a corner pill offering "clear this discussion" and
- *   "clear everything".
+ * The *selection toolbar* used to live here too. It moved to
+ * `@/lib/selection-toolbar` when `quote-selection` became its second caller
+ * (docs/adr/0023, docs/adr/0028); the feature now registers a button group with
+ * that shared bar instead of owning one. `colorLabel` stayed behind because it
+ * is highlight's own vocabulary — it names the swatches the feature registers.
  *
- * Both follow the `server-down-modal` pattern rather than Svelte: a Shadow DOM
- * host with `all:initial` to fence off phpBB's CSS, styled through the `.style`
- * property (never an injected `<style>`), because they are small and static —
- * exactly the case docs/adr/0016 keeps out of the shadow-root Svelte path. Theme
- * follows the *forum's* light/dark, pushed in via `setDark` (the feature reads
- * `isDarkTheme`/`watchTheme`).
+ * What remains follows the `server-down-modal` pattern rather than Svelte: a
+ * Shadow DOM host with `all:initial` to fence off phpBB's CSS, styled through
+ * the `.style` property (never an injected `<style>`), because it is small and
+ * static — exactly the case docs/adr/0016 keeps out of the shadow-root Svelte
+ * path. Theme follows the *forum's* light/dark, pushed in via `setDark` (the
+ * feature reads `isDarkTheme`/`watchTheme`).
  *
- * These are dumb views: the feature owns the pending range and the store, and
- * only wires the callbacks here.
+ * This is a dumb view: the feature owns the store and only wires the callbacks
+ * here.
  */
 
 /**
@@ -35,7 +27,7 @@ const GAP = 6;
  * every `i18n.t` argument is a literal the typed catalogue can check; an unknown
  * id degrades to the raw id rather than failing the build.
  */
-function colorLabel(id: string): string {
+export function colorLabel(id: string): string {
   switch (id) {
     case 'yellow':
       return i18n.t('features.highlight.colors.yellow');
@@ -48,135 +40,6 @@ function colorLabel(id: string): string {
     default:
       return id;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Selection toolbar
-// ---------------------------------------------------------------------------
-
-export interface SelectionToolbarHandlers {
-  /** A swatch was clicked — paint the pending selection this colour. */
-  onPick: (hex: string) => void;
-  /** The eraser was clicked — remove highlights under the pending selection. */
-  onErase: () => void;
-}
-
-export interface SelectionToolbar {
-  /** Position above `rect` (or below when there's no room) and reveal. */
-  showAt(rect: DOMRect, opts: { canErase: boolean }): void;
-  hide(): void;
-  /** True while the toolbar is on screen. */
-  readonly visible: boolean;
-  /** The shadow host, for `composedPath` containment tests. */
-  readonly host: HTMLElement;
-  setDark(dark: boolean): void;
-  destroy(): void;
-}
-
-export function createSelectionToolbar(
-  handlers: SelectionToolbarHandlers,
-): SelectionToolbar {
-  let chrome = chromeFor(false);
-  let shown = false;
-
-  const { host, shadow } = createShadowHost();
-
-  const bar = styled(
-    document.createElement('div'),
-    'position:fixed;z-index:' +
-      MAX_Z +
-      ';display:none;box-sizing:border-box;gap:5px;align-items:center;' +
-      'padding:5px 6px;border-radius:8px;' +
-      `font:13px/1 ${SYSTEM_FONT};`,
-  );
-
-  const swatches = HIGHLIGHT_COLORS.map((color) => {
-    const label = colorLabel(color.id);
-    const btn = styled(
-      document.createElement('button'),
-      'width:20px;height:20px;padding:0;border-radius:4px;cursor:pointer;' +
-        `background:${color.hex};`,
-    );
-    btn.type = 'button';
-    btn.title = label;
-    btn.setAttribute('aria-label', label);
-    // preventDefault keeps the page selection alive across the click.
-    btn.addEventListener('mousedown', (event) => event.preventDefault());
-    btn.addEventListener('click', (event) => {
-      event.preventDefault();
-      handlers.onPick(color.hex);
-    });
-    return btn;
-  });
-
-  const eraser = styled(
-    document.createElement('button'),
-    'width:22px;height:20px;padding:0;border-radius:4px;cursor:pointer;' +
-      `font:15px/1 ${SYSTEM_FONT};background:transparent;`,
-  );
-  eraser.type = 'button';
-  eraser.textContent = '⌫';
-  const eraseLabel = i18n.t('features.highlight.toolbar.remove');
-  eraser.title = eraseLabel;
-  eraser.setAttribute('aria-label', eraseLabel);
-  eraser.addEventListener('mousedown', (event) => event.preventDefault());
-  eraser.addEventListener('click', (event) => {
-    event.preventDefault();
-    handlers.onErase();
-  });
-
-  bar.append(...swatches, eraser);
-  shadow.append(bar);
-  document.body.append(host);
-
-  const paint = () => {
-    bar.style.background = chrome.surface;
-    bar.style.border = `1px solid ${chrome.border}`;
-    bar.style.boxShadow = `0 4px 16px ${chrome.shadow}`;
-    for (const btn of swatches) btn.style.border = `1px solid ${chrome.border}`;
-    eraser.style.color = chrome.fg;
-    eraser.style.border = `1px solid ${chrome.border}`;
-  };
-  paint();
-
-  return {
-    get visible() {
-      return shown;
-    },
-    host,
-    showAt(rect, opts) {
-      eraser.style.display = opts.canErase ? 'inline-flex' : 'none';
-      bar.style.display = 'inline-flex';
-      // Measure off-screen first: the bar's width depends on whether the eraser is
-      // showing, so it has to be laid out before it can be placed.
-      bar.style.left = '-9999px';
-      bar.style.top = '-9999px';
-      const box = bar.getBoundingClientRect();
-
-      // Above the selection and centred on it, dropping below only when there is no room
-      // up there. The geometry is shared with the popover — see `@/lib/anchor-position`.
-      const { top, left } = placeAnchored(
-        rect,
-        { width: box.width, height: box.height },
-        { width: window.innerWidth, height: window.innerHeight },
-        { gap: GAP, align: 'center', side: 'above', fit: true },
-      );
-      bar.style.left = `${Math.round(left)}px`;
-      bar.style.top = `${Math.round(top)}px`;
-      shown = true;
-    },
-    hide() {
-      bar.style.display = 'none';
-      shown = false;
-    },
-    setDark(dark) {
-      chrome = chromeFor(dark);
-      paint();
-    },
-    destroy() {
-      host.remove();
-    },
-  };
 }
 
 // ---------------------------------------------------------------------------

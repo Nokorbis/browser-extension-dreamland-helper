@@ -2,11 +2,16 @@ import { i18n } from '#i18n';
 import type { Feature } from '../types';
 import {
   findPostContentElements,
-  readPostId,
   readTopicId,
   isDarkTheme,
   watchTheme,
 } from '@/lib/phpbb';
+import {
+  dismissSelectionToolbar,
+  registerSelectionToolbarGroup,
+  type PostSelection,
+  type ToolbarButton,
+} from '@/lib/selection-toolbar';
 import {
   loadHighlightStore,
   saveHighlightStore,
@@ -20,9 +25,10 @@ import {
   newId,
   type HighlightStore,
 } from '@/lib/highlights';
-import { serializeSelection, resolveRange } from './anchor';
+import { resolveRange, serializeSelection } from './anchor';
 import { isHighlightApiSupported, HighlightRenderer } from './render';
-import { createSelectionToolbar, createClearControl } from './toolbar';
+import { colorLabel, createClearControl } from './toolbar';
+import { HIGHLIGHT_COLORS } from './palette';
 import { log, warn } from '@/lib/log';
 
 /**
@@ -49,6 +55,12 @@ function rangesOverlap(a: Range, b: Range): boolean {
  * - `render.ts` paints via the CSS Custom Highlight API (no DOM mutation);
  * - `anchor.ts` turns a selection into a stored `[start,end)+quote` and back;
  * - `@/lib/highlights` is the feature-owned store (docs/adr/0012).
+ *
+ * The floating row the swatches sit in is **not** ours: it is the shared
+ * `@/lib/selection-toolbar`, which owns the selection plumbing and asks every
+ * registered feature what it offers for the current selection (docs/adr/0028).
+ * This feature contributes the palette, plus an eraser when the selection
+ * overlaps something already painted.
  *
  * Highlights are keyed by numeric post id, which phpBB encodes identically as
  * `#p<id>` and `#pr<id>` — that's what makes them shared across the two pages.
@@ -80,21 +92,8 @@ export const highlight = {
 
     const topicId = readTopicId();
     const renderer = new HighlightRenderer();
-    const controller = new AbortController();
-    const { signal } = controller;
     let disposed = false;
     let store: HighlightStore = emptyHighlightStore();
-
-    // The selection captured when the toolbar was shown. `eraseIds` are the
-    // highlights whose *painted* range on this page overlaps it — resolved at
-    // show time, so the eraser doesn't depend on stored offsets matching.
-    let pending: {
-      postId: string;
-      start: number;
-      end: number;
-      quote: string;
-      eraseIds: string[];
-    } | null = null;
 
     // Highlights currently painted on THIS page, each with its resolved DOM
     // range — rebuilt every render. The eraser matches the selection against
@@ -102,35 +101,8 @@ export const highlight = {
     // page even though a post's `.content` offsets differ across the two.
     let paintedRanges: { id: string; postId: string; range: Range }[] = [];
 
-    // --- in-page controls --------------------------------------------------
-    // Built *before* the functions that drive them. Their handlers only run later, so
-    // they can reach the hoisted `persist`/`dismiss` below, whereas `render` genuinely
-    // needs `clearControl` to exist by the time it is called. Declaring the controls
-    // after `render` worked only by accident of call order — a reorder away from a TDZ
-    // ReferenceError.
-    const toolbar = createSelectionToolbar({
-      onPick: (hex) => {
-        if (pending === null) return;
-        persist(
-          addHighlight(store, {
-            id: newId(),
-            topicId: topicId ?? '',
-            postId: pending.postId,
-            start: pending.start,
-            end: pending.end,
-            quote: pending.quote,
-            color: hex,
-          }),
-        );
-        dismiss();
-      },
-      onErase: () => {
-        if (pending === null || pending.eraseIds.length === 0) return;
-        persist(deleteHighlights(store, pending.eraseIds));
-        dismiss();
-      },
-    });
-
+    // --- in-page control ---------------------------------------------------
+    // Built *before* `render`, which needs it to exist by the time it is called.
     const clearControl = createClearControl({
       onClearTopic: () => {
         if (topicId !== null) persist(clearTopic(store, topicId));
@@ -139,7 +111,6 @@ export const highlight = {
     });
 
     const applyTheme = (dark: boolean) => {
-      toolbar.setDark(dark);
       clearControl.setDark(dark);
     };
     applyTheme(isDarkTheme());
@@ -181,93 +152,62 @@ export const highlight = {
       );
     }
 
-    function dismiss() {
-      toolbar.hide();
-      pending = null;
-      window.getSelection()?.removeAllRanges();
-    }
+    // --- what we offer the shared toolbar ----------------------------------
+    /**
+     * The palette, plus an eraser when this selection overlaps a painted
+     * highlight. Returns `[]` — offering nothing — for a post we aren't
+     * watching or a selection `anchor.ts` refuses to serialize, which is the
+     * same gate the old private toolbar applied before showing itself.
+     */
+    const buttonsFor = (sel: PostSelection): ToolbarButton[] => {
+      if (disposed || !posts.has(sel.postId)) return [];
+      const serialized = serializeSelection(sel.content, sel.range);
+      if (serialized === null) return [];
 
-    // --- selection → toolbar ----------------------------------------------
-    /** The single `.content` (and its post id) a range sits wholly inside. */
-    const locate = (range: Range): { content: HTMLElement; postId: string } | null => {
-      const common = range.commonAncestorContainer;
-      const el =
-        common.nodeType === Node.ELEMENT_NODE
-          ? (common as Element)
-          : common.parentElement;
-      const content = el?.closest<HTMLElement>('.content') ?? null;
-      if (content === null) return null;
-      const postEl = content.closest<HTMLElement>('.post');
-      const postId = postEl === null ? null : readPostId(postEl);
-      if (postId === null || !posts.has(postId)) return null;
-      return { content, postId };
-    };
-
-    const evaluateSelection = () => {
-      if (disposed) return;
-      const sel = window.getSelection();
-      if (sel === null || sel.isCollapsed || sel.rangeCount === 0) {
-        toolbar.hide();
-        pending = null;
-        return;
-      }
-      const range = sel.getRangeAt(0);
-      const info = locate(range);
-      if (info === null) {
-        toolbar.hide();
-        pending = null;
-        return;
-      }
-      const serialized = serializeSelection(info.content, range);
-      if (serialized === null) {
-        toolbar.hide();
-        pending = null;
-        return;
-      }
       // Erase targets: highlights painted on this post whose range overlaps the
       // selection here — compared as DOM ranges, so it's independent of offsets.
       const eraseIds = paintedRanges
-        .filter((p) => p.postId === info.postId && rangesOverlap(p.range, range))
+        .filter((p) => p.postId === sel.postId && rangesOverlap(p.range, sel.range))
         .map((p) => p.id);
-      pending = { postId: info.postId, ...serialized, eraseIds };
-      toolbar.showAt(range.getBoundingClientRect(), {
-        canErase: eraseIds.length > 0,
-      });
+
+      const buttons: ToolbarButton[] = HIGHLIGHT_COLORS.map((color) => ({
+        key: color.id,
+        label: colorLabel(color.id),
+        swatch: color.hex,
+        onSelect: () => {
+          persist(
+            addHighlight(store, {
+              id: newId(),
+              topicId: topicId ?? '',
+              postId: sel.postId,
+              start: serialized.start,
+              end: serialized.end,
+              quote: serialized.quote,
+              color: color.hex,
+            }),
+          );
+          dismissSelectionToolbar();
+        },
+      }));
+
+      if (eraseIds.length > 0) {
+        buttons.push({
+          key: 'erase',
+          label: i18n.t('features.highlight.toolbar.remove'),
+          glyph: '⌫',
+          onSelect: () => {
+            persist(deleteHighlights(store, eraseIds));
+            dismissSelectionToolbar();
+          },
+        });
+      }
+      return buttons;
     };
 
-    // Evaluate after the mouseup so the selection is final; ignore clicks that
-    // land on our own UI (they'd otherwise dismiss the toolbar being clicked).
-    const onOurUi = (event: Event) => {
-      const path = event.composedPath();
-      return path.includes(toolbar.host);
-    };
-    document.addEventListener(
-      'mouseup',
-      (event) => {
-        if (onOurUi(event)) return;
-        setTimeout(evaluateSelection, 0);
-      },
-      { signal },
-    );
-    // Starting a new click/drag elsewhere dismisses a stale toolbar.
-    document.addEventListener(
-      'mousedown',
-      (event) => {
-        if (!toolbar.visible || onOurUi(event)) return;
-        toolbar.hide();
-        pending = null;
-      },
-      { signal },
-    );
-    // A fixed toolbar doesn't follow the selection when the page moves.
-    const hideOnMove = () => {
-      if (toolbar.visible) {
-        toolbar.hide();
-        pending = null;
-      }
-    };
-    document.addEventListener('scroll', hideOnMove, { capture: true, signal });
-    window.addEventListener('resize', hideOnMove, { signal });
+    const unregisterGroup = registerSelectionToolbarGroup({
+      id: 'highlight',
+      buttonsFor,
+    });
 
     // --- data --------------------------------------------------------------
     void loadHighlightStore().then((loaded) => {
@@ -286,11 +226,10 @@ export const highlight = {
 
     return () => {
       disposed = true;
-      controller.abort();
+      unregisterGroup();
       unwatchStore();
       unwatchTheme();
       renderer.clear();
-      toolbar.destroy();
       clearControl.destroy();
     };
   },
