@@ -1,13 +1,12 @@
 /**
  * Re-locating a known string inside a larger text.
  *
- * Both callers have the same shape of problem: they hold a passage that *was*
- * at some offset, and a text that may have shifted underneath it. `highlight`
- * re-anchors a stored highlight after a post was edited or after crossing from
- * viewtopic to the topic review; `quote-selection` matches the rendered
- * selection against the post's raw BBCode, where every tag shifts the offsets.
- * The second caller is why this lives in `src/lib` rather than in
- * `highlight/anchor.ts` — see docs/adr/0023.
+ * The problem it solves: hold a passage that *was* at some offset, and a text
+ * that may have shifted underneath it. `highlight` re-anchors a stored highlight
+ * after a post was edited or after crossing from viewtopic to the topic review.
+ * It was lifted out of `highlight/anchor.ts` when a second caller appeared and
+ * kept here since — it encodes nothing about what any one feature means, which
+ * is the test in docs/adr/0023.
  *
  * Pure arithmetic on strings, so it is unit-tested (`text-search.test.ts`).
  */

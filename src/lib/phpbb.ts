@@ -452,10 +452,6 @@ export function readReviewColorUsages(): { rawColor: string; author: string }[] 
  * no group colour get a plain `.username`, so fall back to it and then to any
  * author link. `.author` sits inside `.postbody`, so this works from the `.post`
  * container on both viewtopic and the topic review.
- *
- * Read off the DOM on purpose: the same name also appears as the second argument
- * of the review's `addquote(…)` handler, but *there* it is a JS string literal
- * carrying `\uXXXX` escapes, so the rendered text is the cheaper source of truth.
  */
 export function readPostAuthorName(post: HTMLElement): string | null {
   const link =
@@ -464,59 +460,4 @@ export function readPostAuthorName(post: HTMLElement): string | null {
     post.querySelector<HTMLElement>('.author a');
   const name = link?.textContent?.trim();
   return name === undefined || name === '' ? null : name;
-}
-
-/** The attribute triple phpBB stamps on a quote so it renders with a backlink. */
-export interface QuoteAttributes {
-  postId: string;
-  time: string;
-  userId: string;
-}
-
-/**
- * The quote attributes phpBB itself would use for a post, or null.
- *
- * The topic review's quote button carries them inline, verified against the live
- * forum:
- * `onclick="addquote(201246, 'Aetos', 'a écrit', {post_id:201246,time:1784931867,user_id:1939});"`
- * Emitting the same `post_id`/`time`/`user_id` is what makes our `[quote]` render
- * with the "a écrit" header *and* the arrow back to the source post, rather than
- * a bare attribution.
- *
- * Only the fourth argument is read — the author comes from `readPostAuthorName`,
- * which needs no JS-string decoding. Absent on viewtopic (whose quote control is
- * a plain link to `posting.php?mode=quote`), which is one reason quoting a
- * selection is a reply-page feature.
- */
-export function readQuoteAttributes(post: HTMLElement): QuoteAttributes | null {
-  const link = post.querySelector<HTMLElement>('a[onclick^="addquote("]');
-  const match = /\{post_id:(\d+),\s*time:(\d+),\s*user_id:(\d+)\}/.exec(
-    link?.getAttribute('onclick') ?? '',
-  );
-  if (match === null) return null;
-  return { postId: match[1], time: match[2], userId: match[3] };
-}
-
-/**
- * A post's **raw BBCode**, as the author typed it, or null.
- *
- * The topic review ships each post's source in a hidden
- * `<div id="message_{POST_ID}" style="display: none;">` — it is what phpBB's own
- * `addquote` quotes from. Verified against the live forum: 15 of them on a reply
- * page, none on viewtopic, so this returns null off the composer.
- *
- * Its `<br>` elements are the post's newlines. Swapping them for `\n` text nodes
- * in a *clone* and reading `textContent` reconstructs the source and decodes the
- * HTML entities in one step; reading `innerHTML` instead would leave `&amp;` and
- * friends in the quoted text.
- */
-export function readPostSource(postId: string): string | null {
-  const holder = document.getElementById(`message_${postId}`);
-  if (holder === null) return null;
-  const clone = holder.cloneNode(true) as HTMLElement;
-  for (const br of Array.from(clone.querySelectorAll('br'))) {
-    br.replaceWith(document.createTextNode('\n'));
-  }
-  const source = clone.textContent;
-  return source === null || source === '' ? null : source;
 }

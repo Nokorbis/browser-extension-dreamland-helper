@@ -4,13 +4,13 @@
  * and the reply composer's topic review.
  *
  * It began life inside the `highlight` feature (a row of colour swatches plus an
- * eraser). `quote-selection` is the second caller, so under docs/adr/0023 the
- * primitive moves here rather than one feature importing from another. What
- * moved is not just the bar's markup but the whole path that leads to it — the
- * document event wiring, locating which post a selection sits in, the placement
- * maths and the theme watch — because those were never highlight-specific and
- * two copies would fight over the same selection. See
- * docs/adr/0028-shared-selection-toolbar.md.
+ * eraser) and moved here when a second feature wanted a button over the same
+ * selection: under docs/adr/0023 the primitive belongs in `src/lib` rather than
+ * one feature importing from another. What moved is not just the bar's markup
+ * but the whole path that leads to it — the document event wiring, locating
+ * which post a selection sits in, the placement maths and the theme watch —
+ * because those were never highlight-specific and two copies would fight over
+ * the same selection. See docs/adr/0028-shared-selection-toolbar.md.
  *
  * Features **register a group** rather than build a bar: `buttonsFor(selection)`
  * is asked on every selection and returns the buttons that apply (an empty array
@@ -25,8 +25,8 @@
  * by design** — the test suite has no DOM (see CLAUDE.md). Its *geometry* is the
  * exception and does not live here: `placeAnchored` in `@/lib/anchor-position`
  * owns that as pure, unit-tested arithmetic. Editing this module means
- * re-verifying **both** the highlight swatches and the quote button by hand, in
- * both forum themes and both browsers.
+ * re-verifying every registered group by hand — today the highlight swatches and
+ * eraser — in both forum themes and both browsers.
  */
 import { placeAnchored } from '@/lib/anchor-position';
 import { isDarkTheme, readPostId, watchTheme } from '@/lib/phpbb';

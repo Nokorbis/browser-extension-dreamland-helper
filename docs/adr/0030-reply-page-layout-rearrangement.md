@@ -13,7 +13,7 @@ backwards.
 
 The `composer-layout` feature offers two choices above the form — put the composer *below* the
 review with the posts oldest-first, and put it *beside* the review on a chosen side. Every other
-feature so far either reads the forum's DOM (`color-grab`, `quote-selection`), paints over it
+feature so far either reads the forum's DOM (`color-grab`), paints over it
 without touching it (`highlight`), or adds a control of its own to it (`bbcode-presets`,
 `emoji-picker`). This is the first that changes **where the forum's own elements sit**, and the
 page it changes is the one holding text the writer has already typed. Three questions had to be
@@ -27,8 +27,8 @@ settled before writing any of it:
    lands on depends on how many siblings phpBB rendered — which varies with the `#preview` panel,
    attachment panels and error boxes.
 2. **How to reverse the posts.** `#topicreview`'s posts are anchored by numeric post id in
-   `highlight` and looked up by `quote-selection`; a DOM reorder is a mutation both would have to
-   survive.
+   `highlight`, and located by post id by anything reading the review; a DOM reorder is a mutation
+   all of them would have to survive.
 3. **Where the checkboxes go.** `<form id="postform">` POSTs every named control inside it and
    submits on any control that is not `type="button"` — the hazard `createFormatButton` exists to
    make unrepresentable.
@@ -67,7 +67,7 @@ taken from `100vw`, which includes the vertical scrollbar and would add a horizo
 independent of the column count: one column or two, the layout spans the window.
 
 **The post order flips in CSS**: `#topicreview { display: flex; flex-direction: column-reverse }`.
-No node moves, so `highlight`'s ranges and `quote-selection`'s post lookups are untouched by the
+No node moves, so `highlight`'s ranges and every other feature's post lookups are untouched by the
 setting and the toggle is instant.
 
 **The controls live outside the form**, mounted immediately before `#postform` as a Shadow-DOM bar

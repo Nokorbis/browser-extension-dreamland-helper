@@ -18,8 +18,8 @@
  * mutates the DOM; painting is the CSS Custom Highlight API's job (`render.ts`).
  *
  * `locateOffset` is the pure arithmetic, split out and unit-tested
- * (`anchor.test.ts`), as is the re-anchor search now that `quote-selection`
- * shares it (`@/lib/text-search`); the Range/TreeWalker glue around them is
+ * (`anchor.test.ts`), as is the re-anchor search that lives in
+ * `@/lib/text-search`; the Range/TreeWalker glue around them is
  * DOM work verified by hand (the test env has no DOM — see CLAUDE.md).
  */
 import { nearestOccurrence } from '@/lib/text-search';

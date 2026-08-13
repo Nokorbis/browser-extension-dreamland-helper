@@ -49,8 +49,8 @@ describe('locateOffset', () => {
 });
 
 // `nearestOccurrence` — the re-anchor fallback `resolveRange` uses — moved to
-// `@/lib/text-search` when `quote-selection` became its second caller, and its
-// cases moved with it to `src/lib/text-search.test.ts` (docs/adr/0023).
+// `@/lib/text-search` when a second caller appeared, and its cases moved with it
+// to `src/lib/text-search.test.ts` (docs/adr/0023).
 
 describe('highlightRegistryName', () => {
   it('is deterministic for the same colour', () => {

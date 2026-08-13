@@ -6,10 +6,11 @@ import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/s
  * pill offering "clear this discussion" and "clear everything".
  *
  * The *selection toolbar* used to live here too. It moved to
- * `@/lib/selection-toolbar` when `quote-selection` became its second caller
- * (docs/adr/0023, docs/adr/0028); the feature now registers a button group with
- * that shared bar instead of owning one. `colorLabel` stayed behind because it
- * is highlight's own vocabulary — it names the swatches the feature registers.
+ * `@/lib/selection-toolbar` when a second feature wanted a button over the same
+ * selection (docs/adr/0023, docs/adr/0028); the feature now registers a button
+ * group with that shared bar instead of owning one. `colorLabel` stayed behind
+ * because it is highlight's own vocabulary — it names the swatches the feature
+ * registers.
  *
  * What remains follows the `server-down-modal` pattern rather than Svelte: a
  * Shadow DOM host with `all:initial` to fence off phpBB's CSS, styled through

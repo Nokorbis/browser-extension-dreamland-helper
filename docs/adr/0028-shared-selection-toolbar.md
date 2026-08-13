@@ -12,8 +12,9 @@ painted. Building it meant building rather more than a row — the `mouseup`/`mo
 `resize` wiring, the `locate` step that decides which post a selection sits in, the off-screen
 measure before `placeAnchored`, and the theme watch.
 
-`quote-selection` (see [[0029-quote-a-selected-passage]]) wants a button in exactly that row, over
-exactly that selection. [[0023-shared-primitives-in-lib]] already says what to do when a second
+A second feature — quoting a selected passage into the composer, since withdrawn — wanted a button
+in exactly that row, over exactly that selection.
+[[0023-shared-primitives-in-lib]] already says what to do when a second
 feature needs a primitive: promote it to `src/lib` rather than let one feature import from
 another. But this case is not only about duplication. Two features each creating their own bar
 would put **two floating rows over one selection**, and each would independently decide when to
@@ -46,7 +47,7 @@ registration and torn down by the last unregister, so a page with both features 
 host and no listeners.
 
 What stays in a feature is what only it knows: `highlight` keeps its palette, its colour names and
-the eraser's overlap test; `quote-selection` keeps everything about quoting. The toolbar knows how
+the eraser's overlap test; a quoting feature would keep everything about quoting. The toolbar knows how
 to show a row over a selection in a post; it does not know what a highlight or a quote is — the
 same boundary [[0023-shared-primitives-in-lib]] drew for `popover.ts`.
 
@@ -55,9 +56,11 @@ rule, with its tests.
 
 ## Consequences
 
-- **Quoting and highlighting are genuinely independent.** Either can be switched off in the popup
-  without touching the other, and quoting works on a browser without the CSS Custom Highlight API.
-  That independence is the reason this record exists; it is not achievable with option 1.
+- **Groups are genuinely independent.** Any of them can be switched off in the popup without
+  touching the others, and a group that needs no CSS Custom Highlight API is not held back by
+  `highlight`'s feature detection. That independence is the reason this record exists; it is not
+  achievable with option 1. The quoting feature that first needed it has since been withdrawn, so
+  `highlight` is currently the only group — the mechanism stays, and so does the boundary it draws.
 - **A new kind of thing now lives in `src/lib`: a singleton with registration**, rather than a
   factory a feature calls. Registration order is the ordering rule, which means the row's left-to-
   right layout is decided by `ALL_FEATURES` — obscure, and worth remembering before adding a third
@@ -67,8 +70,8 @@ rule, with its tests.
   irrelevant.
 - **`src/lib/selection-toolbar.ts` has no automated coverage, by design** — it is DOM and event
   glue, like `popover.ts`, and the suite has no DOM environment. Its geometry is the deliberate
-  exception and lives in `anchor-position.ts`, unit-tested. Editing it now means re-verifying
-  **two** features by hand, in both themes and both browsers. That obligation grows with each new
+  exception and lives in `anchor-position.ts`, unit-tested. Editing it means re-verifying **every
+  registered group** by hand, in both themes and both browsers. That obligation grows with each new
   group and should be weighed before adding one.
 - **A feature can no longer see the selection it was not offered.** `buttonsFor` receives a
   resolved `PostSelection` and nothing else; anything needing raw selection events would have to
@@ -77,4 +80,4 @@ rule, with its tests.
   Shadow-DOM control styled through `.style`, exactly as that record decided. Only its owner moved.
 
 Related: [[0023-shared-primitives-in-lib]], [[0020-persistent-text-highlights]],
-[[0029-quote-a-selected-passage]], [[0016-svelte-in-content-script]]
+[[0016-svelte-in-content-script]]

@@ -41,7 +41,6 @@ export const DEFAULT_SETTINGS: { features: Record<FeatureId, boolean> } = {
     'color-grab': true,
     'editor-shortcuts': true,
     'emoji-picker': true,
-    'quote-selection': true,
     'composer-layout': true,
   },
 };

@@ -14,6 +14,7 @@ with [WXT](https://wxt.dev) + Svelte 5.
 | 4 | Color grabber | ✅ Done | Reuse a colour already in the thread — a checkbox in the forum's colour palette filters it to the colours used in the topic review. |
 | 5 | Keyboard shortcuts | ✅ Done | Ctrl+B / Ctrl+I / Alt+Q… over the forum's own BBCode toolbar, in the composer and the chatbox, identical on Chrome and Firefox. |
 | 6 | Emoji picker | ✅ Done | A searchable Unicode emoji panel in the composer and the chatbox, opened from a toolbar button or Alt+I. |
+| 7 | Reply page layout | ✅ Done | Write next to what you are answering — put the editor below or beside the thread review, read the posts oldest-first, and use the window's full width. |
 
 Each feature is independent and can be toggled on or off from the extension's toolbar popup;
 a change takes effect on the forum page's next load.
@@ -169,6 +170,25 @@ The ~1900-emoji table ships as an extension asset fetched the first time the pan
 than being bundled into the content script that runs on every forum page.
 See [ADR 0022](./docs/adr/0022-lazy-loaded-data-assets.md).
 
+### 7. Reply page layout — ✅ done
+
+The reply page stacks the editor *above* the thread it is answering, so quoting or checking a
+detail means scrolling away from what you are writing. Three checkboxes in a bar above the form
+rearrange it:
+
+- **Ordre inversé** — the editor moves below the posts, and the topic review reads oldest-first.
+- **Côte à côte** — the editor sits *beside* the posts instead, on the side you pick.
+- **Pleine largeur** — the editor and the posts span the whole window instead of the skin's
+  centred column, in one column or two. The rest of the forum is untouched.
+
+Your choice is remembered for the next reply, and turning the feature off returns the page to
+its original shape.
+
+The page is **re-wrapped, never re-rendered**: the form's existing elements are moved into two
+columns, so the textarea keeps whatever you had already typed and the forum's own scripts keep
+working. The post order flips in CSS rather than by moving nodes, so highlights stay anchored
+where you put them. See [ADR 0030](./docs/adr/0030-reply-page-layout-rearrangement.md).
+
 ### Backup — export & import
 
 Not a toggleable feature, but a section of the options page (the cog in the popup): everything
@@ -185,15 +205,6 @@ mean nothing in another browser's copy.
 It lives on the options page rather than in the popup for a concrete reason: the popup closes
 the instant a file-picker dialog takes focus, taking the pending import with it.
 See [ADR 0021](./docs/adr/0021-json-export-import.md).
-
-## Planned
-
-One candidate, not started. It has a short design note in [`docs/design/`](./docs/design/)
-covering the approach and the questions still open — read it before starting.
-
-| Idea | Why | Design note |
-|---|---|---|
-| **Quote a selected passage** | phpBB's quote button takes the *whole* post. Replying to one line of a 2000-word post means quoting a wall and deleting it by hand. | [quote-selection](./docs/design/quote-selection.md) |
 
 ## Architecture & decisions
 

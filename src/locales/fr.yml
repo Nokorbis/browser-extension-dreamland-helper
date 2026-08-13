@@ -152,14 +152,6 @@ features:
       clearTopic: Effacer ce sujet
       clearAll: Tout effacer
       noThread: Ouvrez un sujet du forum pour en effacer les surlignages.
-  quoteSelection:
-    name: Citation d'un passage
-    description: >-
-      Cite uniquement le passage sélectionné dans la relecture du sujet, au lieu
-      du message entier, en conservant sa mise en forme.
-    # The button added to the shared selection toolbar (src/lib/selection-toolbar.ts).
-    toolbar:
-      quote: Citer ce passage
   composerLayout:
     name: Disposition de la réponse
     description: >-

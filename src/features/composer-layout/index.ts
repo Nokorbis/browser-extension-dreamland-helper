@@ -40,7 +40,7 @@ import { log, warn } from '@/lib/log';
  *   existing children into two columns, so the textarea keeps its text and
  *   phpBB's own scripts keep their references.
  * - **The post order flips in CSS**, not in the DOM, so `highlight` ranges and
- *   `quote-selection`'s lookups are untouched by it.
+ *   every other feature's post lookups are untouched by it.
  * - **The controls live outside `<form id="postform">`**, where nothing they
  *   carry can reach phpBB's POST or submit it.
  *

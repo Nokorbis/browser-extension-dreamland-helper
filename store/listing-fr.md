@@ -118,20 +118,9 @@ bien sur la page du sujet que dans la relecture affichée sous l'éditeur de ré
 • Effacez d'un clic les surlignages d'un sujet, ou tous d'un coup.
 • Rien n'est modifié dans les messages du forum, et tout reste enregistré localement.
 
-━━━ CITATION D'UN PASSAGE ━━━
-
-Citez une phrase plutôt qu'un message entier. Dans la relecture du sujet affichée sous l'éditeur
-de réponse, sélectionnez un passage et un bouton propose de le citer : la citation est insérée
-à l'endroit du curseur, attribuée à son auteur, avec le lien de retour vers le message d'origine
-— exactement comme le bouton de citation du forum.
-
-• La mise en forme du passage (couleurs, gras, italique) est conservée quand elle peut l'être ;
-  sinon le texte est cité tel quel.
-• Un seul Ctrl+Z annule l'insertion : elle passe par l'historique natif du navigateur.
-
 ━━━ DISPOSITION DE LA RÉPONSE ━━━
 
-Écrivez à côté de ce que vous lisez. Sur la page de réponse, deux cases ajoutées au-dessus de
+Écrivez à côté de ce que vous lisez. Sur la page de réponse, trois cases ajoutées au-dessus de
 l'éditeur réorganisent la page :
 
 • « Ordre inversé » place l'éditeur sous les messages et affiche la relecture du sujet du plus
@@ -220,9 +209,8 @@ filters the forum's own
 colour palette down to the colours already used in the thread so one can be reused in the post,
 it binds keyboard shortcuts to the forum's own BBCode toolbar buttons, it offers a searchable
 panel for inserting Unicode emoji into the message being written, it lets the member highlight
-passages of the thread they are replying to so they keep track of what to answer, and it inserts
-a quote of a selected passage of an earlier post into the reply being written, and it can place
-the reply editor beside or below the thread it is answering, at the window's full width. All
+passages of the thread they are replying to so they keep track of what to answer, and it can
+place the reply editor beside or below the thread it is answering, at the window's full width. All
 of these serve one activity -- composing a post on that forum -- and the extension does nothing
 on any other page: its host permission is limited to *://*.dreamland-reborn.net/*.
 ```
