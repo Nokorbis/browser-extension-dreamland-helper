@@ -3,14 +3,14 @@
  * the page's light DOM. Shared by `bbcode-presets`' menu and `emoji-picker`'s panel; see
  * docs/adr/0023.
  *
- * The surface is `position: fixed` and reads its viewport coordinates from two custom
- * properties published on the shadow *host* — measuring in JS keeps it correct whatever the
- * skin does to the toolbar row and lets it escape an `overflow: hidden` ancestor, and custom
- * properties are one of the few things WXT's `all: initial` host reset lets through the
- * boundary. Dismissal, scroll-following and the async mount are handled here too.
+ * The surface is `position: fixed` and reads its coordinates from two custom properties
+ * published on the shadow *host*: measuring in JS survives whatever the skin does to the
+ * toolbar row and escapes an `overflow: hidden` ancestor, and custom properties are one of
+ * the few things WXT's `all: initial` host reset lets through the boundary. Dismissal,
+ * scroll-following and the async mount live here too.
  *
- * What stays at the call site: the trigger's appearance, what opening means for the
- * feature's state, `aria-expanded`, and whether to keep the surface on screen (`fit`).
+ * What stays at the call site: the trigger's appearance, what opening means for the feature's
+ * state, `aria-expanded`, and whether to keep the surface on screen (`fit`).
  */
 import {
   createShadowRootUi,
@@ -24,16 +24,16 @@ import { warn } from './log';
 const GAP = 4;
 
 /**
- * Keep the surface inside the viewport. Only worth paying for when the trigger can sit near
- * an edge — the Tribune's toolbar is at the very bottom of the page. Flip and clamp both
- * need the rendered box, so they are one option rather than two: without a `fit` the surface
- * is placed below and left-aligned with its trigger and nothing is measured.
+ * Keep the surface inside the viewport — worth paying for only when the trigger can sit near
+ * an edge, as the Tribune's bottom-of-page toolbar does. Flip and clamp both need the rendered
+ * box, hence one option: without a `fit`, nothing is measured and the surface goes below its
+ * trigger, left-aligned.
  */
 export interface PopoverFit {
   /**
-   * Selects the positioned element *inside* the shadow root, e.g. `.panel`. Measured rather
-   * than read off its CSS `width`, which is typically in `rem` — so it depends on the
-   * forum's root font size — and can shrink further under its own `max-width`.
+   * The positioned element *inside* the shadow root, e.g. `.panel`. Measured rather than read
+   * off its CSS `width`, which is in `rem` (so it follows the forum's root font size) and can
+   * shrink further under its own `max-width`.
    */
   selector: string;
 }

@@ -82,3 +82,70 @@ const DARK: Chrome = {
 export function chromeFor(dark: boolean): Chrome {
   return dark ? DARK : LIGHT;
 }
+
+/** A control's current palette, repainted on a theme flip. */
+export interface Themed {
+  /** The palette to read while building or painting a node. */
+  chrome: () => Chrome;
+  /** Register the control's paint and run it now, once its nodes exist. */
+  paints: (paint: (chrome: Chrome) => void) => void;
+  /** Swap the palette and repaint. Wire it to `followTheme` in `@/lib/phpbb`. */
+  setDark: (dark: boolean) => void;
+}
+
+/**
+ * Holds the palette for a vanilla control and repaints it on a theme flip, so each control
+ * keeps only its own `paint` body.
+ *
+ * Created *before* the nodes it paints — the buttons read `chrome()` while being built — and
+ * handed the paint afterwards through `paints`. Starts on the light palette, as the
+ * hand-written copies did; the feature calls `setDark` with the real theme right after.
+ */
+export function themed(): Themed {
+  let chrome = chromeFor(false);
+  let paint: (chrome: Chrome) => void = () => undefined;
+  return {
+    chrome: () => chrome,
+    paints(next) {
+      paint = next;
+      paint(chrome);
+    },
+    setDark(dark) {
+      chrome = chromeFor(dark);
+      paint(chrome);
+    },
+  };
+}
+
+/** A text button that lifts on hover. Its resting background is repainted by the caller. */
+export interface HoverButtonOptions {
+  text: string;
+  /** Extra `.style` on top of the shared base. */
+  css: string;
+  /** The background it returns to — re-read on every leave, so a theme flip is picked up. */
+  rest: () => string;
+  hover: () => string;
+  onClick: () => void;
+}
+
+/**
+ * ⚠ Always `type="button"` with no `name`: these surfaces mount inside `<form id="postform">`,
+ * where either would fire a submit `exit-guard` reads as a genuine post and **send the
+ * half-written message**. Same reason as `createFormatButton` in `@/lib/phpbb`.
+ */
+export function mkHoverButton(opts: HoverButtonOptions): HTMLButtonElement {
+  const btn = styled(
+    document.createElement('button'),
+    'cursor:pointer;font:inherit;' + opts.css,
+  );
+  btn.type = 'button';
+  btn.textContent = opts.text;
+  btn.addEventListener('click', opts.onClick);
+  btn.addEventListener('mouseenter', () => {
+    btn.style.background = opts.hover();
+  });
+  btn.addEventListener('mouseleave', () => {
+    btn.style.background = opts.rest();
+  });
+  return btn;
+}

@@ -2,9 +2,9 @@
  * Where a floating surface goes relative to the thing it hangs off, shared by `@/lib/popover`
  * and `@/lib/selection-toolbar`.
  *
- * Pure arithmetic on plain numbers — no `getBoundingClientRect`, no `style`, no DOM. Same
- * split as `planInsertion` / `insertAtRange`: the caller measures, calls this, and assigns.
- * That is what makes the geometry testable in a suite with no DOM (docs/adr/0023).
+ * Pure arithmetic on plain numbers — no DOM. Same split as `planInsertion` / `insertAtRange`:
+ * the caller measures, calls this, assigns. That is what makes the geometry testable in a
+ * suite with no DOM (docs/adr/0023).
  */
 
 /** The measured box of the element the surface hangs off, in viewport coordinates. */
@@ -57,15 +57,12 @@ function clamp(value: number, min: number, max: number): number {
 
 /**
  * Unfitted, places the surface `gap` away on its preferred `side`. With `fit`, two
- * independent adjustments apply, each needing the matching surface dimension — a `0` skips
- * it and leaves the unfitted placement for the caller to re-measure:
+ * adjustments apply, each needing the matching surface dimension — a `0` skips it:
  *
- * - **Flip**, only when the preferred side would overflow *and* the other side has genuine
- *   room. Both halves matter: falling off the top is no better than falling off the bottom,
- *   so a surface too tall for either side stays where it was asked to go, near edge readable.
+ * - **Flip**, only when the preferred side would overflow *and* the other has genuine room:
+ *   a surface too tall for either stays where it was asked to go, near edge readable.
  * - **Clamp** the left edge into `[gap, width - surface - gap]`. On a viewport narrower than
- *   the surface that range inverts and `gap` wins, overflowing right — the readable
- *   direction in a left-to-right layout.
+ *   the surface that range inverts and `gap` wins, overflowing right — the readable direction.
  */
 export function placeAnchored(
   anchor: AnchorRect,

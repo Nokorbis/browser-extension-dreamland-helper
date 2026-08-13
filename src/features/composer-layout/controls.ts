@@ -1,16 +1,16 @@
 /**
  * The reply page's layout controls. A dumb view: the feature owns the store and passes
- * callbacks in. Built with `.style` on plain DOM nodes rather than Svelte, being small and
- * static (docs/adr/0016), and following the forum's theme through `setDark`.
+ * callbacks in. Vanilla `.style` on plain nodes rather than Svelte, being small and static
+ * (docs/adr/0016), following the forum's theme through `setDark`.
  *
- * ⚠ The bar is mounted **outside `<form id="postform">`**, above it. Anything with a `name`
- * inside that form is POSTed to phpBB and anything not `type="button"` submits it, so
- * keeping the whole control out makes both hazards unreachable rather than remembered. The
- * inputs sit in a shadow root as well, so they are not form controls of anything.
+ * ⚠ Mounted **outside `<form id="postform">`**, above it. Inside, a `name` would be POSTed and
+ * anything not `type="button"` would submit; keeping the whole control out makes both hazards
+ * unreachable rather than remembered. The inputs sit in a shadow root besides, so they are
+ * form controls of nothing.
  */
 import { i18n } from '#i18n';
 import type { ComposerSide, LayoutPrefs } from '@/lib/composer-layout';
-import { chromeFor, createShadowHost, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
+import { createShadowHost, styled, SYSTEM_FONT, themed } from '@/lib/shadow-ui';
 
 export interface LayoutControlHandlers {
   onReverseOrder: (value: boolean) => void;
@@ -31,8 +31,7 @@ export function createLayoutControls(
   anchor: HTMLElement,
   handlers: LayoutControlHandlers,
 ): LayoutControls {
-  let chrome = chromeFor(false);
-
+  const theme = themed();
   const { host, shadow } = createShadowHost();
   host.style.display = 'block';
 
@@ -109,13 +108,12 @@ export function createLayoutControls(
   shadow.append(root);
   anchor.parentElement?.insertBefore(host, anchor);
 
-  const paint = () => {
+  theme.paints((chrome) => {
     root.style.background = chrome.surface;
     root.style.border = `1px solid ${chrome.border}`;
     root.style.color = chrome.fg;
     sideCaption.style.color = chrome.muted;
-  };
-  paint();
+  });
 
   return {
     update(prefs) {
@@ -126,10 +124,7 @@ export function createLayoutControls(
       rightRadio.checked = prefs.composerSide === 'right';
       sideGroup.style.display = prefs.sideBySide ? 'inline-flex' : 'none';
     },
-    setDark(dark) {
-      chrome = chromeFor(dark);
-      paint();
-    },
+    setDark: theme.setDark,
     destroy() {
       host.remove();
     },

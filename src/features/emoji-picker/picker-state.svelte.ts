@@ -1,14 +1,10 @@
 /**
- * Reactive state shared between the feature's plain-TypeScript setup and the Svelte panel it
- * mounts — same seam as `menu-state.svelte.ts`, see there for why runes need their own
- * `.svelte.ts` module and why this is one `$state` object rather than a rune per field.
- *
- * One instance per surface, since each has its own trigger, open state and textarea, but
- * they share the one dataset and recents list that `index.ts` pushes into both.
+ * Reactive state shared between the feature's setup and the Svelte panel it mounts — same
+ * seam as `menu-state.svelte.ts`, see there for the rune rules. One instance per surface,
+ * both fed the same dataset and recents list by `index.ts`.
  *
  * ⚠ Never hand this to `browser.storage` — `$state` deep-proxies it and a `Proxy` is not
- * structured-cloneable. It doesn't happen: `index.ts` keeps its own plain `prefs` for the
- * write and pushes only the array in here.
+ * structured-cloneable. `index.ts` keeps its own plain `prefs` for the write.
  */
 import { emptyEmojiData, type EmojiData } from './types';
 

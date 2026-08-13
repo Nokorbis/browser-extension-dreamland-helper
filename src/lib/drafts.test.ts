@@ -64,7 +64,9 @@ describe('draftKey', () => {
 
   it('normalises quote to the same key as reply, so one draft serves both routes', () => {
     // A `mode=quote&p=…` URL has no `t`; readComposerParams fills it from the page.
-    expect(draftKey(params({ mode: 'quote', t: '3071', p: '201246' }))).toBe('reply:3071');
+    expect(draftKey(params({ mode: 'quote', t: '3071', p: '201246' }))).toBe(
+      'reply:3071',
+    );
   });
 
   it('keys a new topic on its forum and an edit on its post', () => {
@@ -73,7 +75,9 @@ describe('draftKey', () => {
   });
 
   it('keys an edit on the post even when a topic id is also present', () => {
-    expect(draftKey(params({ mode: 'edit', t: '3071', p: '201246' }))).toBe('edit:201246');
+    expect(draftKey(params({ mode: 'edit', t: '3071', p: '201246' }))).toBe(
+      'edit:201246',
+    );
   });
 
   it.each([

@@ -41,7 +41,11 @@
 <p class="counts">{i18n.t('features.exitGuard.popup.count', total)}</p>
 
 <div class="actions">
-  <button type="button" disabled={total === 0} onclick={() => save(clearAllDrafts(store))}>
+  <button
+    type="button"
+    disabled={total === 0}
+    onclick={() => save(clearAllDrafts(store))}
+  >
     {i18n.t('features.exitGuard.popup.clearAll')}
   </button>
 </div>

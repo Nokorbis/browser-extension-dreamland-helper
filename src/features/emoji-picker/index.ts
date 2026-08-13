@@ -5,8 +5,7 @@ import {
   findFormatButtons,
   findMessageTextarea,
   createFormatButton,
-  isDarkTheme,
-  watchTheme,
+  followTheme,
 } from '@/lib/phpbb';
 import {
   CHAT_BUTTON_CLASS,
@@ -98,8 +97,6 @@ function createChatTrigger(label: string, tooltip: string, aria: string): HTMLEl
 }
 
 export const emojiPicker = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'emoji-picker' as const,
   name: i18n.t('features.emojiPicker.name'),
   description: i18n.t('features.emojiPicker.description'),
@@ -166,7 +163,11 @@ export const emojiPicker = {
       prefs = next;
       for (const entry of mountedSurfaces) entry.state.recent = next.recent;
     };
-    void loadEmojiPrefs().then(applyRecent);
+    void loadEmojiPrefs()
+      .then(applyRecent)
+      .catch((err: unknown) => {
+        warn('emoji-picker: could not load the recents list', err);
+      });
     unwatchPrefs = watchEmojiPrefs(applyRecent);
 
     // ~250 kB outside the bundle, so a real round trip on first use; the panel renders
@@ -184,6 +185,7 @@ export const emojiPicker = {
       if (disposed) return;
       for (const entry of mountedSurfaces) entry.state.dark = dark;
     };
+    // Wired after the surfaces are mounted, below — `mountedSurfaces` is empty here.
 
     for (const surface of surfaces) {
       if (surface.toolbar.querySelector(`[${TRIGGER_MARKER}]`) !== null) {
@@ -260,9 +262,12 @@ export const emojiPicker = {
         searchBox()?.focus();
 
         // Optimistic locally, then persisted: `watchEmojiPrefs` echoes the write back to
-        // every surface, but this panel shouldn't wait for a round trip to show it.
-        applyRecent(pushRecent(prefs, record.c));
-        void saveEmojiPrefs(prefs).catch((err) => {
+        // every surface, but this panel shouldn't wait for a round trip to show it. The
+        // value is bound here rather than re-read: `applyRecent` leaves `prefs` untouched
+        // once disposed, and would then persist the list from before this pick.
+        const next = pushRecent(prefs, record.c);
+        applyRecent(next);
+        void saveEmojiPrefs(next).catch((err) => {
           warn('emoji-picker: could not save the recents list', err);
         });
 
@@ -310,8 +315,7 @@ export const emojiPicker = {
       log(`emoji-picker: trigger injected into the ${surface.id} toolbar`);
     }
 
-    applyTheme(isDarkTheme());
-    unwatchTheme = watchTheme(applyTheme);
+    unwatchTheme = followTheme(applyTheme);
 
     return () => {
       disposed = true;

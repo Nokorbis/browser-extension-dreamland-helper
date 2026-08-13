@@ -1,12 +1,11 @@
 /**
  * Shared plumbing for feature-owned data stores (docs/adr/0012).
  *
- * **The idiom, stated once here rather than in each store:** a store owns one
- * `browser.storage.local` key, carries its `version` **inside** the payload, keeps a flat
- * id-keyed record shape, runs a repair pass on every read, and mutates purely
- * (`store → store`), returning the same reference on a no-op so callers can skip a write.
- * A store still owns its key, its shape, its `normalize`, its explicit `toPlain…` and its
- * mutations; only the plumbing below is shared.
+ * **The idiom, stated once here rather than per store:** one `browser.storage.local` key, the
+ * `version` **inside** the payload, a flat id-keyed shape, a repair pass on every read, and
+ * pure mutations (`store → store`) returning the same reference on a no-op so callers can
+ * skip a write. A store still owns its key, shape, `normalize`, `toPlain…` and mutations;
+ * only the plumbing below is shared.
  */
 import { browser } from '#imports';
 
@@ -26,9 +25,8 @@ export function readInt(value: unknown): number | null {
 }
 
 /**
- * Mint an id for a new record. `crypto.randomUUID()` is gated on a secure context, which
- * extension pages always are, so the fallback is insurance rather than a load-bearing path
- * — it is not cryptographically strong, which is irrelevant for a local record id.
+ * Mint an id for a new record. `crypto.randomUUID()` needs a secure context, which extension
+ * pages always are, so the fallback is insurance — not strong, which a local id needn't be.
  */
 export function newId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -40,14 +38,11 @@ export function newId(): string {
 /**
  * Step a store up to the current schema version.
  *
- * Shared rather than inlined per store because the inlined copies had drifted: one re-read
- * `version` off the store and trusted each migration to bump it, so a migration that forgot
- * looped forever inside a `normalize…` that runs on every read. Here the counter is local
- * and always advances, so the loop terminates whatever a migration returns, and `from` is
- * floored to a non-negative integer, so a corrupt `version: -3` replays from 0 instead of
- * skipping ahead and being stamped as current.
- *
- * Exported so the migration paths are reachable from a test with a synthetic map.
+ * Shared because the inlined copies had drifted: one re-read `version` off the store and
+ * trusted each migration to bump it, so a migration that forgot looped forever inside a
+ * `normalize…` that runs on every read. Here the counter is local and always advances, and
+ * `from` is floored to a non-negative integer, so a corrupt `version: -3` replays from 0
+ * rather than being stamped as current. Exported so a test can drive it with a synthetic map.
  */
 export function runMigrations<T>(
   store: T,

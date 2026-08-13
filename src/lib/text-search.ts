@@ -18,6 +18,9 @@ export function nearestOccurrence(
   let i = haystack.indexOf(needle);
   while (i !== -1) {
     if (best === null || Math.abs(i - hint) < Math.abs(best - hint)) best = i;
+    // Past the hint the distance only grows, so nothing later can win — stop scanning
+    // a long post for every occurrence of a common word.
+    else if (i > hint) break;
     i = haystack.indexOf(needle, i + 1);
   }
   return best;

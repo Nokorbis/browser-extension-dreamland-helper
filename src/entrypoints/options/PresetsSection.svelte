@@ -227,7 +227,9 @@
   }
 
   /** Built through `promptToken` rather than written out, so the grammar has one home. */
-  const promptSample = promptToken(i18n.t('features.bbcodePresets.editor.promptSampleLabel'));
+  const promptSample = promptToken(
+    i18n.t('features.bbcodePresets.editor.promptSampleLabel'),
+  );
 
   // --- live preview -------------------------------------------------------
   const preview = $derived(

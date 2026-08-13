@@ -1,5 +1,12 @@
 import { i18n } from '#i18n';
-import { chromeFor, createShadowHost, MAX_Z, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
+import {
+  createShadowHost,
+  MAX_Z,
+  mkHoverButton,
+  styled,
+  SYSTEM_FONT,
+  themed,
+} from '@/lib/shadow-ui';
 
 /**
  * The highlight feature's own in-page control: the corner pill offering "clear this
@@ -49,8 +56,8 @@ export interface ClearControl {
 }
 
 export function createClearControl(handlers: ClearControlHandlers): ClearControl {
-  let chrome = chromeFor(false);
   let expanded = false;
+  const theme = themed();
 
   const { host, shadow } = createShadowHost();
 
@@ -67,26 +74,19 @@ export function createClearControl(handlers: ClearControlHandlers): ClearControl
     'display:none;flex-direction:column;gap:4px;padding:6px;border-radius:8px;',
   );
 
-  const mkMenuButton = (text: string, onClick: () => void) => {
-    const btn = styled(
-      document.createElement('button'),
-      'cursor:pointer;text-align:left;white-space:nowrap;padding:6px 10px;' +
-        'border-radius:6px;background:transparent;font:inherit;',
-    );
-    btn.type = 'button';
-    btn.textContent = text;
-    btn.addEventListener('click', () => {
-      collapse();
-      onClick();
+  const mkMenuButton = (text: string, onClick: () => void) =>
+    mkHoverButton({
+      text,
+      css:
+        'text-align:left;white-space:nowrap;padding:6px 10px;' +
+        'border-radius:6px;background:transparent;',
+      rest: () => 'transparent',
+      hover: () => theme.chrome().hover,
+      onClick: () => {
+        collapse();
+        onClick();
+      },
     });
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = chrome.hover;
-    });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'transparent';
-    });
-    return btn;
-  };
 
   const clearTopicBtn = mkMenuButton(
     i18n.t('features.highlight.control.clearTopic'),
@@ -135,17 +135,16 @@ export function createClearControl(handlers: ClearControlHandlers): ClearControl
   root.append(menu, toggle);
   shadow.append(root);
 
-  const paint = () => {
-    menu.style.background = chrome.surface;
-    menu.style.border = `1px solid ${chrome.border}`;
-    menu.style.boxShadow = `0 6px 20px ${chrome.shadow}`;
-    for (const btn of [clearTopicBtn, clearAllBtn]) btn.style.color = chrome.fg;
-    toggle.style.background = chrome.surface;
-    toggle.style.border = `1px solid ${chrome.border}`;
-    toggle.style.color = chrome.fg;
-    toggle.style.boxShadow = `0 3px 12px ${chrome.shadow}`;
-  };
-  paint();
+  theme.paints((c) => {
+    menu.style.background = c.surface;
+    menu.style.border = `1px solid ${c.border}`;
+    menu.style.boxShadow = `0 6px 20px ${c.shadow}`;
+    for (const btn of [clearTopicBtn, clearAllBtn]) btn.style.color = c.fg;
+    toggle.style.background = c.surface;
+    toggle.style.border = `1px solid ${c.border}`;
+    toggle.style.color = c.fg;
+    toggle.style.boxShadow = `0 3px 12px ${c.shadow}`;
+  });
 
   return {
     update({ count, hasTopic }) {
@@ -160,10 +159,7 @@ export function createClearControl(handlers: ClearControlHandlers): ClearControl
       clearTopicBtn.style.display = hasTopic ? 'block' : 'none';
       toggleLabel.textContent = i18n.t('features.highlight.control.count', count);
     },
-    setDark(dark) {
-      chrome = chromeFor(dark);
-      paint();
-    },
+    setDark: theme.setDark,
     destroy() {
       document.removeEventListener('pointerdown', onDocPointerDown, true);
       host.remove();

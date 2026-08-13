@@ -1,5 +1,11 @@
 import { i18n } from '#i18n';
-import { chromeFor, createShadowHost, styled, SYSTEM_FONT } from '@/lib/shadow-ui';
+import {
+  createShadowHost,
+  mkHoverButton,
+  styled,
+  SYSTEM_FONT,
+  themed,
+} from '@/lib/shadow-ui';
 import type { Age } from './age';
 
 /**
@@ -47,8 +53,7 @@ function ageLabel(age: Age): string {
 }
 
 export function createRecoveryBar(handlers: RecoveryBarHandlers): RecoveryBar {
-  let chrome = chromeFor(false);
-
+  const theme = themed();
   const { host, shadow } = createShadowHost();
   // `all:initial` computes to display:inline; this bar has to take a line of its own.
   host.style.display = 'block';
@@ -63,31 +68,29 @@ export function createRecoveryBar(handlers: RecoveryBarHandlers): RecoveryBar {
 
   const message = styled(document.createElement('span'), 'flex:1 1 auto;');
 
-  const mkButton = (text: string, onClick: () => void) => {
-    const btn = styled(
-      document.createElement('button'),
-      'flex:0 0 auto;cursor:pointer;padding:4px 10px;border-radius:5px;font:inherit;',
-    );
-    // ⚠ MANDATORY inside #postform — see the module comment. Never add a `name`.
-    btn.type = 'button';
-    btn.textContent = text;
-    btn.addEventListener('click', onClick);
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = chrome.hover;
+  // `mkHoverButton` enforces the `type="button"`, no-`name` rule the module comment names.
+  const mkButton = (text: string, onClick: () => void) =>
+    mkHoverButton({
+      text,
+      css: 'flex:0 0 auto;padding:4px 10px;border-radius:5px;',
+      rest: () => theme.chrome().surface,
+      hover: () => theme.chrome().hover,
+      onClick,
     });
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = chrome.surface;
-    });
-    return btn;
-  };
 
-  const restore = mkButton(i18n.t('features.exitGuard.draft.bar.restore'), handlers.onRestore);
-  const ignore = mkButton(i18n.t('features.exitGuard.draft.bar.ignore'), handlers.onIgnore);
+  const restore = mkButton(
+    i18n.t('features.exitGuard.draft.bar.restore'),
+    handlers.onRestore,
+  );
+  const ignore = mkButton(
+    i18n.t('features.exitGuard.draft.bar.ignore'),
+    handlers.onIgnore,
+  );
 
   bar.append(message, restore, ignore);
   shadow.append(bar);
 
-  const paint = () => {
+  theme.paints((chrome) => {
     bar.style.background = chrome.warnBg;
     bar.style.color = chrome.warnFg;
     bar.style.border = `1px solid ${chrome.warnBorder}`;
@@ -96,8 +99,7 @@ export function createRecoveryBar(handlers: RecoveryBarHandlers): RecoveryBar {
       btn.style.color = chrome.fg;
       btn.style.border = `1px solid ${chrome.border}`;
     }
-  };
-  paint();
+  });
 
   return {
     show(anchor, before, age) {
@@ -110,10 +112,7 @@ export function createRecoveryBar(handlers: RecoveryBarHandlers): RecoveryBar {
       if (before.parentNode === anchor) anchor.insertBefore(host, before);
       else anchor.prepend(host);
     },
-    setDark(dark) {
-      chrome = chromeFor(dark);
-      paint();
-    },
+    setDark: theme.setDark,
     destroy() {
       host.remove();
     },

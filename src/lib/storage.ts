@@ -2,18 +2,17 @@
  * Typed settings persisted in `browser.storage.local`. The popup's toggles and the options
  * page's backup import write these; the content script reads them on boot.
  *
- * *Not* a feature-owned data store (docs/adr/0012) — it holds only on/off flags — but it
- * borrows their plumbing from `@/lib/store-kit` so both kinds of key reach `storage.local`
- * through one code path.
+ * *Not* a feature-owned data store (docs/adr/0012) — only on/off flags — but it borrows their
+ * plumbing from `@/lib/store-kit`, so both kinds of key reach `storage.local` one way.
  */
 import { isRecord, loadStore, saveStore, watchStore } from '@/lib/store-kit';
 import type { FeatureId } from '@/features/registry';
 
 export interface Settings {
   /**
-   * Feature id → enabled; missing ids fall back to `DEFAULT_SETTINGS`. Deliberately
-   * `string`-keyed and not `FeatureId`, since storage and imported backups can legitimately
-   * carry an id this build never heard of. `DEFAULT_SETTINGS` is the half pinned to the union.
+   * Feature id → enabled; missing ids fall back to `DEFAULT_SETTINGS`. `string`-keyed rather
+   * than `FeatureId`, since storage and imported backups can carry an id this build never
+   * heard of — `DEFAULT_SETTINGS` is the half pinned to the union.
    */
   features: Record<string, boolean>;
 }
@@ -78,11 +77,9 @@ export function watchSettings(onChange: (settings: Settings) => void): () => voi
 let writeQueue: Promise<unknown> = Promise.resolve();
 
 /**
- * Flip one feature's flag, preserving the others.
- *
- * A read-modify-write, and the popup can fire two milliseconds apart — two checkboxes
- * clicked in a row. Run concurrently they read the same "before" state and the second write
- * discards the first one's change, so every call queues behind the last.
+ * Flip one feature's flag, preserving the others. A read-modify-write, and the popup can fire
+ * two of them milliseconds apart: run concurrently they read the same "before" state and the
+ * second write discards the first one's change, so every call queues behind the last.
  */
 export async function setFeatureEnabled(id: string, enabled: boolean): Promise<void> {
   const run = writeQueue.then(async () => {

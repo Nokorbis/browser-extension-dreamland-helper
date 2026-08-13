@@ -18,10 +18,9 @@ const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
  * 1. `beforeunload` raises the browser's native "Leave site?" prompt while the textarea
  *    holds unsaved text. Browsers ignore custom wording, so we only decide *whether* to
  *    prompt. See docs/adr/0008.
- * 2. A post, preview or save-draft first pings the forum to confirm it responds, since a
- *    dead server or gateway would navigate to an error page and lose the draft. A modal
- *    holds the send; its default keeps the user on the page, and a "continue anyway" escape
- *    hatch covers a false positive. See docs/adr/0011.
+ * 2. A post, preview or save-draft first pings the forum, since a dead server or gateway
+ *    navigates to an error page and loses the draft. A modal holds the send, defaulting to
+ *    staying put, with a "continue anyway" hatch for a false positive. See docs/adr/0011.
  * 3. The composer is snapshotted as it is typed and offered back next visit, covering what
  *    `beforeunload` cannot: a crash, a killed tab, a reflex "Leave", an expired
  *    `form_token`. Lives in `./drafts.ts`.
@@ -31,8 +30,6 @@ const GUARDED_SUBMITTER_NAMES = new Set(['post', 'preview', 'save']);
  * running with no way to ever retire a draft. See docs/adr/0027.
  */
 export const exitGuard = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'exit-guard' as const,
   name: i18n.t('features.exitGuard.name'),
   description: i18n.t('features.exitGuard.description'),
@@ -44,11 +41,11 @@ export const exitGuard = {
     let isSubmitting = false;
     // One-shot: the next submit event is our own re-submit — let it pass.
     let bypass = false;
-    // True from a submit being intercepted until the check resolves *and* any modal it
-    // raised is dismissed. Both halves matter: without the first a double-click fires two
-    // probes, and without the second a submit arriving while the modal is up raises a
-    // second one, overwrites `closeModal` and leaks the first's shadow host. Hence it is
-    // released by the modal's own handlers, not a `finally` that runs when it is shown.
+    // True from a submit being intercepted until the check resolves *and* any modal it raised
+    // is dismissed. Both halves matter: without the first a double-click fires two probes;
+    // without the second, a submit while the modal is up raises another, overwrites
+    // `closeModal` and leaks the first's shadow host. Hence it is released by the modal's own
+    // handlers, not a `finally` that runs when it is shown.
     let checking = false;
     let closeModal: (() => void) | null = null;
 
@@ -67,9 +64,9 @@ export const exitGuard = {
     };
 
     const onSubmit = async (event: SubmitEvent) => {
-      // Diagnostic: proves the listener fires for *any* submit. A post submit that never
-      // logs this means either the content script isn't injected on this tab, or the form
-      // was submitted a way that skips the event (HTMLFormElement.submit()).
+      // Diagnostic: proves the listener fires for *any* submit. A post that never logs this
+      // means the content script isn't injected here, or the form was submitted a way that
+      // skips the event (HTMLFormElement.submit()).
       const target = event.target;
       const targetId = target instanceof Element ? target.id || target.tagName : target;
       log('submit event seen; target =', targetId);
@@ -114,15 +111,14 @@ export const exitGuard = {
        * out. **This is the one moment that mark is correct**, which is why layer 3 cannot
        * be a feature of its own guessing at it from outside.
        *
-       * ⚠ The test is "not preview, not save", never `=== 'post'`. Any other named
-       * submitter already returned above, so what is left is `post` or no usable name —
-       * and that spells itself two ways (`null` from `getAttribute`, `undefined` with no
-       * submitter, i.e. the Enter-key path). Testing for `'post'` and `null` silently
-       * skipped the Enter-key send.
+       * ⚠ The test is "not preview, not save", never `=== 'post'`. Every other named
+       * submitter returned above, so what is left is `post` or no usable name — which spells
+       * itself two ways (`null` from `getAttribute`, `undefined` with no submitter, i.e. the
+       * Enter-key path). Testing for `'post'` and `null` silently skipped the Enter-key send.
        *
-       * Marked rather than deleted, because the preflight only proves the server answered
-       * a HEAD and an expired `form_token` still bounces — the exact loss layer 3 exists
-       * for. Awaited because `requestSubmit` navigates and a fire-and-forget write races it.
+       * Marked rather than deleted: the preflight only proves the server answered a HEAD, and
+       * an expired `form_token` still bounces — the exact loss layer 3 exists for. Awaited
+       * because `requestSubmit` navigates and a fire-and-forget write races it.
        */
       const doSubmit = async () => {
         if (submitterName !== 'preview' && submitterName !== 'save') {

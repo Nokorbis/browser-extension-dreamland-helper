@@ -29,16 +29,13 @@ export function findSubmitButton(form: HTMLFormElement): HTMLElement | null {
 }
 
 /**
- * The composer's subject field. Two things about it, verified against
- * `real_snippets/posting.html`: it carries `maxlength="124"`, and on a reply phpBB
- * **pre-fills** it with `Re: <topic title>` — so "the writer changed the subject" is
- * `value !== defaultValue`, as it is for the message textarea. Absent on surfaces that
- * take none, so handle `null`.
+ * The composer's subject field, verified against `real_snippets/posting.html`: it carries
+ * `maxlength="124"`, and on a reply phpBB **pre-fills** it with `Re: <topic title>` — so
+ * "changed the subject" is `value !== defaultValue`, as for the message textarea. Absent on
+ * surfaces that take none, so handle `null`.
  */
 export function findSubjectInput(): HTMLInputElement | null {
-  return document.querySelector<HTMLInputElement>(
-    'input#subject, input[name="subject"]',
-  );
+  return document.querySelector<HTMLInputElement>('input#subject, input[name="subject"]');
 }
 
 /**
@@ -51,12 +48,10 @@ export function findFormatButtons(): HTMLElement | null {
 }
 
 /**
- * A single toolbar button, addressed by the BBCode it inserts.
- *
- * phpBB derives each button's class from the tag name (`bbcode-b`, `bbcode-quote`), and by
- * the *same* rule for admin-added custom BBCodes — which is why `bbcode-spoiler` is
- * addressable for free. Non-alphanumerics become `-`, so the ordered-list button (`list=`)
- * is `bbcode-list-`; hence `[class~=…]`, since `.bbcode-list` would not match it anyway.
+ * A single toolbar button, addressed by the BBCode it inserts. phpBB derives each class from
+ * the tag name (`bbcode-b`), by the same rule for admin-added BBCodes — which is why
+ * `bbcode-spoiler` is addressable for free. Non-alphanumerics become `-`, so the ordered-list
+ * button (`list=`) is `bbcode-list-`; hence `[class~=…]`.
  *
  * `null` when the toolbar is absent *or* this forum has no such BBCode — both ordinary.
  */
@@ -73,9 +68,9 @@ export function findFormatButton(bbcode: string): HTMLElement | null {
 
 /**
  * phpBB's own toolbar-button classes, so an injected button inherits the forum skin — which
- * is also why such a trigger is *not* rendered inside a shadow root, where the skin's styles
- * cannot reach it. See docs/adr/0016-svelte-in-content-script.md. Mirrors the live Bold
- * button, so our `<i class="icon fa-… fa-fw">` child inherits its FontAwesome sizing.
+ * is why such a trigger is *not* rendered inside a shadow root the skin cannot reach
+ * (docs/adr/0016). Mirrors the live Bold button, down to the FontAwesome sizing our
+ * `<i class="icon fa-… fa-fw">` child inherits.
  */
 export const FORMAT_BUTTON_CLASS = 'button button-icon-only';
 
@@ -124,12 +119,12 @@ export function createFormatButton(opts: FormatButtonOptions): HTMLButtonElement
 }
 
 /**
- * The wrapper around the composer textarea — the anchor for editor-adjacent UI. Falls back
- * to the textarea's parent so a skin that renamed it still gives us something usable.
+ * The wrapper around the composer textarea — the anchor for editor-adjacent UI, falling back
+ * to the textarea's parent so a renamed skin still gives something usable.
  *
- * ⚠ Mount **inside** this element, not as a sibling before it: its siblings are
- * `#format-buttons` and a right-floated `#smiley-box`, so a block-level sibling spans the
- * whole fieldset and runs underneath the emoticon list.
+ * ⚠ Mount **inside** it, not as a sibling before it: its siblings are `#format-buttons` and a
+ * right-floated `#smiley-box`, so a block-level sibling spans the fieldset and runs
+ * underneath the emoticon list.
  */
 export function findMessageBox(): HTMLElement | null {
   return (
@@ -140,21 +135,18 @@ export function findMessageBox(): HTMLElement | null {
 }
 
 /**
- * Whether the forum is showing its dark theme — a `dark` class on `<html>`, toggled without
- * a reload. In-page UI must key off this, **not** `@media (prefers-color-scheme: dark)`,
- * which reports the OS preference and says nothing about the forum's theme. (Extension
- * pages — popup, options — are the opposite case.)
+ * Whether the forum shows its dark theme — a `dark` class on `<html>`, toggled without a
+ * reload. In-page UI must key off this, **not** `@media (prefers-color-scheme: dark)`, which
+ * reports the OS preference. (Extension pages — popup, options — are the opposite case.)
  */
 export function isDarkTheme(): boolean {
   return document.documentElement.classList.contains('dark');
 }
 
 /**
- * Observe theme changes. Returns an unsubscriber.
- *
- * An observer rather than a one-shot read because the theme switch mutates the class in
- * place. CSS cannot express this from inside a shadow root portably — `:host-context()` is
- * unsupported in Firefox — hence the JS detour.
+ * Observe theme changes; returns an unsubscriber. An observer rather than a one-shot read
+ * because the switch mutates the class in place, and JS rather than CSS because a shadow root
+ * cannot read it portably (`:host-context()` is unsupported in Firefox).
  */
 export function watchTheme(onChange: (dark: boolean) => void): () => void {
   let last = isDarkTheme();
@@ -170,6 +162,15 @@ export function watchTheme(onChange: (dark: boolean) => void): () => void {
     attributeFilter: ['class'],
   });
   return () => observer.disconnect();
+}
+
+/**
+ * `onChange` with the theme as it is now, then on every change. What in-page UI wants:
+ * paint once at setup, follow afterwards. Returns an unsubscriber.
+ */
+export function followTheme(onChange: (dark: boolean) => void): () => void {
+  onChange(isDarkTheme());
+  return watchTheme(onChange);
 }
 
 /**
@@ -201,15 +202,12 @@ function parsePostId(el: HTMLElement | null): string | null {
  * The numeric post id for a `.post` container — the key shared between viewtopic
  * and the topic review.
  *
- * ⚠ The id lives on a **different element** in the two contexts, verified against
- * the live forum:
- *   - viewtopic: on the `.post` div itself — `<div id="p{POST_ID}" class="post …">`;
- *     its `.postbody` carries no id (the content wrapper is `#post_content{POST_ID}`).
- *   - topic review (posting.php): the `.post` div has **no id**; the `pr{POST_ID}`
- *     sits on the inner `.postbody` — `<div class="postbody" id="pr{POST_ID}">`.
- * Both decode to the same number, which is what lets a highlight follow a post
- * across the two pages. Reading only the `.post` div would silently drop every
- * review post. Returns null for a block that is neither (e.g. a live `#preview`).
+ * ⚠ The id lives on a **different element** in the two contexts, verified against the live
+ * forum: on viewtopic it is the `.post` div itself (`<div id="p{POST_ID}" class="post …">`),
+ * while in the topic review that div has **no id** and `pr{POST_ID}` sits on the inner
+ * `.postbody`. Both decode to the same number, which is what lets a highlight follow a post
+ * across the two pages; reading only the `.post` div silently drops every review post.
+ * Null for a block that is neither (e.g. a live `#preview`).
  */
 export function readPostId(post: HTMLElement): string | null {
   return parsePostId(post) ?? parsePostId(post.querySelector<HTMLElement>('.postbody'));
@@ -301,10 +299,9 @@ export function readComposerParams(): ComposerParams {
 /**
  * phpBB's font-colour palette, `display:none` until the `bbcode-color` button opens it.
  *
- * ⚠ Its inner grid is **generated by phpBB's own JS** (`registerPalette`) on DOM-ready: the
- * server-rendered table is replaced wholesale and each swatch's click bound per-anchor.
- * Anything decorating the grid must survive and re-run after that — watch the placeholder,
- * don't assume the table read at boot is the final one.
+ * ⚠ Its inner grid is **generated by phpBB's own JS** (`registerPalette`) on DOM-ready — the
+ * server-rendered table is replaced wholesale and each swatch bound per-anchor. Anything
+ * decorating it must watch the placeholder and re-run, not trust the table read at boot.
  */
 export function findColourPalette(): HTMLElement | null {
   return document.querySelector<HTMLElement>('#colour_palette');
@@ -333,12 +330,11 @@ export function findColourPaletteBody(): HTMLElement | null {
 }
 
 /**
- * Every inline colour used in the topic review, paired with the author of the post it
- * appears in. Returns raw `span.style.color` strings so the colour maths stays out of this
- * module; see `canonicalizeColor` / `aggregateUsage`.
- *
- * A colour is attributed to the containing post's author whether they authored or quoted it:
- * telling the two apart isn't reliable, so the feature lists everyone and orders by usage.
+ * Every inline colour in the topic review, paired with the author of the post it appears in.
+ * Raw `span.style.color` strings, so the colour maths stays out of this module (see
+ * `canonicalizeColor` / `aggregateUsage`). A colour is credited to the containing post's
+ * author whether they wrote or quoted it — telling those apart isn't reliable, so the feature
+ * lists everyone and orders by usage.
  */
 export function readReviewColorUsages(): { rawColor: string; author: string }[] {
   const review = findTopicReview();
@@ -364,7 +360,7 @@ export function readReviewColorUsages(): { rawColor: string; author: string }[] 
  * hence the fallback chain. `.author` sits inside `.postbody`, so this works from the
  * `.post` container on both viewtopic and the topic review.
  */
-export function readPostAuthorName(post: HTMLElement): string | null {
+function readPostAuthorName(post: HTMLElement): string | null {
   const link =
     post.querySelector<HTMLElement>('.author a.username-coloured') ??
     post.querySelector<HTMLElement>('.author a.username') ??

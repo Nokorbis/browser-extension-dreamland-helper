@@ -13,10 +13,9 @@ const DEFAULT_TIMEOUT_MS = 5000;
  * caching proxy can serve a stale `200` for `/` while the origin handling the POST is down —
  * the exact case this guards against.
  *
- * The verdict is deliberately lenient: status < 500 is reachable, a throw/timeout/5xx is
- * not. Odd-but-alive statuses (405 to HEAD, an auth 403) count as reachable, and the "send
- * anyway" escape hatch covers the rare false positive, so it is better to under- than
- * over-block.
+ * Deliberately lenient: status < 500 is reachable, a throw/timeout/5xx is not. Odd-but-alive
+ * statuses (405 to HEAD, an auth 403) pass, and the "send anyway" escape hatch covers a false
+ * positive — better to under- than over-block.
  *
  * ⚠ Runs in the content script's own network context, which DevTools "Offline" throttling
  * does *not* affect — validate the down-path with a real outage instead.

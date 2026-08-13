@@ -3,10 +3,9 @@
  * row an event holds, which letter it means on a non-QWERTY layout, which letters are off
  * limits, and how a combo is spelled for a human and for `aria-keyshortcuts`.
  *
- * One copy, deliberately — two features claiming keys from two private copies of
- * `RESERVED_LETTERS` is how a binding quietly ends up on Ctrl+Z. With it here,
- * `src/lib/keys.test.ts` checks *every* claimed combo across the extension in one pass.
- * Read docs/adr/0017 before claiming a key.
+ * One copy, deliberately: two private copies of `RESERVED_LETTERS` is how a binding quietly
+ * ends up on Ctrl+Z. With it here, `src/lib/keys.test.ts` checks every claimed combo across
+ * the extension in one pass. Read docs/adr/0017 before claiming a key.
  */
 
 /** Which modifier row a shortcut belongs to. */
@@ -20,16 +19,13 @@ export interface Combo {
 }
 
 /**
- * Letters no feature may claim, per row. Enforced by unit test, not convention — the cost of
- * getting one wrong is a writer losing work.
+ * Letters no feature may claim, per row. Enforced by unit test — getting one wrong costs a
+ * writer their work.
  *
- * `primary` covers two kinds: editing essentials the composer needs (`a c v x z y`, where
- * claiming Ctrl+Z would be the most destructive thing this extension could do), and combos
- * the browser reserves so a page cannot intercept them (`n t w q r l`, which would produce a
- * shortcut that silently never fires).
- *
- * `secondary` is the menu mnemonics: Chrome's app menu answers Alt+E/Alt+F and Firefox's
- * menu bar answers Alt+F/E/V/S/B/T/H even while hidden; `d` focuses the address bar in both.
+ * `primary` is editing essentials the composer needs (`a c v x z y`; claiming Ctrl+Z would be
+ * the most destructive thing here) plus combos the browser keeps to itself (`n t w q r l`,
+ * which would silently never fire). `secondary` is the menu mnemonics: Chrome answers
+ * Alt+E/F, Firefox's hidden menu bar Alt+F/E/V/S/B/T/H, and `d` is the address bar in both.
  */
 export const RESERVED_LETTERS: Record<Row, readonly string[]> = {
   primary: ['a', 'c', 'v', 'x', 'z', 'y', 'n', 't', 'w', 'q', 'r', 'l'],
@@ -65,11 +61,9 @@ export function readRow(event: KeyEventLike, mac: boolean): Row | null {
 }
 
 /**
- * The letter the user meant, independent of keyboard layout. `key` first and `code` only as
- * a fallback, and the order is the whole point: `key` is what makes AZERTY work (the key
- * labelled A reports `key: 'a'` but `code: 'KeyQ'`, so matching by code would fire "quote"),
- * while `code` is what makes macOS work, where Option composes the character and
- * Ctrl+Option+C can arrive as `key: 'ç'`.
+ * The letter the user meant, independent of layout. The order is the whole point: `key` makes
+ * AZERTY work (the key labelled A reports `key: 'a'` but `code: 'KeyQ'`), `code` makes macOS
+ * work, where Ctrl+Option+C can arrive as `key: 'ç'`.
  */
 export function readLetter(event: KeyEventLike): string | null {
   const key = event.key.toLowerCase();
@@ -107,9 +101,9 @@ export function ariaCombo(combo: Combo, mac: boolean): string {
 }
 
 /**
- * True on macOS, where the primary modifier is Cmd rather than Ctrl. The one impure function
- * here. `userAgentData` is Chromium-only, so Firefox falls through to the deprecated
- * `navigator.platform` — still the only thing it offers, and accurate for this question.
+ * True on macOS, where the primary modifier is Cmd. The one impure function here.
+ * `userAgentData` is Chromium-only, so Firefox falls through to the deprecated
+ * `navigator.platform` — still all it offers, and accurate for this question.
  */
 export function isMacPlatform(): boolean {
   const data = (navigator as Navigator & { userAgentData?: { platform?: string } })

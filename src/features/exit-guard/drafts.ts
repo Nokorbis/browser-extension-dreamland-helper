@@ -2,10 +2,9 @@ import {
   findMessageBox,
   findMessageTextarea,
   findSubjectInput,
-  isDarkTheme,
+  followTheme,
   isTopicPage,
   readComposerParams,
-  watchTheme,
 } from '@/lib/phpbb';
 import {
   deleteDraft,
@@ -55,11 +54,22 @@ function setSubject(input: HTMLInputElement, value: string): void {
 }
 
 /**
- * Stateless — re-derives the key from the URL rather than sharing state with
- * `setupDraftAutosave`, so the submit path can call it without caring whether the capture
- * half found anything to do.
+ * The live composer's pending-capture flush, when one is watching this page. Module-level so
+ * the submit path can reach it without `markCurrentDraftSubmitted` becoming stateful about
+ * *which* composer is open — the key still comes from the URL.
+ */
+let flushPendingCapture: (() => Promise<void>) | null = null;
+
+/**
+ * Re-derives the key from the URL, so the submit path can call it without caring whether the
+ * capture half found anything to do. Flushes the debounce first: up to `SAVE_DEBOUNCE_MS` of
+ * typing is otherwise only in the textarea, and marking a stale body is what the writer gets
+ * offered back when phpBB bounces the post.
  */
 export async function markCurrentDraftSubmitted(): Promise<void> {
+  // Awaited, not fired off: the mark below re-reads the store, and a capture still in
+  // flight would be read past and then overwritten.
+  await flushPendingCapture?.();
   const key = draftKey(readComposerParams());
   if (key === null) return;
   await markDraftSubmitted(key);
@@ -104,15 +114,24 @@ export function setupDraftAutosave(): (() => void) | void {
   let restoring = false;
   /** The last snapshot actually persisted, so an unchanged one is not rewritten. */
   let lastWritten: string | null = null;
+  /**
+   * Until the stored store has landed, `store` is an empty placeholder: capturing onto it
+   * writes a store the load is about to replace, and the write is lost with `lastWritten`
+   * already set, so the same text never gets rewritten.
+   */
+  let loaded = false;
+  /** A capture `save` held back while `loaded` was false, to be re-run once it lands. */
+  let missedCapture = false;
 
   const controller = new AbortController();
   const { signal } = controller;
 
-  const persist = (next: DraftStore) => {
+  /** Returns the write, so a flush can await it. */
+  const persist = (next: DraftStore): Promise<void> => {
     store = next;
     // `.catch`, never `.finally` — a `.finally` reports success over a rejected write,
     // which is how the Firefox DataCloneError stayed invisible once before.
-    void saveDraftStore(next).catch((err) => {
+    return saveDraftStore(next).catch((err: unknown) => {
       warn('exit-guard: could not save the draft', err);
     });
   };
@@ -124,27 +143,33 @@ export function setupDraftAutosave(): (() => void) | void {
     unwatchTheme = null;
   };
 
-  const save = () => {
-    if (disposed || restoring) return;
+  const save = (): Promise<void> => {
+    if (disposed || restoring) return Promise.resolve();
+    // Capturing onto the placeholder store loses the write — see `loaded`. The load
+    // handler re-schedules whatever was suppressed here.
+    if (!loaded) {
+      missedCapture = true;
+      return Promise.resolve();
+    }
     const subject = subjectInput?.value ?? '';
     const body = textarea.value;
 
     // An untouched or empty editor must never write. Same "dirty" definition the
     // beforeunload guard uses.
-    if (body.trim() === '' || body === textarea.defaultValue) return;
+    if (body.trim() === '' || body === textarea.defaultValue) return Promise.resolve();
 
     const fingerprint = `${subject} ${body}`;
-    if (fingerprint === lastWritten) return;
+    if (fingerprint === lastWritten) return Promise.resolve();
     lastWritten = fingerprint;
 
-    persist(
+    return persist(
       putDraft(store, { id: key, topicId: params.t ?? '', subject, body }, Date.now()),
     );
   };
 
   const scheduleSave = () => {
     if (timer !== null) clearTimeout(timer);
-    timer = setTimeout(save, SAVE_DEBOUNCE_MS);
+    timer = setTimeout(() => void save(), SAVE_DEBOUNCE_MS);
   };
 
   const restore = (draft: Draft) => {
@@ -168,7 +193,7 @@ export function setupDraftAutosave(): (() => void) | void {
     // Keep the draft: the post still hasn't been sent and the tab may yet be lost.
     // Re-stamping it clears any submit mark, which `putDraft` does while writing.
     lastWritten = null;
-    save();
+    void save();
     closeBar();
   };
 
@@ -178,24 +203,26 @@ export function setupDraftAutosave(): (() => void) | void {
     bar = createRecoveryBar({
       onRestore: () => restore(draft),
       onIgnore: () => {
-        persist(deleteDraft(store, key));
+        void persist(deleteDraft(store, key));
         closeBar();
       },
     });
-    bar.setDark(isDarkTheme());
     bar.show(anchor, textarea, formatAge(Date.now() - draft.savedAt));
     // The forum's theme switch mutates the class in place, without a reload.
-    unwatchTheme = watchTheme((dark) => bar?.setDark(dark));
+    unwatchTheme = followTheme((dark) => bar?.setDark(dark));
   };
 
-  void loadDraftStore()
-    .then((loaded) => {
+  const ready = loadDraftStore()
+    .then((stored) => {
       if (disposed) return;
       // Retention runs on boot as well as on write, so an age-expired draft goes even
       // on a profile that hasn't composed anything in weeks.
-      const pruned = pruneDrafts(loaded, Date.now());
-      if (pruned === loaded) store = loaded;
-      else persist(pruned);
+      const pruned = pruneDrafts(stored, Date.now());
+      if (pruned === stored) store = stored;
+      else void persist(pruned);
+      loaded = true;
+      // Someone typed while this was in flight, and that capture was held back.
+      if (missedCapture) scheduleSave();
 
       const draft = findDraft(store, key);
       // Nothing to offer when the box already holds this text — phpBB restored one of
@@ -207,9 +234,24 @@ export function setupDraftAutosave(): (() => void) | void {
       // not go through, so the draft is in play again. `save()` clears it next capture.
       offer(draft);
     })
-    .catch((err) => {
+    .catch((err: unknown) => {
       warn('exit-guard: could not load the draft store', err);
+      // Capture anyway, onto an empty store: writing over an unreadable store is
+      // better than never saving again on this page.
+      loaded = true;
+      if (missedCapture) scheduleSave();
     });
+
+  /** Write what is in the composer now, waiting for the boot load if it is still in flight. */
+  const flush = async (): Promise<void> => {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    await ready;
+    await save();
+  };
+  flushPendingCapture = flush;
 
   textarea.addEventListener('input', scheduleSave, { signal });
   subjectInput?.addEventListener('input', scheduleSave, { signal });
@@ -219,7 +261,7 @@ export function setupDraftAutosave(): (() => void) | void {
   document.addEventListener(
     'visibilitychange',
     () => {
-      if (document.visibilityState === 'hidden') save();
+      if (document.visibilityState === 'hidden') void save();
     },
     { signal },
   );
@@ -230,6 +272,7 @@ export function setupDraftAutosave(): (() => void) | void {
     disposed = true;
     controller.abort();
     if (timer !== null) clearTimeout(timer);
+    if (flushPendingCapture === flush) flushPendingCapture = null;
     closeBar();
   };
 }

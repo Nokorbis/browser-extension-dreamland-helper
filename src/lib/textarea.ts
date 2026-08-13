@@ -38,15 +38,14 @@ export type InsertionPlan =
   { ok: true; start: number; end: number } | { ok: false; projected: number };
 
 /**
- * The clamped replacement range, and whether the result still fits. Split out of
- * `insertAtRange` as the only arithmetic in this module, so it can be unit-tested. Lengths
- * are UTF-16 code units, matching `String.length` and HTML's `maxlength`.
+ * The clamped replacement range, and whether the result still fits — the only arithmetic in
+ * this module, split out to be unit-tested. Lengths are UTF-16 code units, matching
+ * `String.length` and HTML's `maxlength`.
  *
  * Some skins put `maxlength` on `#message`, and `execCommand` truncates silently once it is
- * hit — which would leave half a BBCode structure in the post, far worse than refusing.
- *
- * `maxLength > 0`, not `>= 0`: an absent maxlength reads as -1 per spec, but older
- * implementations reported 0, and treating 0 as a real limit would refuse every insertion.
+ * hit, leaving half a BBCode structure in the post — far worse than refusing. `maxLength > 0`
+ * rather than `>= 0`: an absent maxlength is -1 per spec but 0 in older implementations, and
+ * treating 0 as a limit would refuse every insertion.
  */
 export function planInsertion(
   valueLength: number,
@@ -83,11 +82,10 @@ export function wrapSelection(
 }
 
 /**
- * Replace `range` with `text`, then place the caret `caretOffset` characters into what was
- * inserted. The range is passed in rather than read from the element so a snapshot taken at
+ * Replace `range` with `text`, then put the caret `caretOffset` characters into what was
+ * inserted. The range is passed in, not read off the element, so a snapshot taken at
  * menu-open time survives the click that dismisses the menu. Replacing it wholesale means a
- * preset that never mentions `{SELECTION}` still overwrites the selection — documented
- * behaviour, see docs/adr/0015.
+ * preset never mentioning `{SELECTION}` still overwrites the selection (docs/adr/0015).
  */
 export function insertAtRange(
   el: HTMLTextAreaElement,
@@ -113,8 +111,8 @@ export function insertAtRange(
   el.focus();
   el.setSelectionRange(start, end);
 
-  // Uninitialised on purpose: both branches assign it, and an initialiser would only
-  // hide it if that stopped being true.
+  // Uninitialised on purpose: both branches assign it, and an initialiser would hide it
+  // if that stopped being true.
   let inserted: boolean;
   try {
     inserted = document.execCommand('insertText', false, value);

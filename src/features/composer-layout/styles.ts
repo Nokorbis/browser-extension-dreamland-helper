@@ -1,10 +1,8 @@
 /**
- * The page-level stylesheet that lays the reply page out. It must be a `<style>` in `<head>`
- * — these rules style the *forum's own* elements, which nothing in a shadow root can reach;
- * an injected `<style>` is CSP-safe on this forum (docs/adr/0016).
- *
- * Every state is a class on the wrapper (or on `#topicreview`), so toggling a checkbox is a
- * class flip and never a re-layout in JS.
+ * The page-level stylesheet laying the reply page out. It must be a `<style>` in `<head>`:
+ * these rules style the *forum's own* elements, which a shadow root cannot reach, and an
+ * injected `<style>` is CSP-safe here (docs/adr/0016). Every state is a class on the wrapper
+ * (or on `#topicreview`), so a checkbox is a class flip and never a re-layout in JS.
  */
 
 /** Marks our stylesheet so a re-run finds and replaces it instead of stacking. */
@@ -23,10 +21,10 @@ export const SIDE_LEFT_CLASS = 'dlh-cols-side-left';
 export const REVIEW_REVERSE_CLASS = 'dlh-review-reverse';
 
 /**
- * The full-width layout. On our own element rather than `<html>`, where it would have to
- * relax the skin's `#wrap { max-width }` and widen the header, nav and footer with it: the
- * wrapper instead *breaks out* of the centred column with symmetric negative margins, so
- * nothing outside this feature's subtree is restyled.
+ * The full-width layout. On our own element rather than `<html>`, which would mean relaxing
+ * the skin's `#wrap { max-width }` and widening header, nav and footer with it: the wrapper
+ * *breaks out* of the centred column with symmetric negative margins instead, so nothing
+ * outside this feature's subtree is restyled.
  */
 export const FULL_WIDTH_CLASS = 'dlh-cols-full';
 
@@ -64,14 +62,13 @@ const CSS = `
 .${COL_CLASS} { min-width: 0; }
 .${COLS_CLASS}.${SIDE_CLASS} > .${COL_CLASS} { flex: 1 1 0; }
 
-/* Equal-height columns, only while the two really are side by side: stacked, prosilver's
-   own \`.topicreview { height }\` is right and must not be touched, hence the media query.
+/* Equal-height columns, only while the two really are side by side — stacked, prosilver's own
+   \`.topicreview { height }\` is right and must not be touched, hence the media query.
 
-   \`align-items: stretch\` already makes both columns as tall as the taller one; this makes
-   the review *use* that height instead of its fixed one. \`flex: 1 1 0\` also stops the
-   reverse: with a zero basis the posts no longer dictate the column's height, so a
-   hundred-post thread scrolls inside its own box rather than stretching the pair.
-   \`min-height\` keeps that box usable when the composer is short. */
+   \`align-items: stretch\` already makes both columns as tall as the taller; this makes the
+   review *use* that height rather than its fixed one. \`flex: 1 1 0\` also stops the reverse:
+   with a zero basis a hundred-post thread scrolls inside its own box instead of stretching
+   the pair, and \`min-height\` keeps that box usable when the composer is short. */
 @media (min-width: ${NARROW_MAX_WIDTH + 1}px) {
   .${COLS_CLASS}.${SIDE_CLASS} > [data-dlh-part='review'] {
     display: flex;
@@ -102,7 +99,7 @@ const CSS = `
 }
 
 /* Visual order only: the DOM (and therefore tab order) stays newest-first.
-   Reversing in CSS is what keeps highlight ranges and quote lookups untouched. */
+   Reversing in CSS is what keeps highlight ranges untouched. */
 #topicreview.${REVIEW_REVERSE_CLASS} { display: flex; flex-direction: column-reverse; }
 
 /* Nothing in a half-width column may push the column wider than its share. */

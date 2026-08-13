@@ -1,12 +1,9 @@
 /**
- * Everything the extension knows about the AJAX Chat ("la Tribune") DOM. Same-origin and
- * never an iframe, but a different system from phpBB with its own id scheme and no
- * `bbcode-*` classes, hence its own module — see docs/adr/0017.
+ * The AJAX Chat ("la Tribune") DOM. Same-origin, never an iframe, but a different system from
+ * phpBB with its own id scheme and no `bbcode-*` classes — hence its own module (docs/adr/0017).
  *
- * Two DOM shapes exist for the same widget, both handled here: the homepage shoutbox
- * (`#ajaxChatInputField`, toolbar buttons with no id or class of their own) and the
- * standalone `/chat/` page (`#inputField`, ids that don't follow the bbcode name, e.g.
- * `#bbCodeURL` for `url`).
+ * Two DOM shapes for the same widget, both handled here: the homepage shoutbox
+ * (`#ajaxChatInputField`) and the standalone `/chat/` page (`#inputField`).
  */
 
 import { isSafeBBCodeName } from './dom';
@@ -20,26 +17,22 @@ export function findChatBBCodeContainer(): HTMLElement | null {
 }
 
 /**
- * The chat toolbar's own button classes, so an injected trigger inherits the widget's look.
- * Counterpart of `FORMAT_BUTTON_CLASS` in `phpbb.ts`. The chat is not phpBB and does not
- * load FontAwesome, so its buttons are `<input type="button">` with a text `value` rather
- * than an icon child.
+ * The chat toolbar's button classes, so an injected trigger inherits the widget's look —
+ * counterpart of `FORMAT_BUTTON_CLASS` in `phpbb.ts`. No FontAwesome here, so these buttons
+ * are `<input type="button">` with a text `value` rather than an icon child.
  */
 export const CHAT_BUTTON_CLASS = 'button button-secondary';
 
 /**
- * A single toolbar button, addressed by the BBCode it inserts.
- *
- * Neither DOM shape offers a usable id/class scheme, so we match the inline handler both
- * share instead — `onclick="ajaxChat.insertBBCode('b');"`.
+ * A single toolbar button, addressed by the BBCode it inserts. Neither DOM shape offers a
+ * usable id/class scheme, so this matches the inline handler both share —
+ * `onclick="ajaxChat.insertBBCode('b');"`.
  *
  * `null` when the toolbar is absent or this bbcode has no button here (`color` opens a
- * picker rather than calling `insertBBCode`; `s`/`spoiler` are missing on the standalone
- * page) — both ordinary, so degrade rather than throw.
+ * picker; `s`/`spoiler` are missing on the standalone page) — both ordinary.
  */
 export function findChatBBCodeButton(bbcode: string): HTMLElement | null {
-  // Same guard as findFormatButton: an invalid literal would make
-  // querySelector throw a SyntaxError and take the whole feature down.
+  // As in findFormatButton: an invalid literal makes querySelector throw a SyntaxError.
   if (!isSafeBBCodeName(bbcode)) return null;
   return (
     findChatBBCodeContainer()?.querySelector<HTMLElement>(

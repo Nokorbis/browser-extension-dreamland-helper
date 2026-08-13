@@ -10,7 +10,13 @@ export interface FeatureContext {
  * `registry.ts`. The content script boots the enabled ones; the popup lists them.
  */
 export interface Feature {
-  /** Stable id — used as the settings key. Never rename once shipped. */
+  /**
+   * Stable id — the settings key. Never rename once shipped.
+   *
+   * ⚠ Write it as `id: '<id>' as const` in every feature: `FeatureId` in `registry.ts` is
+   * built from these literals, and a widened `string` makes it match anything — which is how
+   * a feature once shipped missing from `DEFAULT_SETTINGS` and simply never booted.
+   */
   id: string;
   /** Human label shown in the popup — resolved from `src/locales/` via `i18n.t`. */
   name: string;

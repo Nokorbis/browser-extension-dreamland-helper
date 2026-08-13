@@ -42,8 +42,6 @@ interface Target {
 }
 
 export const editorShortcuts = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'editor-shortcuts' as const,
   name: i18n.t('features.editorShortcuts.name'),
   description: i18n.t('features.editorShortcuts.description'),

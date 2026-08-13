@@ -1,15 +1,14 @@
 /**
  * Wrapping `#postform`'s two halves into columns, and flipping the classes that place them.
  *
- * ⚠ Elements are **moved, never re-created**. The composer half holds a textarea the writer
- * may already have typed into, hidden fields phpBB's submit needs, and nodes its scripts
- * hold references to; rebuilding any of it would lose text or break the post. The
+ * ⚠ Elements are **moved, never re-created**: the composer half holds a textarea already
+ * typed into, hidden fields the submit needs, and nodes phpBB's scripts reference. The
  * already-executed inline `<script>` inside `#topicreview` moves with it and does not re-run
  * — a script element that has run carries the "already started" flag for life.
  *
- * The split is positional, with `h3#review` as the boundary. Reading it off the DOM rather
- * than listing the composer's own ids is what makes a `#preview` panel — which phpBB inserts
- * near the top after an Aperçu — land in the composer column for free. See docs/adr/0030.
+ * The split is positional, boundary `h3#review`. Reading it off the DOM rather than listing
+ * the composer's ids is what lands a post-Aperçu `#preview` panel in the composer column for
+ * free. See docs/adr/0030.
  */
 import type { LayoutPrefs } from '@/lib/composer-layout';
 import {

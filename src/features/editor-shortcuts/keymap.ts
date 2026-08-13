@@ -1,12 +1,10 @@
 /**
- * The keyboard map, and the pure logic turning a key event into a BBCode — the part worth
- * unit-testing. `index.ts` keeps the listener, the tooltips and the clicks; this file never
- * touches an element.
+ * The keyboard map and the pure event → BBCode logic; `index.ts` owns the listener, tooltips
+ * and clicks, and this file never touches an element.
  *
- * The modifier-row machinery lives in `@/lib/keys`, shared with every feature that claims a
- * shortcut (docs/adr/0023). What stays here is the one thing only this feature knows: which
- * BBCode each combo drives. Those shared names are deliberately **not** re-exported — there
- * is one import path for them.
+ * The modifier-row machinery is `@/lib/keys` (docs/adr/0023); what stays here is the one
+ * thing only this feature knows — which BBCode each combo drives. The shared names are
+ * deliberately **not** re-exported: one import path for them.
  *
  * Read docs/adr/0017 before changing a binding.
  */
@@ -18,19 +16,13 @@ export interface Shortcut extends Combo {
 }
 
 /**
- * `primary` is Ctrl, or Cmd on macOS — the row carrying the five bindings every other editor
- * has already taught people.
+ * `primary` is Ctrl (Cmd on macOS) — the five bindings every other editor already taught
+ * people. `secondary` is Alt (Ctrl+Option on macOS, where plain Option composes accents), and
+ * reuses phpBB's own `accesskey` letters wherever the forum has one, so muscle memory keeps
+ * working and only the modifier changes; the rest are new, for BBCodes with no accesskey.
  *
- * `secondary` is Alt, or Ctrl+Option on macOS, since plain Option composes accented
- * characters there. Its letters reuse phpBB's own `accesskey` letters wherever the forum has
- * one, so existing muscle memory keeps working and only the browser-dependent modifier
- * changes; the rest are new bindings for the custom BBCodes, which have no accesskey at all.
- *
- * Code and link are reachable from both rows on purpose: the conventional binding and the
- * forum's historical letter both work.
- *
- * Other features claim keys too (the emoji picker takes secondary `i`). Nothing here needs
- * to know that, but `src/lib/keys.test.ts` checks the whole set for collisions.
+ * Code and link sit on both rows on purpose. Other features claim keys too (the picker takes
+ * secondary `i`); `src/lib/keys.test.ts` is where the whole set is checked for collisions.
  */
 export const KEYMAP: readonly Shortcut[] = [
   { bbcode: 'b', row: 'primary', letter: 'b' },

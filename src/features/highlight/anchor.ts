@@ -42,27 +42,36 @@ export function locateOffset(
   return null;
 }
 
-function textNodesOf(content: HTMLElement): Text[] {
+/**
+ * A post's text nodes with their lengths, read once. `render` resolves every highlight on a
+ * post against one of these rather than re-walking the tree per range.
+ */
+export interface ContentText {
+  nodes: Text[];
+  lengths: number[];
+}
+
+export function readContentText(content: HTMLElement): ContentText {
   const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
   const nodes: Text[] = [];
   for (let n = walker.nextNode(); n !== null; n = walker.nextNode()) {
     nodes.push(n as Text);
   }
-  return nodes;
+  return { nodes, lengths: nodes.map((n) => n.data.length) };
 }
 
-function pointAt(nodes: Text[], target: number): { node: Text; offset: number } | null {
-  const loc = locateOffset(
-    nodes.map((n) => n.data.length),
-    target,
-  );
+function pointAt(
+  text: ContentText,
+  target: number,
+): { node: Text; offset: number } | null {
+  const loc = locateOffset(text.lengths, target);
   if (loc === null) return null;
-  return { node: nodes[loc.index], offset: loc.local };
+  return { node: text.nodes[loc.index], offset: loc.local };
 }
 
-function rangeAt(nodes: Text[], start: number, end: number): Range | null {
-  const s = pointAt(nodes, start);
-  const e = pointAt(nodes, end);
+function rangeAt(text: ContentText, start: number, end: number): Range | null {
+  const s = pointAt(text, start);
+  const e = pointAt(text, end);
   if (s === null || e === null) return null;
   const range = document.createRange();
   range.setStart(s.node, s.offset);
@@ -112,15 +121,14 @@ export function serializeSelection(
  * old `start`. Null when neither resolves, so an edited post stops painting that highlight.
  */
 export function resolveRange(
-  content: HTMLElement,
+  text: ContentText,
   start: number,
   end: number,
   quote: string,
 ): Range | null {
-  const nodes = textNodesOf(content);
-  if (nodes.length === 0) return null;
+  if (text.nodes.length === 0) return null;
 
-  const direct = rangeAt(nodes, start, end);
+  const direct = rangeAt(text, start, end);
   if (
     direct !== null &&
     normalizeWhitespace(direct.toString()) === normalizeWhitespace(quote)
@@ -128,8 +136,8 @@ export function resolveRange(
     return direct;
   }
 
-  const full = nodes.map((n) => n.data).join('');
+  const full = text.nodes.map((n) => n.data).join('');
   const found = nearestOccurrence(full, quote, start);
   if (found === null) return null;
-  return rangeAt(nodes, found, found + quote.length);
+  return rangeAt(text, found, found + quote.length);
 }

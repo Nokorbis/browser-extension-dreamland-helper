@@ -16,14 +16,15 @@
  * `@/lib/anchor-position` as pure, unit-tested arithmetic.
  */
 import { placeAnchored } from '@/lib/anchor-position';
-import { isDarkTheme, readPostId, watchTheme } from '@/lib/phpbb';
+import { followTheme, readPostId } from '@/lib/phpbb';
 import {
-  chromeFor,
   createShadowHost,
   MAX_Z,
   styled,
   SYSTEM_FONT,
+  themed,
   type Chrome,
+  type Themed,
 } from '@/lib/shadow-ui';
 
 /** Gap from the selection, and minimum margin from a viewport edge — one number for both. */
@@ -35,8 +36,6 @@ export interface PostSelection {
   range: Range;
   /** The post's `.content` element — what offsets are measured against. */
   content: HTMLElement;
-  /** The `.post` container, for whole-post knowledge (author, quote attributes). */
-  post: HTMLElement;
   /** phpBB's numeric post id, shared between viewtopic and the topic review. */
   postId: string;
   /** The selected text, raw (`range.toString()`). */
@@ -70,7 +69,7 @@ export interface ToolbarGroup {
 interface ToolbarInstance {
   host: HTMLElement;
   bar: HTMLElement;
-  chrome: Chrome;
+  theme: Themed;
   visible: boolean;
   teardown: () => void;
 }
@@ -93,7 +92,7 @@ function locate(range: Range): Omit<PostSelection, 'range' | 'text'> | null {
   if (post === null) return null;
   const postId = readPostId(post);
   if (postId === null) return null;
-  return { content, post, postId };
+  return { content, postId };
 }
 
 function buildButton(
@@ -138,25 +137,23 @@ function createInstance(): ToolbarInstance {
   shadow.append(bar);
   document.body.append(host);
 
+  // The palette is read back out of `theme` when a row is built, so the instance holds the
+  // handle rather than a snapshot.
+  const theme = themed();
+  theme.paints((chrome) => {
+    bar.style.background = chrome.surface;
+    bar.style.border = `1px solid ${chrome.border}`;
+    bar.style.boxShadow = `0 4px 16px ${chrome.shadow}`;
+  });
+  const unwatchTheme = followTheme(theme.setDark);
+
   const self: ToolbarInstance = {
     host,
     bar,
-    chrome: chromeFor(false),
+    theme,
     visible: false,
     teardown: () => undefined,
   };
-
-  const paint = () => {
-    bar.style.background = self.chrome.surface;
-    bar.style.border = `1px solid ${self.chrome.border}`;
-    bar.style.boxShadow = `0 4px 16px ${self.chrome.shadow}`;
-  };
-  const applyTheme = (dark: boolean) => {
-    self.chrome = chromeFor(dark);
-    paint();
-  };
-  applyTheme(isDarkTheme());
-  const unwatchTheme = watchTheme(applyTheme);
 
   const controller = new AbortController();
   const { signal } = controller;
@@ -226,8 +223,8 @@ function evaluateSelection(): void {
   for (const group of groups) buttons.push(...group.buttonsFor(selection));
   if (buttons.length === 0) return hide();
 
-  const { bar, chrome } = instance;
-  bar.replaceChildren(...buttons.map((b) => buildButton(b, selection, chrome)));
+  const { bar, theme } = instance;
+  bar.replaceChildren(...buttons.map((b) => buildButton(b, selection, theme.chrome())));
   bar.style.display = 'inline-flex';
 
   // Measure off-screen first: the row's width depends on which buttons this selection

@@ -71,7 +71,9 @@ describe('normalizeLayoutPrefs', () => {
 
   it('stamps the current schema version, whatever was stored', () => {
     for (const version of [undefined, 0, -3, 0.5, 99, 'one']) {
-      expect(normalizeLayoutPrefs({ version }).version).toBe(COMPOSER_LAYOUT_SCHEMA_VERSION);
+      expect(normalizeLayoutPrefs({ version }).version).toBe(
+        COMPOSER_LAYOUT_SCHEMA_VERSION,
+      );
     }
   });
 });

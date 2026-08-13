@@ -7,8 +7,7 @@ import {
   findMessageBox,
   findMessageTextarea,
   createFormatButton,
-  isDarkTheme,
-  watchTheme,
+  followTheme,
 } from '@/lib/phpbb';
 import { insertAtRange, readSelection, type TextRange } from '@/lib/textarea';
 import { loadPresetStore, watchPresetStore, type Preset } from '@/lib/presets';
@@ -50,8 +49,6 @@ const TRIGGER_MARKER = 'data-dlh-presets';
 const PROMPT_ANCHOR_MARKER = 'data-dlh-preset-prompt';
 
 export const bbcodePresets = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'bbcode-presets' as const,
   name: i18n.t('features.bbcodePresets.name'),
   description: i18n.t('features.bbcodePresets.description'),
@@ -177,20 +174,22 @@ export const bbcodePresets = {
       menuState.store = store;
       panelState.store = store;
     };
-    void loadPresetStore().then(applyStore);
+    void loadPresetStore()
+      .then(applyStore)
+      .catch((err: unknown) => {
+        warn('bbcode-presets: could not load the presets', err);
+      });
     unwatch = watchPresetStore(applyStore);
 
     // --- theme: follow the *forum's* light/dark, not the OS preference ---
     // CSS cannot read the host page's `html.dark` from a shadow root portably, so the
     // flag is pushed in as state.
-    const applyTheme = (dark: boolean) => {
+    unwatchTheme = followTheme((dark) => {
       if (disposed) return;
       menuState.dark = dark;
       panelState.dark = dark;
       promptState.dark = dark;
-    };
-    applyTheme(isDarkTheme());
-    unwatchTheme = watchTheme(applyTheme);
+    });
 
     // ------------------------------------------------------------------
     // Surface 1 — the toolbar button and its nested menu
@@ -379,7 +378,9 @@ export const bbcodePresets = {
         signal,
       });
     } else {
-      warn('bbcode-presets: nowhere to anchor the prompt dialog — presets insert unfilled');
+      warn(
+        'bbcode-presets: nowhere to anchor the prompt dialog — presets insert unfilled',
+      );
     }
 
     return () => {

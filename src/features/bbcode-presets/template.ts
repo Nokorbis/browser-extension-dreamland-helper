@@ -72,17 +72,11 @@ export interface RenderResult {
 const FILTER_FNS: Record<FilterName, (value: string) => string> = {
   upper: (value) => value.toLocaleUpperCase('fr'),
   lower: (value) => value.toLocaleLowerCase('fr'),
-  // Lowercase first, so the result is the same whether the source was typed quietly
-  // or SHOUTED.
-  //
-  // Word boundaries are whitespace and hyphens: "jean-pierre" → "Jean-Pierre",
-  // because compound names are common here. Apostrophes are deliberately NOT
-  // boundaries — French elision puts one inside ordinary words far more often
-  // than at a name break, so treating it as one would turn "c'est" into
-  // "C'Est". "L'atrocité" keeping its lowercase a is the accepted cost.
-  //
-  // The `u` flag and `\p{L}` are load-bearing: with a plain `[a-z]` class,
-  // accented initials ("élan") are skipped and stay lowercase.
+  // Lowercase first, so quiet and SHOUTED sources give the same result. Word boundaries are
+  // whitespace and hyphens ("jean-pierre" → "Jean-Pierre"); apostrophes deliberately are
+  // not, since French elision puts one inside ordinary words — "c'est" must not become
+  // "C'Est", and "l'atrocité" keeping its lowercase a is the accepted cost. The `u` flag and
+  // `\p{L}` are load-bearing: with `[a-z]`, accented initials ("élan") stay lowercase.
   title: (value) =>
     value
       .toLocaleLowerCase('fr')
@@ -94,14 +88,12 @@ const FILTER_FNS: Record<FilterName, (value: string) => string> = {
 };
 
 /**
- * The one grammar, in one place. Built fresh on every call: a module-level /g regex carries
- * `lastIndex` between calls, which would make results depend on call order.
+ * The one grammar, in one place. Built fresh per call: a module-level /g regex carries
+ * `lastIndex` across calls, making results depend on call order.
  *
- * Group 1 is the token, group 2 is `''` or `'|a|b'`. The label class `[^{}|]*` stops of its
- * own accord at the `|` opening the filter chain and at the closing `}`; it allows spaces
- * and accents because these labels are French and read like questions, and allows *zero*
- * characters so `{PROMPT:}` is matched, reported as an authoring mistake, and still emitted
- * byte-for-byte literal.
+ * Group 1 is the token, group 2 is `''` or `'|a|b'`. The label class `[^{}|]*` stops on its
+ * own at the `|` and the `}`; it allows spaces and accents (these labels are French questions)
+ * and *zero* characters, so `{PROMPT:}` is matched, warned about, and emitted verbatim.
  */
 function placeholderPattern(): RegExp {
   return /\{(SELECTION|CURSOR|PROMPT:[^{}|]*)((?:\|[a-z]+)*)\}/g;
@@ -109,7 +101,9 @@ function placeholderPattern(): RegExp {
 
 /** The trimmed label of a prompt token, or `null` if this isn't one. */
 function promptLabel(token: string): string | null {
-  return token.startsWith(PROMPT_PREFIX) ? token.slice(PROMPT_PREFIX.length).trim() : null;
+  return token.startsWith(PROMPT_PREFIX)
+    ? token.slice(PROMPT_PREFIX.length).trim()
+    : null;
 }
 
 /**
@@ -167,24 +161,19 @@ function applyFilters(
  * Degradation rules, all deliberate:
  *
  * - `{SELECTION}` with nothing selected → empty string.
- * - **No `{SELECTION}` at all** → nothing special happens here; the caller
- *   replaces the selected range with `text`, so the selection is overwritten.
- *   That mirrors typing over a selection, and a single Ctrl+Z restores it.
- * - `{CURSOR}` more than once → the first wins; the rest are removed from the
- *   output (never left visible) and reported as a warning.
- * - Filters written on `{CURSOR}` are parsed and ignored, silently.
- * - `{PROMPT:label}` → the matching answer, filtered like a selection. A label
- *   with no answer — because the caller never asked, or the writer left the
- *   field blank — renders as the empty string, same as an empty selection.
- *   A *cancelled* dialog inserts nothing at all, which is the caller's job:
- *   it simply never calls this function.
- * - `{PROMPT:}`, or a label that is nothing but spaces, is left byte-for-byte
- *   literal **and** warned about. It is the one shape that is both matched and
- *   emitted verbatim, because a question with no wording cannot be asked.
+ * - **No `{SELECTION}` at all** → the caller replaces the selected range with `text`, so the
+ *   selection is overwritten. Mirrors typing over a selection; one Ctrl+Z restores it.
+ * - `{CURSOR}` more than once → the first wins; the rest are removed (never left visible)
+ *   and warned about. Filters on `{CURSOR}` are parsed and ignored, silently.
+ * - `{PROMPT:label}` → the matching answer, filtered like a selection. No answer — never
+ *   asked, or left blank — renders empty. A *cancelled* dialog inserts nothing at all,
+ *   which is the caller's job: it never calls this function.
+ * - `{PROMPT:}`, or a label of nothing but spaces, is left byte-for-byte literal **and**
+ *   warned about — the one shape both matched and emitted verbatim, because a question with
+ *   no wording cannot be asked.
  * - An unknown filter is skipped, with a warning.
- * - Anything that doesn't match the grammar — `{SELECTION`, `{selection}`,
- *   `{SELECTION|Upper}` (filters must be lowercase), `{prompt:nom}` — is left
- *   byte-for-byte literal.
+ * - Anything not matching the grammar — `{SELECTION`, `{selection}`, `{SELECTION|Upper}`,
+ *   `{prompt:nom}` — is left byte-for-byte literal.
  */
 export function renderPreset({ body, selection, answers }: RenderInput): RenderResult {
   const placeholder = placeholderPattern();

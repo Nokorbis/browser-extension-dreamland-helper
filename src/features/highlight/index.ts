@@ -1,11 +1,6 @@
 import { i18n } from '#i18n';
 import type { Feature } from '../types';
-import {
-  findPostContentElements,
-  readTopicId,
-  isDarkTheme,
-  watchTheme,
-} from '@/lib/phpbb';
+import { findPostContentElements, followTheme, readTopicId } from '@/lib/phpbb';
 import {
   dismissSelectionToolbar,
   registerSelectionToolbarGroup,
@@ -25,7 +20,7 @@ import {
   newId,
   type HighlightStore,
 } from '@/lib/highlights';
-import { resolveRange, serializeSelection } from './anchor';
+import { readContentText, resolveRange, serializeSelection } from './anchor';
 import { isHighlightApiSupported, HighlightRenderer } from './render';
 import { colorLabel, createClearControl } from './toolbar';
 import { HIGHLIGHT_COLORS } from './palette';
@@ -57,8 +52,6 @@ function rangesOverlap(a: Range, b: Range): boolean {
  * since they only touch storage.
  */
 export const highlight = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'highlight' as const,
   name: i18n.t('features.highlight.name'),
   description: i18n.t('features.highlight.description'),
@@ -96,11 +89,9 @@ export const highlight = {
       onClearAll: () => persist(clearAll(store)),
     });
 
-    const applyTheme = (dark: boolean) => {
+    const unwatchTheme = followTheme((dark) => {
       clearControl.setDark(dark);
-    };
-    applyTheme(isDarkTheme());
-    const unwatchTheme = watchTheme(applyTheme);
+    });
 
     // --- rendering ---------------------------------------------------------
     function render() {
@@ -109,8 +100,11 @@ export const highlight = {
       for (const [postId, list] of highlightsForPosts(store, posts.keys())) {
         const content = posts.get(postId);
         if (content === undefined) continue;
+        // Read once per post, not once per highlight: every range on this post resolves
+        // against the same text nodes.
+        const text = readContentText(content);
         for (const h of list) {
-          const range = resolveRange(content, h.start, h.end, h.quote);
+          const range = resolveRange(text, h.start, h.end, h.quote);
           if (range === null) continue; // post edited / text gone — skip, keep record
           const bucket = byColor.get(h.color);
           if (bucket === undefined) byColor.set(h.color, [range]);
@@ -193,10 +187,14 @@ export const highlight = {
     });
 
     // --- data --------------------------------------------------------------
-    void loadHighlightStore().then((loaded) => {
-      if (disposed) return;
-      apply(loaded);
-    });
+    void loadHighlightStore()
+      .then((loaded) => {
+        if (disposed) return;
+        apply(loaded);
+      })
+      .catch((err: unknown) => {
+        warn('highlight: could not load the stored highlights', err);
+      });
     const unwatchStore = watchHighlightStore((next) => {
       if (disposed) return;
       apply(next);

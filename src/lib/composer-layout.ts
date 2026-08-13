@@ -6,7 +6,14 @@
  * review oldest-first and *additionally* moves the composer below it when the columns are
  * stacked. Storing "composer at the bottom" separately would let the two disagree.
  */
-import { isRecord, loadStore, readInt, runMigrations, saveStore, watchStore } from './store-kit';
+import {
+  isRecord,
+  loadStore,
+  readInt,
+  runMigrations,
+  saveStore,
+  watchStore,
+} from './store-kit';
 
 export const COMPOSER_LAYOUT_KEY = 'composerLayout';
 export const COMPOSER_LAYOUT_SCHEMA_VERSION = 1;

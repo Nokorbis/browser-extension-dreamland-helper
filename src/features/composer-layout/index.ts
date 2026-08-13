@@ -4,8 +4,7 @@ import {
   findPostForm,
   findReviewHeading,
   findTopicReview,
-  isDarkTheme,
-  watchTheme,
+  followTheme,
 } from '@/lib/phpbb';
 import {
   emptyLayoutPrefs,
@@ -21,27 +20,18 @@ import { injectLayoutStyles } from './styles';
 import { log, warn } from '@/lib/log';
 
 /**
- * Write next to what you are answering. phpBB puts the composer above the review and reads
- * it newest-first, so replying to a post several screens away means scrolling between the
- * two. *Ordre inversé* reads the review oldest-first and moves the composer below it; *côte
- * à côte* puts the composer beside it instead, on the side the third control picks, while
- * the first checkbox still decides the posts' reading order.
+ * Write next to what you are answering. phpBB puts the composer above the review and reads it
+ * newest-first; *ordre inversé* reads the review oldest-first and moves the composer below it,
+ * *côte à côte* puts it beside instead, on the side the third control picks.
  *
- * Three deliberate choices, recorded in docs/adr/0030:
- *
- * - **The page is re-wrapped, never re-rendered** — `layout.ts` moves the form's existing
- *   children into two columns, so the textarea keeps its text and phpBB's scripts keep
- *   their references.
- * - **The post order flips in CSS**, not the DOM, so `highlight` ranges and every other
- *   feature's post lookups are untouched.
- * - **The controls live outside `<form id="postform">`**, where nothing they carry can reach
- *   phpBB's POST or submit it.
+ * Three choices, all in docs/adr/0030: the page is **re-wrapped, never re-rendered**
+ * (`layout.ts`); the post order flips in **CSS**, so `highlight` and every other post lookup
+ * is untouched; and the controls live **outside `<form id="postform">`**, out of reach of
+ * phpBB's POST.
  *
  * Reply pages only: without a topic review there is nothing to place the composer against.
  */
 export const composerLayout = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'composer-layout' as const,
   name: i18n.t('features.composerLayout.name'),
   description: i18n.t('features.composerLayout.description'),
@@ -94,17 +84,20 @@ export const composerLayout = {
       });
     }
 
-    const applyTheme = (dark: boolean) => {
+    const unwatchTheme = followTheme((dark) => {
       controls.setDark(dark);
-    };
-    applyTheme(isDarkTheme());
-    const unwatchTheme = watchTheme(applyTheme);
-
-    apply(prefs);
-    void loadLayoutPrefs().then((loaded) => {
-      if (disposed) return;
-      apply(loaded);
     });
+
+    // No eager `apply(prefs)`: the page already looks like the defaults (no state class is
+    // set yet), so painting them here only adds a reflow before the stored choice lands.
+    void loadLayoutPrefs()
+      .then((loaded) => {
+        if (disposed) return;
+        apply(loaded);
+      })
+      .catch((err: unknown) => {
+        warn('composer-layout: could not load the layout choice', err);
+      });
     // For a reply page open in a second tab: its layout follows without a reload.
     const unwatchStore = watchLayoutPrefs((next) => {
       if (disposed) return;

@@ -48,8 +48,6 @@ interface CellState {
 }
 
 export const colorGrab = {
-  // `as const` so the literal survives inference: `FeatureId` in registry.ts is
-  // built from these, and a widened `string` would make it match anything.
   id: 'color-grab' as const,
   name: i18n.t('features.colorGrab.name'),
   description: i18n.t('features.colorGrab.description'),
